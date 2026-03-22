@@ -13,7 +13,7 @@
   --secondary: #131A25;
   --secondary-foreground: #A8B0BF;
   --muted: #131A25;
-  --muted-foreground: #636B7A;
+  --muted-foreground: #8A929F;
   --accent: #30B8BF;
   --accent-foreground: #FFFFFF;
   --destructive: #c2173b;
@@ -50,7 +50,7 @@
   --sf-teal: #30B8BF;
   --sf-text-primary: #FFFFFF;
   --sf-text-secondary: #A8B0BF;
-  --sf-text-muted: #636B7A;
+  --sf-text-muted: #8A929F;
   --sf-divider: #1C2535;
 }
 
@@ -135,6 +135,18 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  /* WCAG 2.4.7 — visible focus indicator for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #3880BE;
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* Smooth scroll for in-page anchor links */
+  html {
+    scroll-behavior: smooth;
   }
 
   body {

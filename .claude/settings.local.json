@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 10 npx vite --port 5174)",
+      "Bash(timeout 15 bash -c 'npx vite --port 5176 &:*)",
+      "Bash(node -e \":*)"
+    ]
+  }
+}

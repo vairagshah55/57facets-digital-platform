@@ -1,4 +1,10 @@
 import { useState } from "react";
+import img1 from "@/assets/Images/pexels-the-glorious-studio-3584518-5442447.jpg";
+import img2 from "@/assets/Images/pexels-the-glorious-studio-3584518-7541803.jpg";
+import img3 from "@/assets/Images/pexels-the-glorious-studio-3584518-11504786.jpg";
+import img4 from "@/assets/Images/pexels-the-glorious-studio-3584518-12427696.jpg";
+import img5 from "@/assets/Images/pexels-the-glorious-studio-3584518-31677627.jpg";
+import img6 from "@/assets/Images/pexels-the-glorious-studio-3584518-32492521.jpg";
 
 const CATEGORIES = [
   {
@@ -6,49 +12,42 @@ const CATEGORIES = [
     name: "Bangles",
     descriptor: "Stacked elegance, wrist-worn brilliance",
     count: "18 Designs",
-    img: "https://images.unsplash.com/photo-1665703156495-d0be1572257c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwYmFuZ2xlJTIwYnJhY2VsZXQlMjBsdXh1cnklMjBqZXdlbGxlcnklMjBkYXJrfGVufDF8fHx8MTc3MzkyODY0Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img1,
   },
   {
     id: 2,
     name: "Pendants",
     descriptor: "Close to the heart, far above the rest",
     count: "24 Designs",
-    img: "https://images.unsplash.com/photo-1636298313371-0c9b029f7676?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwcGVuZGFudCUyMG5lY2tsYWNlJTIwbHV4dXJ5JTIwamV3ZWxsZXJ5JTIwZGFyayUyMGJhY2tncm91bmR8ZW58MXx8fHwxNzczOTI4NjQyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img2,
   },
   {
     id: 3,
     name: "Earrings",
     descriptor: "Effortless radiance, every angle",
     count: "31 Designs",
-    img: "https://images.unsplash.com/photo-1736449497832-6ae92abb8507?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwZWFycmluZ3MlMjBsdXh1cnklMjBqZXdlbGxlcnklMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwxfHx8fDE3NzM5Mjg2NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img3,
   },
   {
     id: 4,
     name: "Necklaces",
     descriptor: "A statement of grace and heritage",
     count: "22 Designs",
-    img: "https://images.unsplash.com/photo-1718698028514-7b5029017de5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwbmVja2xhY2UlMjBsdXh1cnklMjBmaW5lJTIwamV3ZWxsZXJ5JTIwZGFya3xlbnwxfHx8fDE3NzM5Mjg2NDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img4,
   },
   {
     id: 5,
     name: "Rings",
     descriptor: "Symbols of love and commitment",
     count: "47 Designs",
-    img: "https://images.unsplash.com/photo-1669738202871-1997517de7d2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwZW5nYWdlbWVudCUyMHJpbmclMjBsdXh1cnklMjBzb2xpdGFpcmUlMjBkYXJrfGVufDF8fHx8MTc3MzkyODY0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img5,
   },
   {
     id: 6,
     name: "Bracelets",
     descriptor: "Diamond-set, timelessly worn",
     count: "19 Designs",
-    img: "https://images.unsplash.com/photo-1763029513623-37d488cb97b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWFtb25kJTIwdGVubmlzJTIwYnJhY2VsZXQlMjBsdXh1cnklMjBqZXdlbGxlcnklMjBlbGVnYW50fGVufDF8fHx8MTc3MzkyODY0NHww&ixlib=rb-4.1.0&q=80&w=1080",
-  },
-  {
-    id: 7,
-    name: "Stories",
-    descriptor: "Heritage pieces with a narrative",
-    count: "8 Edits",
-    img: "https://images.unsplash.com/photo-1770062422860-92c107ef02cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBqZXdlbGxlcnklMjBlZGl0b3JpYWwlMjBsaWZlc3R5bGUlMjBzdG9yeSUyMGRhcmt8ZW58MXx8fHwxNzczOTI4NjQ0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    img: img6,
   },
 ];
 
@@ -90,7 +89,7 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
           }}
         />
 
-        {/* Dark gradient overlay — intensifies on hover */}
+        {/* Dark gradient overlay */}
         <div
           style={{
             position: "absolute",
@@ -104,11 +103,12 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
 
         {/* Stone count badge — top left */}
         <div
+          aria-label={`${category.count} available`}
           style={{
             position: "absolute",
             top: "12px",
             left: "12px",
-            padding: "3px 9px",
+            padding: "4px 10px",
             borderRadius: "9999px",
             backgroundColor: "rgba(8,10,13,0.8)",
             border: "1px solid rgba(28,37,53,0.9)",
@@ -116,16 +116,20 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
             opacity: hovered ? 0 : 1,
             transition: "opacity 0.3s ease",
           }}
-        ><span
+        >
+          <span
             style={{
               fontFamily: "'General Sans', 'Inter', sans-serif",
-              fontSize: "9px",
+              fontSize: "11px",
               fontWeight: 600,
-              letterSpacing: "0.16em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "#636B7A",
+              color: "#A8B0BF",
             }}
-          >{category.count}</span></div>
+          >
+            {category.count}
+          </span>
+        </div>
       </div>
 
       {/* ── Text + CTA block ── */}
@@ -154,9 +158,9 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
         <p
           style={{
             fontFamily: "'General Sans', 'Inter', sans-serif",
-            fontSize: "12px",
+            fontSize: "13px",
             fontWeight: 400,
-            color: "#636B7A",
+            color: "#8A929F",
             margin: 0,
             lineHeight: 1.6,
             transition: "color 0.3s ease",
@@ -165,7 +169,7 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
           {category.descriptor}
         </p>
 
-        {/* Divider + CTA — always reserves space, visible only on hover */}
+        {/* Divider + CTA — visible only on hover */}
         <div
           style={{
             opacity: hovered ? 1 : 0,
@@ -173,7 +177,6 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
             transition: "opacity 0.35s ease, visibility 0.35s ease",
           }}
         >
-          {/* Thin divider */}
           <div
             style={{
               height: "1px",
@@ -182,7 +185,6 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
             }}
           />
 
-          {/* Row: count + Inquire Now */}
           <div
             style={{
               display: "flex",
@@ -193,7 +195,7 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
             <span
               style={{
                 fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "10px",
+                fontSize: "11px",
                 fontWeight: 500,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
@@ -204,16 +206,17 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
             </span>
 
             <button
+              aria-label={`Inquire about ${category.name}`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "7px 16px",
+                padding: "8px 16px",
                 borderRadius: "9999px",
                 backgroundColor: "#2660A0",
                 border: "1px solid #3880BE",
                 fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "10px",
+                fontSize: "11px",
                 fontWeight: 600,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
@@ -230,7 +233,7 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
               }
             >
               Inquire Now
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                 <path
                   d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
                   stroke="#FFFFFF"
@@ -250,9 +253,10 @@ function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
 export function StoneCategories() {
   return (
     <section
+      id="collections"
       style={{
         backgroundColor: "#080A0D",
-        padding: "120px clamp(32px, 5vw, 80px) 120px",
+        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
         position: "relative",
       }}
     >
@@ -261,29 +265,50 @@ export function StoneCategories() {
         style={{
           position: "absolute",
           top: 0,
-          left: "clamp(32px, 5vw, 80px)",
-          right: "clamp(32px, 5vw, 80px)",
+          left: "clamp(24px, 6vw, 80px)",
+          right: "clamp(24px, 6vw, 80px)",
           height: "1px",
           background:
             "linear-gradient(to right, transparent, #1C2535 20%, #1C2535 80%, transparent)",
         }}
       />
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         {/* ── Header ── */}
         <div
           style={{
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "space-between",
-            marginBottom: "56px",
+            marginBottom: "clamp(40px, 6vw, 64px)",
             gap: "24px",
             flexWrap: "wrap",
           }}
         >
           <div>
             {/* Eyebrow */}
-            
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+                marginBottom: "16px",
+              }}
+            >
+              <div style={{ width: "32px", height: "1px", backgroundColor: "#2E6DA4" }} />
+              <span
+                style={{
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  color: "#3F8BC3",
+                  textTransform: "uppercase",
+                }}
+              >
+                Our Collection
+              </span>
+            </div>
 
             {/* Headline */}
             <h2
@@ -312,9 +337,10 @@ export function StoneCategories() {
             </h2>
           </div>
 
-          {/* Right: total stones */}
+          {/* Right: total designs */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <p
+              aria-label="363 stones live"
               style={{
                 fontFamily: "'Melodrama', 'Georgia', serif",
                 fontSize: "32px",
@@ -333,7 +359,7 @@ export function StoneCategories() {
                 fontWeight: 500,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                color: "#636B7A",
+                color: "#8A929F",
                 margin: 0,
               }}
             >
@@ -346,12 +372,12 @@ export function StoneCategories() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "32px 24px",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "clamp(24px, 3vw, 40px) clamp(16px, 2vw, 28px)",
           }}
           className="stone-grid"
         >
-          {CATEGORIES.filter((cat) => cat.name !== "Stories").map((cat) => (
+          {CATEGORIES.map((cat) => (
             <CategoryCard key={cat.id} category={cat} />
           ))}
         </div>
@@ -367,13 +393,11 @@ export function StoneCategories() {
         @media (max-width: 720px) {
           .stone-grid {
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 24px 16px !important;
           }
         }
         @media (max-width: 420px) {
           .stone-grid {
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 16px 12px !important;
           }
         }
       `}</style>

@@ -207,7 +207,7 @@ function LeaderCard({
                 fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "clamp(13px, 1.05vw, 15px)",
                 fontWeight: 400,
-                color: "#7e8fa3",
+                color: "#8A9AB0",
                 lineHeight: 1.75,
                 margin: 0,
               }}

@@ -7,41 +7,30 @@ type Vec3 = [number, number, number];
 function buildDiamond(): { vertices: Vec3[]; faces: number[][] } {
   const vertices: Vec3[] = [];
   const faces: number[][] = [];
-  const N = 8; // octagonal symmetry
+  const N = 8;
 
-  // y-levels (top = negative)
   const apexY = -1.08;
   const crownY = -0.72;
   const girdleY = 0.0;
   const pavY = 0.55;
   const culetY = 1.05;
-
   const crownR = 0.38;
   const girdleR = 0.60;
   const pavR = 0.32;
 
-  // 0: apex
   vertices.push([0, apexY, 0]);
-
-  // 1..N: crown ring
   for (let i = 0; i < N; i++) {
     const a = ((i + 0.5) / N) * Math.PI * 2;
     vertices.push([Math.cos(a) * crownR, crownY, Math.sin(a) * crownR]);
   }
-
-  // N+1..2N: girdle ring
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2;
     vertices.push([Math.cos(a) * girdleR, girdleY, Math.sin(a) * girdleR]);
   }
-
-  // 2N+1..3N: pavilion ring
   for (let i = 0; i < N; i++) {
     const a = ((i + 0.5) / N) * Math.PI * 2;
     vertices.push([Math.cos(a) * pavR, pavY, Math.sin(a) * pavR]);
   }
-
-  // 3N+1: culet
   vertices.push([0, culetY, 0]);
 
   const apex = 0;
@@ -50,32 +39,19 @@ function buildDiamond(): { vertices: Vec3[]; faces: number[][] } {
   const pav = (i: number) => 2 * N + 1 + (i % N);
   const culet = 3 * N + 1;
 
-  // Crown-apex star faces
-  for (let i = 0; i < N; i++) {
-    faces.push([apex, crown(i), crown(i + 1)]);
-  }
-
-  // Crown → girdle kite faces
+  for (let i = 0; i < N; i++) faces.push([apex, crown(i), crown(i + 1)]);
   for (let i = 0; i < N; i++) {
     faces.push([crown(i), girdle(i), girdle(i + 1)]);
     faces.push([crown(i), crown(i + 1), girdle(i + 1)]);
   }
-
-  // Girdle → pavilion kite faces
   for (let i = 0; i < N; i++) {
     faces.push([girdle(i), pav(i), girdle(i + 1)]);
     faces.push([pav(i), pav(i + 1), girdle(i + 1)]);
   }
-
-  // Pavilion → culet
-  for (let i = 0; i < N; i++) {
-    faces.push([pav(i), culet, pav(i + 1)]);
-  }
+  for (let i = 0; i < N; i++) faces.push([pav(i), culet, pav(i + 1)]);
 
   return { vertices, faces };
 }
-
-// ─── Matrix helpers ──────────────────────────────────────────────────────────
 
 function rotateX(v: Vec3, a: number): Vec3 {
   const c = Math.cos(a), s = Math.sin(a);
@@ -93,11 +69,7 @@ function project(v: Vec3, fov: number, cx: number, cy: number, scale: number): [
 function faceNormal(a: Vec3, b: Vec3, c: Vec3): Vec3 {
   const u: Vec3 = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
   const w: Vec3 = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
-  return [
-    u[1]*w[2] - u[2]*w[1],
-    u[2]*w[0] - u[0]*w[2],
-    u[0]*w[1] - u[1]*w[0],
-  ];
+  return [u[1]*w[2]-u[2]*w[1], u[2]*w[0]-u[0]*w[2], u[0]*w[1]-u[1]*w[0]];
 }
 function dot(a: Vec3, b: Vec3) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
 
@@ -128,24 +100,19 @@ function DiamondCanvas() {
     };
 
     window.addEventListener("mousemove", handleMouseMove);
-
     let autoAngle = 0;
 
     function draw() {
       if (!canvas || !ctx) return;
-
       const dpr = window.devicePixelRatio || 1;
       const W = canvas.offsetWidth;
       const H = canvas.offsetHeight;
       canvas.width = W * dpr;
       canvas.height = H * dpr;
       ctx.scale(dpr, dpr);
-
       ctx.clearRect(0, 0, W, H);
 
       autoAngle += 0.004;
-
-      // Lerp rotation toward mouse
       const targetRx = mouse.current.y * 0.45 + Math.sin(autoAngle * 0.4) * 0.1;
       const targetRy = mouse.current.x * 0.55 + autoAngle;
       rotation.current.rx += (targetRx - rotation.current.rx) * 0.06;
@@ -156,17 +123,13 @@ function DiamondCanvas() {
       const cy = H / 2;
       const scale = Math.min(W, H) * 0.38;
 
-      // Transform vertices
       const transformed = baseVerts.map((v) => {
         let r = rotateX(v, rotation.current.rx);
         r = rotateY(r, rotation.current.ry);
         return r;
       });
-
-      // Project
       const projected = transformed.map((v) => project(v, fov, cx, cy, scale));
 
-      // Build face data with depth + normal
       const faceData = faces.map((face) => {
         const a = transformed[face[0]];
         const b = transformed[face[1]];
@@ -183,10 +146,8 @@ function DiamondCanvas() {
         return { face, diffuse, avgZ, backfacing, normal: nNorm };
       });
 
-      // Sort back to front
       faceData.sort((a, b) => b.avgZ - a.avgZ);
 
-      // Glow beneath diamond
       const glowGrad = ctx.createRadialGradient(cx, cy + scale * 0.2, 0, cx, cy, scale * 0.9);
       glowGrad.addColorStop(0, "rgba(46,109,164,0.12)");
       glowGrad.addColorStop(0.5, "rgba(46,109,164,0.05)");
@@ -194,38 +155,30 @@ function DiamondCanvas() {
       ctx.fillStyle = glowGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Blue palette
       const goldColors = [
         "#3F8BC3", "#5AABDE", "#2E6DA4", "#6BC1E8", "#1A5280",
         "#36C0C7", "#4A9AD4", "#2A7FB8", "#7DD4F0",
       ];
 
-      faceData.forEach(({ face, diffuse, backfacing, normal }) => {
+      faceData.forEach(({ face, diffuse, backfacing }) => {
         const pts = face.map((i) => projected[i]);
-
-        // Determine if this is a crown, girdle, or pavilion face
         const minVIdx = Math.min(...face);
         const maxVIdx = Math.max(...face);
-        const N = 8;
-        const isCrown = maxVIdx <= 2 * N;
-        const isPavilion = minVIdx >= 2 * N + 1;
-
-        // Base colour selection
+        const NF = 8;
+        const isCrown = maxVIdx <= 2 * NF;
+        const isPavilion = minVIdx >= 2 * NF + 1;
         const baseIdx = Math.abs(face[0] + face[1]) % goldColors.length;
-        const baseColor = goldColors[baseIdx];
+        void baseIdx; // suppress unused warning
 
-        // Brightness
         let brightness = 0.25 + diffuse * 0.75;
         if (backfacing) brightness *= 0.35;
 
-        // Interior shimmer for crown facets
         ctx.beginPath();
         ctx.moveTo(pts[0][0], pts[0][1]);
         for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
         ctx.closePath();
 
         if (!backfacing && isCrown) {
-          // Shimmer gradient
           const cx1 = pts.reduce((s, p) => s + p[0], 0) / pts.length;
           const cy1 = pts.reduce((s, p) => s + p[1], 0) / pts.length;
           const grad = ctx.createRadialGradient(cx1, cy1, 0, cx1, cy1, scale * 0.25);
@@ -234,28 +187,19 @@ function DiamondCanvas() {
           grad.addColorStop(1, `rgba(20,70,130,${0.3 * brightness})`);
           ctx.fillStyle = grad;
         } else if (!backfacing && isPavilion) {
-          // Deeper pavilion colour
-          const alpha = 0.65 * brightness;
-          ctx.fillStyle = `rgba(18,60,120,${alpha})`;
+          ctx.fillStyle = `rgba(18,60,120,${0.65 * brightness})`;
         } else if (backfacing) {
           ctx.fillStyle = `rgba(8,16,40,0.25)`;
         } else {
-          // Girdle facets
-          const alpha = 0.5 * brightness;
-          ctx.fillStyle = `rgba(46,109,164,${alpha})`;
+          ctx.fillStyle = `rgba(46,109,164,${0.5 * brightness})`;
         }
 
         ctx.fill();
-
-        // Edge lines
-        ctx.strokeStyle = backfacing
-          ? "rgba(46,109,164,0.06)"
-          : "rgba(100,190,240,0.22)";
+        ctx.strokeStyle = backfacing ? "rgba(46,109,164,0.06)" : "rgba(100,190,240,0.22)";
         ctx.lineWidth = 0.6;
         ctx.stroke();
       });
 
-      // Specular highlights on visible crown facets
       faceData.forEach(({ face, backfacing, diffuse }) => {
         if (backfacing || diffuse < 0.65) return;
         const pts = face.map((i) => projected[i]);
@@ -285,7 +229,6 @@ function DiamondCanvas() {
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
-      {/* Outer glow ring */}
       <div
         style={{
           position: "absolute",
@@ -300,6 +243,7 @@ function DiamondCanvas() {
       />
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         style={{ width: "100%", height: "100%", display: "block" }}
       />
     </div>
@@ -312,16 +256,20 @@ function FloatingInput({
   label,
   type = "text",
   name,
+  id,
   value,
   onChange,
   textarea = false,
+  required = false,
 }: {
   label: string;
   type?: string;
   name: string;
+  id: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   textarea?: boolean;
+  required?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const lifted = focused || value.length > 0;
@@ -332,7 +280,7 @@ function FloatingInput({
     border: "none",
     borderBottom: `1px solid ${focused ? "#3F8BC3" : "rgba(63,139,195,0.28)"}`,
     outline: "none",
-    color: "#F5F0E8",
+    color: "#F0EDE8",
     fontFamily: "'General Sans', 'Inter', sans-serif",
     fontSize: "15px",
     fontWeight: 400,
@@ -344,47 +292,56 @@ function FloatingInput({
   return (
     <div style={{ position: "relative", marginBottom: "32px" }}>
       <label
+        htmlFor={id}
         style={{
           position: "absolute",
           left: 0,
           top: lifted ? "2px" : "22px",
-          fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+          fontFamily: "'General Sans', 'Inter', sans-serif",
           fontSize: lifted ? "11px" : "14px",
-          fontWeight: lifted ? 500 : 400,
+          fontWeight: lifted ? 600 : 400,
           letterSpacing: lifted ? "0.14em" : "0.04em",
           textTransform: lifted ? "uppercase" : "none",
-          color: focused ? "rgba(256,256,256,0.70)" : "rgba(256,256,256,0.95)",
+          color: focused ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.85)",
           pointerEvents: "none",
           transition: "all 0.25s cubic-bezier(0.22,1,0.36,1)",
         }}
       >
         {label}
+        {required && <span aria-hidden="true" style={{ color: "#36C0C7", marginLeft: "3px" }}>*</span>}
       </label>
 
       {textarea ? (
         <textarea
+          id={id}
           name={name}
           value={value}
           rows={3}
+          required={required}
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           style={sharedStyle}
+          aria-required={required}
         />
       ) : (
         <input
+          id={id}
           name={name}
           type={type}
           value={value}
+          required={required}
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           style={sharedStyle}
+          aria-required={required}
         />
       )}
 
       {/* Focus underline accent */}
       <div
+        aria-hidden="true"
         style={{
           position: "absolute",
           bottom: 0,
@@ -414,7 +371,6 @@ export function ContactSection() {
     message: "",
   });
 
-  // Scroll-triggered fade in
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -437,10 +393,12 @@ export function ContactSection() {
 
   return (
     <section
+      id="contact"
       ref={sectionRef}
+      aria-label="Contact and inquiry form"
       style={{
-        backgroundColor: "#0A0E14",
-        padding: "128px clamp(32px, 5vw, 80px)",
+        backgroundColor: "#080A0D",
+        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
         position: "relative",
         overflow: "hidden",
         opacity: visible ? 1 : 0,
@@ -448,39 +406,56 @@ export function ContactSection() {
         transition: "opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1)",
       }}
     >
+      {/* Background grid texture */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(46,109,164,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(46,109,164,0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: "64px 64px",
+          pointerEvents: "none",
+        }}
+      />
+
       {/* Top border */}
       <div
+        aria-hidden="true"
         style={{
           position: "absolute",
           top: 0,
-          left: "clamp(32px, 5vw, 80px)",
-          right: "clamp(32px, 5vw, 80px)",
+          left: "clamp(24px, 6vw, 80px)",
+          right: "clamp(24px, 6vw, 80px)",
           height: "1px",
           background: "linear-gradient(to right, transparent, rgba(46,109,164,0.22) 20%, rgba(46,109,164,0.22) 80%, transparent)",
         }}
       />
 
-      {/* Subtle corner ornament – top left */}
+      {/* Corner ornaments */}
       <svg
-        style={{ position: "absolute", top: "40px", left: "clamp(32px,5vw,80px)", opacity: 0.18 }}
+        aria-hidden="true"
+        style={{ position: "absolute", top: "40px", left: "clamp(24px,6vw,80px)", opacity: 0.18 }}
         width="48" height="48" viewBox="0 0 48 48" fill="none"
       >
         <path d="M0 48 L0 0 L48 0" stroke="#3F8BC3" strokeWidth="1" fill="none" />
       </svg>
-      {/* top right */}
       <svg
-        style={{ position: "absolute", top: "40px", right: "clamp(32px,5vw,80px)", opacity: 0.18 }}
+        aria-hidden="true"
+        style={{ position: "absolute", top: "40px", right: "clamp(24px,6vw,80px)", opacity: 0.18 }}
         width="48" height="48" viewBox="0 0 48 48" fill="none"
       >
         <path d="M48 48 L48 0 L0 0" stroke="#3F8BC3" strokeWidth="1" fill="none" />
       </svg>
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div
           className="contact-flex"
           style={{
             display: "flex",
-            gap: "80px",
+            gap: "clamp(40px, 6vw, 80px)",
             alignItems: "center",
           }}
         >
@@ -500,16 +475,15 @@ export function ContactSection() {
               <DiamondCanvas />
             </div>
 
-            {/* Label below diamond */}
             <div style={{ textAlign: "center", marginTop: "32px" }}>
               <p
                 style={{
-                  fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
                   fontSize: "11px",
                   fontWeight: 500,
                   letterSpacing: "0.26em",
                   textTransform: "uppercase",
-                  color: "rgba(256,256,256,0.8)",
+                  color: "rgba(255,255,255,0.55)",
                   margin: 0,
                 }}
               >
@@ -524,45 +498,61 @@ export function ContactSection() {
             style={{ flex: "1 1 50%", maxWidth: "540px" }}
           >
             {/* Eyebrow */}
-            <p
+            <div
               style={{
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "10px",
-                fontWeight: 600,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: "rgba(63,139,195,0.8)",
-                margin: "0 0 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+                marginBottom: "20px",
               }}
             >
-              Direct Access
-            </p>
+              <div style={{ width: "32px", height: "1px", backgroundColor: "#2E6DA4" }} />
+              <span
+                style={{
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "#3F8BC3",
+                }}
+              >
+                Direct Access
+              </span>
+            </div>
 
-            {/* Heading */}
+            {/* Heading — consistent with rest of site */}
             <h2
               style={{
-                fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+                fontFamily: "'Melodrama', 'Georgia', serif",
                 fontSize: "clamp(34px, 3.8vw, 56px)",
-                fontWeight: 300,
-                color: "#F5F0E8",
-                lineHeight: 1.08,
-                letterSpacing: "-0.01em",
+                fontWeight: 500,
+                color: "#F0EDE8",
+                lineHeight: 1.06,
+                letterSpacing: "-0.02em",
                 margin: "0 0 10px",
               }}
             >
               Begin the{" "}
-              <em style={{ fontStyle: "italic", color: "#3F8BC3" }}>
-                Conversation
-              </em>
+              <span
+                style={{
+                  background: "linear-gradient(90deg, #3F8BC3 0%, #36C0C7 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                Conversation.
+              </span>
             </h2>
 
             <p
               style={{
-                fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-                fontSize: "17px",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
+                fontSize: "clamp(13px, 1.05vw, 15px)",
                 fontWeight: 400,
-                color: "rgba(245,240,232,0.65)",
-                lineHeight: 1.65,
+                color: "#8A929F",
+                lineHeight: 1.75,
                 margin: "0 0 48px",
                 maxWidth: "380px",
               }}
@@ -572,8 +562,9 @@ export function ContactSection() {
             </p>
 
             {submitted ? (
-              /* ── Success state ── */
               <div
+                role="status"
+                aria-live="polite"
                 style={{
                   padding: "40px 32px",
                   border: "1px solid rgba(46,109,164,0.22)",
@@ -581,17 +572,16 @@ export function ContactSection() {
                   textAlign: "center",
                 }}
               >
-                {/* Diamond tick */}
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ marginBottom: "20px" }}>
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true" style={{ marginBottom: "20px" }}>
                   <polygon points="20,2 38,20 20,38 2,20" stroke="#3F8BC3" strokeWidth="1.2" fill="rgba(46,109,164,0.08)" />
                   <path d="M13 20.5 L18 25.5 L27 15" stroke="#3F8BC3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p
                   style={{
-                    fontFamily: "'Cormorant Garamond', 'Georgia', serif",
+                    fontFamily: "'Melodrama', 'Georgia', serif",
                     fontSize: "22px",
-                    fontWeight: 400,
-                    color: "#F5F0E8",
+                    fontWeight: 500,
+                    color: "#F0EDE8",
                     margin: "0 0 8px",
                   }}
                 >
@@ -600,8 +590,8 @@ export function ContactSection() {
                 <p
                   style={{
                     fontFamily: "'General Sans', 'Inter', sans-serif",
-                    fontSize: "13px",
-                    color: "rgba(245,240,232,0.45)",
+                    fontSize: "14px",
+                    color: "#8A929F",
                     margin: 0,
                     lineHeight: 1.6,
                   }}
@@ -610,18 +600,17 @@ export function ContactSection() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} noValidate>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-                  <FloatingInput label="Full Name" name="name" value={form.name} onChange={handleChange} />
-                  <FloatingInput label="Company / House" name="company" value={form.company} onChange={handleChange} />
+                  <FloatingInput label="Full Name" id="contact-name" name="name" value={form.name} onChange={handleChange} required />
+                  <FloatingInput label="Company / House" id="contact-company" name="company" value={form.company} onChange={handleChange} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-                  <FloatingInput label="Email Address" type="email" name="email" value={form.email} onChange={handleChange} />
-                  <FloatingInput label="Phone Number" type="tel" name="phone" value={form.phone} onChange={handleChange} />
+                  <FloatingInput label="Email Address" type="email" id="contact-email" name="email" value={form.email} onChange={handleChange} required />
+                  <FloatingInput label="Phone Number" type="tel" id="contact-phone" name="phone" value={form.phone} onChange={handleChange} />
                 </div>
-                <FloatingInput label="Your Inquiry" name="message" value={form.message} onChange={handleChange} textarea />
+                <FloatingInput label="Your Inquiry" id="contact-message" name="message" value={form.message} onChange={handleChange} textarea />
 
-                {/* Submit */}
                 <button
                   type="submit"
                   onMouseEnter={() => setBtnHovered(true)}
@@ -629,13 +618,13 @@ export function ContactSection() {
                   style={{
                     marginTop: "8px",
                     width: "100%",
-                    padding: "13px 32px",
+                    padding: "14px 32px",
                     borderRadius: "9999px",
                     border: btnHovered ? "1px solid #1F4A78" : "1px solid #FFFFFF",
                     backgroundColor: btnHovered ? "#163556" : "#FFFFFF",
                     color: btnHovered ? "#FFFFFF" : "#0D1118",
                     fontFamily: "'General Sans', 'Inter', sans-serif",
-                    fontSize: "11px",
+                    fontSize: "12px",
                     fontWeight: 600,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
@@ -655,7 +644,7 @@ export function ContactSection() {
                   style={{
                     fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "11px",
-                    color: "rgba(245,240,232,0.25)",
+                    color: "rgba(255,255,255,0.35)",
                     textAlign: "center",
                     marginTop: "16px",
                     letterSpacing: "0.04em",
@@ -671,11 +660,12 @@ export function ContactSection() {
 
       {/* Bottom border */}
       <div
+        aria-hidden="true"
         style={{
           position: "absolute",
           bottom: 0,
-          left: "clamp(32px, 5vw, 80px)",
-          right: "clamp(32px, 5vw, 80px)",
+          left: "clamp(24px, 6vw, 80px)",
+          right: "clamp(24px, 6vw, 80px)",
           height: "1px",
           background: "linear-gradient(to right, transparent, rgba(46,109,164,0.22) 20%, rgba(46,109,164,0.22) 80%, transparent)",
         }}

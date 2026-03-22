@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import diamondImg from "figma:asset/67d3a317d60076587aea0df47e1ffaaeb84b590a.png";
+import diamondImg from "@/assets/Images/edgar-soto-gb0BZGae1Nk-unsplash.jpg";
 
 export function AboutSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
