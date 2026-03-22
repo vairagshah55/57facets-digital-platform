@@ -256,7 +256,7 @@ export function StoneCategories() {
       id="collections"
       style={{
         backgroundColor: "#080A0D",
-        padding: "96px 0",
+        padding: "80px 0",
         position: "relative",
         overflow: "hidden",
       }}

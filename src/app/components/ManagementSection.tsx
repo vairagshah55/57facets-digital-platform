@@ -27,7 +27,7 @@ const leaders = [
     ],
     image:
       "https://images.unsplash.com/photo-1705164454513-d8274719fdf5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBpbmRpYW4lMjB3b21hbiUyMGV4ZWN1dGl2ZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MzkyODIyMXww&ixlib=rb-4.1.0&q=80&w=1080",
-    facePosition: "center 85%",
+    facePosition: "center 70%",
     accent: "#36C0C7",
     accentLight: "#4DD6DC",
   },
@@ -252,7 +252,7 @@ export function ManagementSection() {
         backgroundColor: "#080A0D",
         position: "relative",
         overflow: "hidden",
-        padding: "96px clamp(24px, 6vw, 80px)",
+        padding: "80px clamp(24px, 6vw, 80px)",
       }}
     >
       <AmbientOrbs variant="teal" />
@@ -429,9 +429,10 @@ export function ManagementSection() {
           .leader-img-0 {
             object-position: center 40% !important;
           }
-          /* Anupreksha Jain — face is near the top */
+          /* Anupreksha Jain — face is in the lower portion */
           .leader-img-1 {
-            object-position: center 25% !important;
+            object-position: center 70% !important;
+            filter: grayscale(10%) brightness(1.05) !important;
           }
         }
       `}</style>

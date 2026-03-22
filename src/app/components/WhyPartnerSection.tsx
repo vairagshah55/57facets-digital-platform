@@ -222,6 +222,98 @@ function ReasonCard({
   );
 }
 
+function MobileCarousel() {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleScroll = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / reasons.length;
+    setActiveIndex(Math.round(el.scrollLeft / cardWidth));
+  };
+
+  const scrollTo = (i: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / reasons.length;
+    el.scrollTo({ left: cardWidth * i, behavior: "smooth" });
+  };
+
+  return (
+    <div>
+      <div
+        ref={carouselRef}
+        onScroll={handleScroll}
+        className="why-carousel"
+      >
+        {reasons.map((reason) => (
+          <div key={reason.index} className="why-carousel-item">
+            <div style={{
+              backgroundColor: "#0D1118",
+              border: `1px solid #1a2a3f`,
+              borderRadius: "6px",
+              padding: "28px 24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              position: "relative",
+              overflow: "hidden",
+              height: "100%",
+            }}>
+              {/* Top accent line */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: "2px",
+                background: `linear-gradient(to right, ${reason.accent}, ${reason.accentLight}, transparent)`,
+              }} />
+
+              {/* Index + Icon */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
+                  fontSize: "10px", fontWeight: 500, letterSpacing: "0.2em",
+                  color: reason.accentLight, opacity: 0.6,
+                }}>{reason.index}</span>
+                <div style={{
+                  width: "44px", height: "44px", borderRadius: "50%",
+                  border: `1px solid ${reason.accent}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  backgroundColor: `${reason.accent}18`,
+                }}>{reason.icon}</div>
+              </div>
+
+              <h3 style={{
+                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontSize: "clamp(22px, 5vw, 28px)", fontWeight: 500,
+                color: "#e8ecf0", lineHeight: 1.18, letterSpacing: "-0.01em", margin: 0,
+              }}>{reason.headline}</h3>
+
+              <p style={{
+                fontFamily: "'General Sans', 'Inter', sans-serif",
+                fontSize: "14px", fontWeight: 400, color: "#8A929F",
+                lineHeight: 1.75, margin: 0,
+              }}>{reason.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dots */}
+      <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "24px" }}>
+        {reasons.map((_, i) => (
+          <button key={i} onClick={() => scrollTo(i)} style={{
+            width: activeIndex === i ? "24px" : "8px",
+            height: "8px", borderRadius: "9999px", border: "none",
+            cursor: "pointer", padding: 0,
+            backgroundColor: activeIndex === i ? "#30B8BF" : "rgba(255,255,255,0.2)",
+            transition: "width 0.3s ease, background-color 0.3s ease",
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WhyPartnerSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -245,7 +337,7 @@ export function WhyPartnerSection() {
         backgroundColor: "#080A0D",
         position: "relative",
         overflow: "hidden",
-        padding: "96px clamp(24px, 6vw, 80px)",
+        padding: "80px clamp(24px, 6vw, 80px)",
       }}
     >
       <AmbientOrbs variant="mixed" />
@@ -338,20 +430,44 @@ export function WhyPartnerSection() {
           </p>
         </div>
 
-        {/* Cards */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "clamp(14px, 2vw, 24px)",
-          }}
-        >
-          {reasons.map((reason, i) => (
-            <ReasonCard key={reason.index} reason={reason} delay={0.15 + i * 0.1} index={i} />
-          ))}
+        {/* Desktop Cards */}
+        <div className="why-desktop-cards">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "clamp(14px, 2vw, 24px)" }}>
+            {reasons.map((reason, i) => (
+              <ReasonCard key={reason.index} reason={reason} delay={0.15 + i * 0.1} index={i} />
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Carousel */}
+        <div className="why-mobile-stack">
+          <MobileCarousel />
         </div>
 
       </div>
+
+      <style>{`
+        .why-mobile-stack { display: none; }
+        @media (max-width: 768px) {
+          .why-desktop-cards { display: none !important; }
+          .why-mobile-stack { display: block; }
+          .why-carousel {
+            display: flex;
+            overflow-x: scroll;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 16px;
+            padding: 0 clamp(24px, 6vw, 48px);
+            padding-right: clamp(48px, 10vw, 80px);
+          }
+          .why-carousel::-webkit-scrollbar { display: none; }
+          .why-carousel-item {
+            flex: 0 0 78vw;
+            scroll-snap-align: start;
+          }
+        }
+      `}</style>
     </section>
   );
 }

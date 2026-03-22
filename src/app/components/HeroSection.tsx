@@ -72,9 +72,9 @@ export function HeroSection() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const threshold = window.innerHeight * 0.38;
+      const threshold = window.innerHeight * 0.05;
       setTextVisible(window.scrollY > threshold);
-      setCtaVisible(window.scrollY > window.innerHeight * 0.44);
+      setCtaVisible(window.scrollY > window.innerHeight * 0.08);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
@@ -82,7 +82,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <div style={{ height: "240vh", position: "relative" }}>
+    <div style={{ height: "110vh", position: "relative" }}>
       <div
         style={{
           position: "sticky",
@@ -124,6 +124,16 @@ export function HeroSection() {
               flex-direction: column !important;
               align-items: flex-start !important;
               gap: 24px !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .hero-cta-group {
+              flex-direction: column !important;
+              width: 100% !important;
+            }
+            .hero-cta-group a {
+              width: 100% !important;
+              justify-content: center !important;
             }
           }
         `}</style>
@@ -272,6 +282,7 @@ export function HeroSection() {
 
             {/* RIGHT — CTAs */}
             <div
+              className="hero-cta-group"
               style={{
                 display: "flex",
                 alignItems: "center",

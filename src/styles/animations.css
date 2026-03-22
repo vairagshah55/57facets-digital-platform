@@ -149,6 +149,13 @@ button:active {
   transition: transform 0.1s ease !important;
 }
 
+/* ─── Mobile heading line-height ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  h1, h2, h3 {
+    line-height: 1.18 !important;
+  }
+}
+
 /* ─── Smooth nav link underline ─────────────────────────────────────────── */
 nav a {
   position: relative;

@@ -147,6 +147,7 @@
   /* Smooth scroll for in-page anchor links */
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -154,6 +155,7 @@
     font-family: 'General Sans', 'Inter', sans-serif;
     background-color: #080A0D;
     color: #FFFFFF;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -145,7 +145,7 @@ export function Navbar() {
                   style={{
                     display: "inline-block",
                     fontFamily: "'Melodrama', 'Georgia', serif",
-                    fontSize: "clamp(36px, 10vw, 56px)",
+                    fontSize: "clamp(26px, 7vw, 40px)",
                     fontWeight: 500,
                     color: "#e8ecf0",
                     letterSpacing: "-0.01em",

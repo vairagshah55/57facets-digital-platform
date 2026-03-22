@@ -92,7 +92,7 @@ export function Footer() {
     <footer
       style={{
         backgroundColor: "#080A0D",
-        padding: "96px clamp(24px, 6vw, 80px)",
+        padding: "80px clamp(24px, 6vw, 80px)",
         overflow: "hidden",
       }}
     >

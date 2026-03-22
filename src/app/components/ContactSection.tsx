@@ -399,7 +399,7 @@ export function ContactSection() {
       aria-label="Contact and inquiry form"
       style={{
         backgroundColor: "#080A0D",
-        padding: "96px clamp(24px, 6vw, 80px)",
+        padding: "80px clamp(24px, 6vw, 80px)",
         position: "relative",
         overflow: "hidden",
 

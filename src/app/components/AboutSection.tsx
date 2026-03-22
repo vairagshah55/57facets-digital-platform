@@ -103,10 +103,12 @@ export function AboutSection() {
   }, []);
 
   const line1 = "Precision is the Point.";
-  const line2 = "Every Diamond Has 57 Facets.";
+  const line2 = "Every Diamond Has";
+  const line3 = "57 Facets.";
   const line1Words = line1.split(" ");
   const line2Words = line2.split(" ");
-  const totalWords = line1Words.length + line2Words.length;
+  const line3Words = line3.split(" ");
+  const totalWords = line1Words.length + line2Words.length + line3Words.length;
 
   const headlineStyle: React.CSSProperties = {
     fontFamily: "'Melodrama', 'Georgia', serif",
@@ -122,7 +124,7 @@ export function AboutSection() {
       ref={sectionRef}
       style={{
         backgroundColor: "#080A0D",
-        padding: "96px clamp(24px, 6vw, 80px)",
+        padding: "80px clamp(24px, 6vw, 80px)",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -141,6 +143,14 @@ export function AboutSection() {
             text={line2}
             scrollYProgress={scrollYProgress}
             wordOffset={line1Words.length}
+            totalWords={totalWords}
+            gradient={false}
+            style={{ ...headlineStyle, marginBottom: "0.05em" }}
+          />
+          <AnimatedHeadline
+            text={line3}
+            scrollYProgress={scrollYProgress}
+            wordOffset={line1Words.length + line2Words.length}
             totalWords={totalWords}
             gradient={true}
             style={headlineStyle}
