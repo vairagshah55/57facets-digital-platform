@@ -8,26 +8,26 @@ function AnimatedWord({
   scrollYProgress,
   start,
   end,
+  gradient = false,
 }: {
   word: string;
   scrollYProgress: MotionValue<number>;
   start: number;
   end: number;
+  gradient?: boolean;
 }) {
   const opacity = useTransform(scrollYProgress, [start, end], [0.1, 1]);
   const y = useTransform(scrollYProgress, [start, end], [6, 0]);
 
   return (
     <motion.span
+      className={gradient ? "gradient-text" : undefined}
       style={{
         opacity,
         y,
         display: "inline-block",
         willChange: "opacity, transform",
-        background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        backgroundClip: "text",
+        ...(gradient ? {} : { color: "#f4f4f4" }),
       }}
     >
       {word}
@@ -42,16 +42,17 @@ function AnimatedHeadline({
   scrollYProgress,
   wordOffset,
   totalWords,
+  gradient = false,
   style,
 }: {
   text: string;
   scrollYProgress: MotionValue<number>;
-  wordOffset: number;   // index of first word in this line
-  totalWords: number;   // total words across all lines
+  wordOffset: number;
+  totalWords: number;
+  gradient?: boolean;
   style?: React.CSSProperties;
 }) {
   const words = text.split(" ");
-  // Animation completes by 70% scroll progress, stagger spread across full range
   const rangeEnd = 0.72;
   const wordSpan = rangeEnd / totalWords;
 
@@ -60,7 +61,9 @@ function AnimatedHeadline({
       {words.map((word, i) => {
         const globalIdx = wordOffset + i;
         const start = globalIdx * wordSpan;
-        const end = start + wordSpan * 1.6; // slight overlap for smoothness
+        const end = start + wordSpan * 1.6;
+        // gradient only on the very last word of this line when gradient=true
+        const isGradientWord = gradient && i === words.length - 1;
         return (
           <AnimatedWord
             key={i}
@@ -68,6 +71,7 @@ function AnimatedHeadline({
             scrollYProgress={scrollYProgress}
             start={Math.min(start, 0.95)}
             end={Math.min(end, 1)}
+            gradient={isGradientWord}
           />
         );
       })}
@@ -106,7 +110,7 @@ export function AboutSection() {
 
   const headlineStyle: React.CSSProperties = {
     fontFamily: "'Melodrama', 'Georgia', serif",
-    fontSize: "clamp(36px, 5.6vw, 76px)",
+    fontSize: "clamp(46px, 5.6vw, 76px)",
     fontWeight: 500,
     letterSpacing: "-0.02em",
     lineHeight: 1.06,
@@ -118,18 +122,19 @@ export function AboutSection() {
       ref={sectionRef}
       style={{
         backgroundColor: "#080A0D",
-        padding: "40px clamp(24px, 6vw, 80px)",
+        padding: "96px clamp(24px, 6vw, 80px)",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
 
         {/* ── Scroll-revealed headlines ── */}
-        <div ref={headlineRef} style={{ marginBottom: "32px" }}>
+        <div ref={headlineRef} style={{ marginBottom: "52px" }}>
           <AnimatedHeadline
             text={line1}
             scrollYProgress={scrollYProgress}
             wordOffset={0}
             totalWords={totalWords}
+            gradient={false}
             style={{ ...headlineStyle, marginBottom: "0.1em" }}
           />
           <AnimatedHeadline
@@ -137,6 +142,7 @@ export function AboutSection() {
             scrollYProgress={scrollYProgress}
             wordOffset={line1Words.length}
             totalWords={totalWords}
+            gradient={true}
             style={headlineStyle}
           />
         </div>
@@ -166,7 +172,7 @@ export function AboutSection() {
               src={aboutImg}
               alt="57 Facets diamond jewellery"
               style={{
-                height: "clamp(280px, 34vw, 460px)",
+                height: "clamp(220px, 26vw, 340px)",
                 width: "auto",
                 display: "block",
                 borderRadius: "8px",

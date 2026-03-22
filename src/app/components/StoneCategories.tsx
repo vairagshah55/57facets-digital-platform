@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AmbientOrbs } from "./AmbientOrbs";
 import imgRings from "@/assets/Images/rings.jpg";
 import imgNecklace from "@/assets/Images/necklace.jpg";
 import imgEarings from "@/assets/Images/earings.jpg";
-import imgBracelets from "@/assets/Images/pexels-the-glorious-studio-3584518-32492521.jpg";
-import imgBangles from "@/assets/Images/pexels-the-glorious-studio-3584518-5442447.jpg";
+import imgBracelets from "@/assets/Images/bracelates.jpg";
+import imgBangles from "@/assets/Images/bengals.jpg";
 import imgPendants from "@/assets/Images/pendants.jpg";
 
 const CATEGORIES = [
@@ -38,22 +38,23 @@ const CATEGORIES = [
   },
   {
     id: 5,
-    name: "Bangles",
-    descriptor: "Stacked elegance, wrist-worn brilliance",
-    count: "18 Designs",
-    img: imgBangles,
-  },
-  {
-    id: 6,
     name: "Pendants",
     descriptor: "Close to the heart, far above the rest",
     count: "24 Designs",
     img: imgPendants,
   },
+  {
+    id: 6,
+    name: "Bangles",
+    descriptor: "Stacked elegance, wrist-worn brilliance",
+    count: "18 Designs",
+    img: imgBangles,
+  },
 ];
 
 function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[number]; delay: number }) {
   const [hovered, setHovered] = useState(false);
+  const [ctaHovered, setCtaHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -146,6 +147,48 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
             {category.count}
           </span>
         </div>
+
+        {/* Inquire Now CTA — bottom of image, appears on hover */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "16px",
+            left: "16px",
+            right: "16px",
+            display: "flex",
+            opacity: hovered ? 1 : 0,
+            transform: hovered ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.35s cubic-bezier(0.22,1,0.36,1), transform 0.35s cubic-bezier(0.22,1,0.36,1)",
+            pointerEvents: hovered ? "auto" : "none",
+          }}
+        >
+          <a
+            href="#contact"
+            aria-label={`Inquire about ${category.name}`}
+            onMouseEnter={() => setCtaHovered(true)}
+            onMouseLeave={() => setCtaHovered(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              padding: "12px",
+              borderRadius: "9999px",
+              backgroundColor: ctaHovered ? "#163556" : "#FFFFFF",
+              border: `1px solid ${ctaHovered ? "#1F4A78" : "#FFFFFF"}`,
+              fontFamily: "'General Sans', 'Inter', sans-serif",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: ctaHovered ? "#FFFFFF" : "#0D1118",
+              textDecoration: "none",
+              transition: "background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease",
+            }}
+          >
+            Inquire Now
+          </a>
+        </div>
       </div>
 
       {/* ── Text + CTA block ── */}
@@ -185,101 +228,42 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
           {category.descriptor}
         </p>
 
-        {/* Divider + CTA — visible only on hover */}
-        <div
-          style={{
-            opacity: hovered ? 1 : 0,
-            visibility: hovered ? "visible" : "hidden",
-            transition: "opacity 0.35s ease, visibility 0.35s ease",
-          }}
-        >
-          <div
-            style={{
-              height: "1px",
-              backgroundColor: "#1C2535",
-              margin: "14px 0 12px",
-            }}
-          />
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "11px",
-                fontWeight: 500,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "#A8B0BF",
-              }}
-            >
-              {category.count}
-            </span>
-
-            <button
-              aria-label={`Inquire about ${category.name}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 16px",
-                borderRadius: "9999px",
-                backgroundColor: "#2660A0",
-                border: "1px solid #3880BE",
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "11px",
-                fontWeight: 600,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "#FFFFFF",
-                cursor: "pointer",
-                outline: "none",
-                transition: "background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "#1A4A80")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "#2660A0")
-              }
-            >
-              Inquire Now
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                <path
-                  d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
-                  stroke="#FFFFFF"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
 export function StoneCategories() {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleCarouselScroll = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / CATEGORIES.length;
+    setActiveIndex(Math.round(el.scrollLeft / cardWidth));
+  }, []);
+
+  const scrollTo = (i: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / CATEGORIES.length;
+    el.scrollTo({ left: cardWidth * i, behavior: "smooth" });
+  };
+
   return (
     <section
       id="collections"
       style={{
         backgroundColor: "#080A0D",
-        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
+        padding: "96px 0",
         position: "relative",
         overflow: "hidden",
       }}
     >
       <AmbientOrbs variant="blue" />
 
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 clamp(24px, 6vw, 80px)" }}>
         {/* ── Header ── */}
         <div
           style={{
@@ -292,7 +276,6 @@ export function StoneCategories() {
           }}
         >
           <div>
-            {/* Headline */}
             <h2
               style={{
                 fontFamily: "'Melodrama', 'Georgia', serif",
@@ -307,8 +290,7 @@ export function StoneCategories() {
               Browse by{" "}
               <span
                 style={{
-                  background:
-                    "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
+                  background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -319,7 +301,6 @@ export function StoneCategories() {
             </h2>
           </div>
 
-          {/* Right: total designs */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <p
               aria-label="363 stones live"
@@ -350,14 +331,14 @@ export function StoneCategories() {
           </div>
         </div>
 
-        {/* ── Grid ── */}
+        {/* ── Desktop Grid ── */}
         <div
+          className="stone-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
             gap: "clamp(24px, 3vw, 40px) clamp(16px, 2vw, 28px)",
           }}
-          className="stone-grid"
         >
           {CATEGORIES.map((cat, i) => (
             <CategoryCard key={cat.id} category={cat} delay={i * 0.1} />
@@ -365,21 +346,89 @@ export function StoneCategories() {
         </div>
       </div>
 
-      {/* Responsive styles */}
+      {/* ── Mobile Carousel ── */}
+      <div className="stone-carousel-wrap">
+        <div
+          ref={carouselRef}
+          className="stone-carousel"
+          onScroll={handleCarouselScroll}
+        >
+          {CATEGORIES.map((cat, i) => (
+            <div key={cat.id} className="stone-carousel-item">
+              <CategoryCard category={cat} delay={0} />
+            </div>
+          ))}
+        </div>
+
+        {/* Dots */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "8px",
+            marginTop: "24px",
+          }}
+        >
+          {CATEGORIES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => scrollTo(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              style={{
+                width: activeIndex === i ? "24px" : "8px",
+                height: "8px",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                backgroundColor: activeIndex === i ? "#30B8BF" : "rgba(255,255,255,0.2)",
+                transition: "width 0.3s ease, background-color 0.3s ease",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
       <style>{`
-        @media (max-width: 1024px) {
+        /* Desktop grid — visible */
+        .stone-grid {
+          display: grid;
+        }
+        /* Mobile carousel — hidden on desktop */
+        .stone-carousel-wrap {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          /* Hide desktop grid, show carousel */
           .stone-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
+            display: none !important;
+          }
+          .stone-carousel-wrap {
+            display: block;
+          }
+          .stone-carousel {
+            display: flex;
+            overflow-x: scroll;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 16px;
+            padding: 0 clamp(24px, 6vw, 48px);
+            padding-right: clamp(48px, 10vw, 80px);
+          }
+          .stone-carousel::-webkit-scrollbar {
+            display: none;
+          }
+          .stone-carousel-item {
+            flex: 0 0 72vw;
+            scroll-snap-align: start;
           }
         }
-        @media (max-width: 720px) {
-          .stone-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
+
         @media (max-width: 420px) {
-          .stone-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+          .stone-carousel-item {
+            flex: 0 0 80vw;
           }
         }
       `}</style>

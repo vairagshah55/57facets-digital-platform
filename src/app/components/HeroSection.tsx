@@ -119,6 +119,13 @@ export function HeroSection() {
             50% { transform: scaleY(1); transform-origin: bottom; }
             100% { transform: scaleY(0); transform-origin: bottom; }
           }
+          @media (max-width: 768px) {
+            .hero-inner {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 24px !important;
+            }
+          }
         `}</style>
 
         {/* ── Cinematic overlays ─────────────────────────────────── */}
@@ -170,6 +177,7 @@ export function HeroSection() {
           }}
         >
           <div
+            className="hero-inner"
             style={{
               maxWidth: "1280px",
               margin: "0 auto",

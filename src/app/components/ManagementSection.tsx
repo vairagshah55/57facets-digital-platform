@@ -13,6 +13,7 @@ const leaders = [
     ],
     image:
       "https://images.unsplash.com/photo-1645856046662-6c2116952317?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwaW5kaWFuJTIwYnVzaW5lc3NtYW4lMjBwb3J0cmFpdCUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM5MjgyMjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    facePosition: "center 55%",
     accent: "#2E6DA4",
     accentLight: "#3F8BC3",
   },
@@ -26,6 +27,7 @@ const leaders = [
     ],
     image:
       "https://images.unsplash.com/photo-1705164454513-d8274719fdf5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBpbmRpYW4lMjB3b21hbiUyMGV4ZWN1dGl2ZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MzkyODIyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+    facePosition: "center 85%",
     accent: "#36C0C7",
     accentLight: "#4DD6DC",
   },
@@ -34,9 +36,11 @@ const leaders = [
 function LeaderCard({
   leader,
   delay,
+  index,
 }: {
   leader: (typeof leaders)[0];
   delay: number;
+  index: number;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -44,10 +48,8 @@ function LeaderCard({
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { threshold: 0.15 }
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0.12 }
     );
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
@@ -63,7 +65,11 @@ function LeaderCard({
         minWidth: "280px",
         maxWidth: "540px",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(48px)",
+        transform: visible
+          ? "translate(0, 0)"
+          : index % 2 === 0
+          ? "translate(-60px, 24px)"
+          : "translate(60px, 24px)",
         transition: `opacity 0.9s cubic-bezier(0.22,1,0.36,1) ${delay}s, transform 0.9s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
         display: "flex",
         flexDirection: "column",
@@ -75,7 +81,7 @@ function LeaderCard({
         style={{
           position: "relative",
           width: "100%",
-          aspectRatio: "4/5",
+          height: "clamp(300px, 32vw, 400px)",
           borderRadius: "4px 4px 0 0",
           overflow: "hidden",
           borderTop: `1px solid ${hovered ? leader.accent : "#1c2e44"}`,
@@ -88,11 +94,12 @@ function LeaderCard({
         <ImageWithFallback
           src={leader.image}
           alt={leader.name}
+          className={`leader-img leader-img-${index}`}
           style={{
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            objectPosition: "center top",
+            objectPosition: leader.facePosition,
             filter: "grayscale(20%) brightness(0.85)",
             transition: "filter 0.5s ease, transform 0.6s ease",
             transform: hovered ? "scale(1.03)" : "scale(1)",
@@ -245,7 +252,7 @@ export function ManagementSection() {
         backgroundColor: "#080A0D",
         position: "relative",
         overflow: "hidden",
-        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
+        padding: "96px clamp(24px, 6vw, 80px)",
       }}
     >
       <AmbientOrbs variant="teal" />
@@ -329,18 +336,7 @@ export function ManagementSection() {
           >
             The People Behind
             <br />
-            <span
-              style={{
-                background:
-                  "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              the Brilliance.
-
-            </span>
+            <span className="gradient-text">the Brilliance.</span>
           </h2>
 
           {/* Decorative diamond glyph */}
@@ -417,11 +413,28 @@ export function ManagementSection() {
           }}
         >
           {leaders.map((leader, i) => (
-            <LeaderCard key={leader.name} leader={leader} delay={0.2 + i * 0.15} />
+            <LeaderCard key={leader.name} leader={leader} delay={0.2 + i * 0.15} index={i} />
           ))}
         </div>
 
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          /* Taller portrait on mobile so face has room */
+          .leader-img {
+            height: 100%;
+          }
+          /* Bipin Jain — face is in the center-upper area */
+          .leader-img-0 {
+            object-position: center 40% !important;
+          }
+          /* Anupreksha Jain — face is near the top */
+          .leader-img-1 {
+            object-position: center 25% !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }

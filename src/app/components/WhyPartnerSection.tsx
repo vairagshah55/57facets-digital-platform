@@ -66,9 +66,11 @@ const reasons = [
 function ReasonCard({
   reason,
   delay,
+  index,
 }: {
   reason: (typeof reasons)[0];
   delay: number;
+  index: number;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -76,9 +78,7 @@ function ReasonCard({
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
+      ([entry]) => setVisible(entry.isIntersecting),
       { threshold: 0.12 }
     );
     if (cardRef.current) observer.observe(cardRef.current);
@@ -104,7 +104,11 @@ function ReasonCard({
         overflow: "hidden",
         cursor: "default",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(40px)",
+        transform: visible
+          ? "translate(0, 0)"
+          : index < 2
+          ? "translate(-52px, 32px)"
+          : "translate(52px, 32px)",
         transition: `opacity 0.85s cubic-bezier(0.22,1,0.36,1) ${delay}s, transform 0.85s cubic-bezier(0.22,1,0.36,1) ${delay}s, background-color 0.3s ease, border-color 0.3s ease`,
       }}
     >
@@ -241,7 +245,7 @@ export function WhyPartnerSection() {
         backgroundColor: "#080A0D",
         position: "relative",
         overflow: "hidden",
-        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
+        padding: "96px clamp(24px, 6vw, 80px)",
       }}
     >
       <AmbientOrbs variant="mixed" />
@@ -312,16 +316,7 @@ export function WhyPartnerSection() {
           >
             Why Retailers Partner
             <br />
-            <span
-              style={{
-                background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              With 57 Facets.
-            </span>
+            <span className="gradient-text">With 57 Facets.</span>
           </h2>
 
           {/* Subtitle */}
@@ -352,7 +347,7 @@ export function WhyPartnerSection() {
           }}
         >
           {reasons.map((reason, i) => (
-            <ReasonCard key={reason.index} reason={reason} delay={0.15 + i * 0.1} />
+            <ReasonCard key={reason.index} reason={reason} delay={0.15 + i * 0.1} index={i} />
           ))}
         </div>
 

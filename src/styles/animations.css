@@ -90,6 +90,14 @@
   50%       { transform: translateY(-4px); }
 }
 
+/* ─── Gradient text utility ──────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ─── Utility Classes ─────────────────────────────────────────────────────── */
 
 .animate-reveal-up {

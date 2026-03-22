@@ -8,6 +8,83 @@ const footerLinks = [
   { label: "Inquire", href: "#contact" },
 ];
 
+const TICKER_ITEM = "57 Facets";
+const SEPARATOR = "◆";
+const REPEAT = 8;
+
+function SignatureText() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        overflow: "hidden",
+        marginTop: "clamp(48px, 6vw, 72px)",
+        marginLeft: "calc(-1 * clamp(24px, 6vw, 80px))",
+        marginRight: "calc(-1 * clamp(24px, 6vw, 80px))",
+        marginBottom: "calc(-1 * 96px)",
+        userSelect: "none",
+        pointerEvents: "none",
+        borderTop: "1px solid #1C2535",
+        borderBottom: "1px solid #1C2535",
+        paddingTop: "18px",
+        paddingBottom: "18px",
+      }}
+    >
+      <div className="footer-ticker">
+        {Array.from({ length: REPEAT }).map((_, i) => (
+          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "20px", paddingRight: "20px" }}>
+            <span
+              style={{
+                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontSize: "clamp(28px, 3.5vw, 48px)",
+                fontWeight: 500,
+                letterSpacing: "0.04em",
+                color: "rgba(255,255,255,0.22)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {TICKER_ITEM}
+            </span>
+            <span
+              style={{
+                fontSize: "clamp(8px, 1vw, 12px)",
+                color: "rgba(54,192,199,0.25)",
+              }}
+            >
+              {SEPARATOR}
+            </span>
+          </span>
+        ))}
+        {/* Duplicate for seamless loop */}
+        {Array.from({ length: REPEAT }).map((_, i) => (
+          <span key={`dup-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: "20px", paddingRight: "20px" }}>
+            <span
+              style={{
+                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontSize: "clamp(28px, 3.5vw, 48px)",
+                fontWeight: 500,
+                letterSpacing: "0.04em",
+                color: "rgba(255,255,255,0.22)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {TICKER_ITEM}
+            </span>
+            <span
+              style={{
+                fontSize: "clamp(8px, 1vw, 12px)",
+                color: "rgba(54,192,199,0.25)",
+              }}
+            >
+              {SEPARATOR}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Footer() {
   const year = new Date().getFullYear();
 
@@ -15,7 +92,8 @@ export function Footer() {
     <footer
       style={{
         backgroundColor: "#080A0D",
-        padding: "clamp(48px, 6vw, 80px) clamp(24px, 6vw, 80px) clamp(32px, 4vw, 48px)",
+        padding: "96px clamp(24px, 6vw, 80px)",
+        overflow: "hidden",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -36,7 +114,7 @@ export function Footer() {
               <img
                 src={logoImg}
                 alt="57 Facets"
-                style={{ height: "40px", width: "auto", objectFit: "contain" }}
+                style={{ height: "56px", width: "auto", objectFit: "contain" }}
               />
             </a>
             <p
@@ -129,9 +207,9 @@ export function Footer() {
               }}
             >
               {[
-                { label: "Mumbai, India", icon: "📍" },
-                { label: "St. Louis, USA", icon: "📍" },
-              ].map(({ label, icon }) => (
+                { label: "Mumbai, India" },
+                { label: "St. Louis, USA" },
+              ].map(({ label }) => (
                 <p
                   key={label}
                   style={{
@@ -144,58 +222,18 @@ export function Footer() {
                     gap: "8px",
                   }}
                 >
-                  <span aria-hidden="true">{icon}</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
+                    <circle cx="12" cy="9" r="2.5" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
+                  </svg>
                   {label}
                 </p>
               ))}
-              <a
-                href="#contact"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  marginTop: "8px",
-                  padding: "10px 20px",
-                  borderRadius: "9999px",
-                  border: "1px solid #2E6DA4",
-                  backgroundColor: "transparent",
-                  fontFamily: "'General Sans', 'Inter', sans-serif",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "#3F8BC3",
-                  textDecoration: "none",
-                  transition: "background-color 0.2s ease, color 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.backgroundColor = "#2E6DA4";
-                  el.style.color = "#FFFFFF";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.backgroundColor = "transparent";
-                  el.style.color = "#3F8BC3";
-                }}
-              >
-                Inquire Now
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                  <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div
-          style={{
-            height: "1px",
-            background: "linear-gradient(to right, transparent, #1C2535 20%, #1C2535 80%, transparent)",
-            marginBottom: "clamp(24px, 3vw, 36px)",
-          }}
-        />
+        <div style={{ marginBottom: "clamp(24px, 3vw, 36px)" }} />
 
         {/* Bottom row */}
         <div
@@ -232,7 +270,19 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Decorative signature — full bleed below footer content */}
+      <SignatureText />
+
       <style>{`
+        .footer-ticker {
+          display: inline-flex;
+          animation: footer-scroll 30s linear infinite;
+          will-change: transform;
+        }
+        @keyframes footer-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
         @media (max-width: 768px) {
           .footer-top {
             flex-direction: column !important;

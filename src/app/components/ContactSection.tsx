@@ -399,7 +399,7 @@ export function ContactSection() {
       aria-label="Contact and inquiry form"
       style={{
         backgroundColor: "#080A0D",
-        padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
+        padding: "96px clamp(24px, 6vw, 80px)",
         position: "relative",
         overflow: "hidden",
 
@@ -501,16 +501,7 @@ export function ContactSection() {
               }}
             >
               Begin the{" "}
-              <span
-                style={{
-                  background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                Conversation.
-              </span>
+              <span className="gradient-text">Conversation.</span>
             </h2>
 
             <p
