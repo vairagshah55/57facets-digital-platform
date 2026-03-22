@@ -485,30 +485,6 @@ export function ContactSection() {
             className="contact-right"
             style={{ flex: "1 1 50%", maxWidth: "540px" }}
           >
-            {/* Eyebrow */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                marginBottom: "20px",
-              }}
-            >
-              <div style={{ width: "32px", height: "1px", backgroundColor: "#2E6DA4" }} />
-              <span
-                style={{
-                  fontFamily: "'General Sans', 'Inter', sans-serif",
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  letterSpacing: "0.22em",
-                  textTransform: "uppercase",
-                  color: "#3F8BC3",
-                }}
-              >
-                Direct Access
-              </span>
-            </div>
-
             {/* Heading — consistent with rest of site */}
             <h2
               style={{

@@ -281,36 +281,6 @@ export function WhyPartnerSection() {
           margin: "0 auto",
         }}
       >
-        {/* Eyebrow */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            marginBottom: "clamp(12px, 2vw, 18px)",
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(18px)",
-            transition:
-              "opacity 0.8s cubic-bezier(0.22,1,0.36,1) 0s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0s",
-          }}
-        >
-          <div
-            style={{ width: "32px", height: "1px", backgroundColor: "#2E6DA4" }}
-          />
-          <span
-            style={{
-              fontFamily: "'General Sans', 'Inter', sans-serif",
-              fontSize: "10px",
-              fontWeight: 500,
-              letterSpacing: "0.22em",
-              color: "#3F8BC3",
-              textTransform: "uppercase",
-            }}
-          >
-            Our Partnership Promise
-          </span>
-        </div>
-
         {/* Headline */}
         <div
           style={{

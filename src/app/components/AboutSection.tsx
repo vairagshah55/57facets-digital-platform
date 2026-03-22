@@ -22,7 +22,7 @@ export function AboutSection() {
       ref={sectionRef}
       style={{
         backgroundColor: "#080A0D",
-        padding: "clamp(48px, 6vw, 80px) clamp(24px, 6vw, 80px)",
+        padding: "clamp(24px, 6vw, 80px) clamp(24px, 6vw, 80px)",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>

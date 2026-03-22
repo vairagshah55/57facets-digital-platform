@@ -274,30 +274,6 @@ export function StoneCategories() {
           }}
         >
           <div>
-            {/* Eyebrow */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                marginBottom: "16px",
-              }}
-            >
-              <div style={{ width: "32px", height: "1px", backgroundColor: "#2E6DA4" }} />
-              <span
-                style={{
-                  fontFamily: "'General Sans', 'Inter', sans-serif",
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  letterSpacing: "0.22em",
-                  color: "#3F8BC3",
-                  textTransform: "uppercase",
-                }}
-              >
-                Our Collection
-              </span>
-            </div>
-
             {/* Headline */}
             <h2
               style={{
