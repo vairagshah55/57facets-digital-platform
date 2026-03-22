@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AmbientOrbs } from "./AmbientOrbs";
 
 const reasons = [
   {
@@ -243,6 +244,7 @@ export function WhyPartnerSection() {
         padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
       }}
     >
+      <AmbientOrbs variant="mixed" />
       {/* Background grid */}
       <div
         style={{
@@ -312,7 +314,7 @@ export function WhyPartnerSection() {
             <br />
             <span
               style={{
-                background: "linear-gradient(90deg, #3F8BC3 0%, #36C0C7 100%)",
+                background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",

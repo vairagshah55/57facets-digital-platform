@@ -1,68 +1,84 @@
-import { useState } from "react";
-import img1 from "@/assets/Images/pexels-the-glorious-studio-3584518-5442447.jpg";
-import img2 from "@/assets/Images/pexels-the-glorious-studio-3584518-7541803.jpg";
-import img3 from "@/assets/Images/pexels-the-glorious-studio-3584518-11504786.jpg";
-import img4 from "@/assets/Images/pexels-the-glorious-studio-3584518-12427696.jpg";
-import img5 from "@/assets/Images/pexels-the-glorious-studio-3584518-31677627.jpg";
-import img6 from "@/assets/Images/pexels-the-glorious-studio-3584518-32492521.jpg";
+import { useState, useEffect, useRef } from "react";
+import { AmbientOrbs } from "./AmbientOrbs";
+import imgRings from "@/assets/Images/rings.jpg";
+import imgNecklace from "@/assets/Images/necklace.jpg";
+import imgEarings from "@/assets/Images/earings.jpg";
+import imgBracelets from "@/assets/Images/pexels-the-glorious-studio-3584518-32492521.jpg";
+import imgBangles from "@/assets/Images/pexels-the-glorious-studio-3584518-5442447.jpg";
+import imgPendants from "@/assets/Images/pendants.jpg";
 
 const CATEGORIES = [
   {
     id: 1,
-    name: "Bangles",
-    descriptor: "Stacked elegance, wrist-worn brilliance",
-    count: "18 Designs",
-    img: img1,
+    name: "Rings",
+    descriptor: "Symbols of love and commitment",
+    count: "47 Designs",
+    img: imgRings,
   },
   {
     id: 2,
-    name: "Pendants",
-    descriptor: "Close to the heart, far above the rest",
-    count: "24 Designs",
-    img: img2,
+    name: "Necklaces",
+    descriptor: "A statement of grace and heritage",
+    count: "22 Designs",
+    img: imgNecklace,
   },
   {
     id: 3,
     name: "Earrings",
     descriptor: "Effortless radiance, every angle",
     count: "31 Designs",
-    img: img3,
+    img: imgEarings,
   },
   {
     id: 4,
-    name: "Necklaces",
-    descriptor: "A statement of grace and heritage",
-    count: "22 Designs",
-    img: img4,
-  },
-  {
-    id: 5,
-    name: "Rings",
-    descriptor: "Symbols of love and commitment",
-    count: "47 Designs",
-    img: img5,
-  },
-  {
-    id: 6,
     name: "Bracelets",
     descriptor: "Diamond-set, timelessly worn",
     count: "19 Designs",
-    img: img6,
+    img: imgBracelets,
+  },
+  {
+    id: 5,
+    name: "Bangles",
+    descriptor: "Stacked elegance, wrist-worn brilliance",
+    count: "18 Designs",
+    img: imgBangles,
+  },
+  {
+    id: 6,
+    name: "Pendants",
+    descriptor: "Close to the heart, far above the rest",
+    count: "24 Designs",
+    img: imgPendants,
   },
 ];
 
-function CategoryCard({ category }: { category: (typeof CATEGORIES)[number] }) {
+function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[number]; delay: number }) {
   const [hovered, setHovered] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.1 }
+    );
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
+      ref={cardRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      className="card-shimmer-wrap"
       style={{
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
-        transition: "background-color 0.3s ease",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(40px)",
+        transition: `opacity 0.75s cubic-bezier(0.22,1,0.36,1) ${delay}s, transform 0.75s cubic-bezier(0.22,1,0.36,1) ${delay}s`,
       }}
     >
       {/* ── Image block ── */}
@@ -258,8 +274,10 @@ export function StoneCategories() {
         backgroundColor: "#080A0D",
         padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
         position: "relative",
+        overflow: "hidden",
       }}
     >
+      <AmbientOrbs variant="blue" />
 
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         {/* ── Header ── */}
@@ -341,8 +359,8 @@ export function StoneCategories() {
           }}
           className="stone-grid"
         >
-          {CATEGORIES.map((cat) => (
-            <CategoryCard key={cat.id} category={cat} />
+          {CATEGORIES.map((cat, i) => (
+            <CategoryCard key={cat.id} category={cat} delay={i * 0.1} />
           ))}
         </div>
       </div>

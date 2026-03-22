@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AmbientOrbs } from "./AmbientOrbs";
 
 // ─── 3D Diamond Geometry ────────────────────────────────────────────────────
 
@@ -401,11 +402,13 @@ export function ContactSection() {
         padding: "clamp(80px, 10vw, 136px) clamp(24px, 6vw, 80px)",
         position: "relative",
         overflow: "hidden",
+
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(36px)",
         transition: "opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1)",
       }}
     >
+      <AmbientOrbs variant="mixed" />
       {/* Background grid texture */}
       <div
         aria-hidden="true"
@@ -500,7 +503,7 @@ export function ContactSection() {
               Begin the{" "}
               <span
                 style={{
-                  background: "linear-gradient(90deg, #3F8BC3 0%, #36C0C7 100%)",
+                  background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",

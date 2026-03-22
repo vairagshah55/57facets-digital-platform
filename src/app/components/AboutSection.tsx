@@ -1,20 +1,116 @@
 import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 import aboutImg from "@/assets/Images/About section image..jpg";
 
+// ── Per-word animated span — each calls its own useTransform ─────────────────
+function AnimatedWord({
+  word,
+  scrollYProgress,
+  start,
+  end,
+}: {
+  word: string;
+  scrollYProgress: MotionValue<number>;
+  start: number;
+  end: number;
+}) {
+  const opacity = useTransform(scrollYProgress, [start, end], [0.1, 1]);
+  const y = useTransform(scrollYProgress, [start, end], [6, 0]);
+
+  return (
+    <motion.span
+      style={{
+        opacity,
+        y,
+        display: "inline-block",
+        willChange: "opacity, transform",
+        background: "linear-gradient(95deg, #FFFFFF 0%, #C8E8EC 40%, #30B8BF 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        backgroundClip: "text",
+      }}
+    >
+      {word}
+      &nbsp;
+    </motion.span>
+  );
+}
+
+// ── Animated headline line — splits into words ────────────────────────────────
+function AnimatedHeadline({
+  text,
+  scrollYProgress,
+  wordOffset,
+  totalWords,
+  style,
+}: {
+  text: string;
+  scrollYProgress: MotionValue<number>;
+  wordOffset: number;   // index of first word in this line
+  totalWords: number;   // total words across all lines
+  style?: React.CSSProperties;
+}) {
+  const words = text.split(" ");
+  // Animation completes by 70% scroll progress, stagger spread across full range
+  const rangeEnd = 0.72;
+  const wordSpan = rangeEnd / totalWords;
+
+  return (
+    <p style={{ margin: 0, lineHeight: 1.06, ...style }}>
+      {words.map((word, i) => {
+        const globalIdx = wordOffset + i;
+        const start = globalIdx * wordSpan;
+        const end = start + wordSpan * 1.6; // slight overlap for smoothness
+        return (
+          <AnimatedWord
+            key={i}
+            word={word}
+            scrollYProgress={scrollYProgress}
+            start={Math.min(start, 0.95)}
+            end={Math.min(end, 1)}
+          />
+        );
+      })}
+    </p>
+  );
+}
+
+// ── Main section ──────────────────────────────────────────────────────────────
 export function AboutSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const headlineRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [bodyVisible, setBodyVisible] = useState(false);
 
+  // Scroll-linked progress scoped to the headlines block
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.5", "start -0.1"],
+  });
+
+  // Body row observer — resets every time row enters/leaves viewport
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { threshold: 0.05 }
+      ([entry]) => setBodyVisible(entry.isIntersecting),
+      { threshold: 0.1 }
     );
-    if (sectionRef.current) observer.observe(sectionRef.current);
+    if (bodyRef.current) observer.observe(bodyRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const line1 = "Precision is the Point.";
+  const line2 = "Every Diamond Has 57 Facets.";
+  const line1Words = line1.split(" ");
+  const line2Words = line2.split(" ");
+  const totalWords = line1Words.length + line2Words.length;
+
+  const headlineStyle: React.CSSProperties = {
+    fontFamily: "'Melodrama', 'Georgia', serif",
+    fontSize: "clamp(36px, 5.6vw, 76px)",
+    fontWeight: 500,
+    letterSpacing: "-0.02em",
+    lineHeight: 1.06,
+  };
 
   return (
     <section
@@ -22,145 +118,98 @@ export function AboutSection() {
       ref={sectionRef}
       style={{
         backgroundColor: "#080A0D",
-        padding: "clamp(24px, 6vw, 80px) clamp(24px, 6vw, 80px)",
+        padding: "40px clamp(24px, 6vw, 80px)",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
 
-        {/* ── Eyebrow + Headlines — 32px below before the row ── */}
-        <div
-          style={{
-            marginBottom: "32px",
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1)",
-          }}
-        >
-          {/* Headlines */}
-          <p
-            style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
-              fontSize: "clamp(36px, 5.6vw, 76px)",
-              fontWeight: 500,
-              color: "#f4f4f4",
-              lineHeight: 1.06,
-              letterSpacing: "-0.02em",
-              margin: "0 0 0.1em",
-            }}
-          >
-            Precision is the Point.
-          </p>
-          <p
-            style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
-              fontSize: "clamp(36px, 5.6vw, 76px)",
-              fontWeight: 500,
-              color: "#f4f4f4",
-              lineHeight: 1.06,
-              letterSpacing: "-0.02em",
-              margin: 0,
-            }}
-          >
-            Every Diamond Has 57 Facets.
-          </p>
+        {/* ── Scroll-revealed headlines ── */}
+        <div ref={headlineRef} style={{ marginBottom: "32px" }}>
+          <AnimatedHeadline
+            text={line1}
+            scrollYProgress={scrollYProgress}
+            wordOffset={0}
+            totalWords={totalWords}
+            style={{ ...headlineStyle, marginBottom: "0.1em" }}
+          />
+          <AnimatedHeadline
+            text={line2}
+            scrollYProgress={scrollYProgress}
+            wordOffset={line1Words.length}
+            totalWords={totalWords}
+            style={headlineStyle}
+          />
         </div>
 
-        {/* ── Row: image left + text right — same height, text 24px inset ── */}
+        {/* ── Row: image left + text right ── */}
         <div
+          ref={bodyRef}
           className="about-body"
           style={{
             display: "flex",
-            alignItems: "stretch",
+            alignItems: "flex-start",
             gap: "clamp(40px, 5vw, 72px)",
           }}
         >
-          {/* Image — left, height follows text column, width auto from aspect ratio */}
+          {/* Image */}
           <div
             style={{
               flex: "0 0 auto",
-              display: "flex",
-              opacity: visible ? 1 : 0,
-              transform: visible ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 1s cubic-bezier(0.22,1,0.36,1) 0.12s, transform 1s cubic-bezier(0.22,1,0.36,1) 0.12s",
+              alignSelf: "flex-start",
+              opacity: bodyVisible ? 1 : 0,
+              transform: bodyVisible ? "translateX(0)" : "translateX(-72px)",
+              transition:
+                "opacity 0.9s cubic-bezier(0.22,1,0.36,1) 0.1s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.1s",
             }}
           >
             <img
               src={aboutImg}
               alt="57 Facets diamond jewellery"
               style={{
-                height: "100%",
+                height: "clamp(280px, 34vw, 460px)",
                 width: "auto",
                 display: "block",
                 borderRadius: "8px",
-                objectFit: "contain",
               }}
             />
           </div>
 
-          {/* Text — right, exactly 24px from top and bottom of image */}
+          {/* Body text */}
           <div
             style={{
               flex: "1 1 0",
               minWidth: 0,
+              minHeight: "clamp(280px, 34vw, 460px)",
               padding: "24px 0",
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
               gap: "clamp(14px, 2vw, 20px)",
-              opacity: visible ? 1 : 0,
-              transition: "opacity 0.95s cubic-bezier(0.22,1,0.36,1) 0.28s",
+              opacity: bodyVisible ? 1 : 0,
+              transform: bodyVisible ? "translateX(0)" : "translateX(72px)",
+              transition:
+                "opacity 0.9s cubic-bezier(0.22,1,0.36,1) 0.22s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.22s",
             }}
           >
-            <p
-              style={{
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "clamp(13px, 1.1vw, 15px)",
-                fontWeight: 400,
-                color: "#9ba2ad",
-                lineHeight: 1.78,
-                margin: 0,
-              }}
-            >
-              For over three decades, 57 Facets has stood as a symbol of trust,
-              legacy, and excellence in the world of fine diamond jewellery.
-              Based in Mumbai, we proudly supply retailers across India and
-              international markets, offering jewellery that blends modern
-              design innovation with exceptional craftsmanship and integrity. We
-              have our offices in Mumbai and St. Louis (USA).
-            </p>
-            <p
-              style={{
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "clamp(13px, 1.1vw, 15px)",
-                fontWeight: 400,
-                color: "#9ba2ad",
-                lineHeight: 1.78,
-                margin: 0,
-              }}
-            >
-              From timeless solitaires to contemporary statement pieces, every
-              jewel is created to global export standards, with uncompromising
-              finishing, transparency in pricing, and reliable logistics. Our
-              long-standing relationships with reputed jewellers are built not
-              just on diamonds, but on the values of honesty, consistency, and
-              mutual respect.
-            </p>
-            <p
-              style={{
-                fontFamily: "'General Sans', 'Inter', sans-serif",
-                fontSize: "clamp(13px, 1.1vw, 15px)",
-                fontWeight: 400,
-                color: "#9ba2ad",
-                lineHeight: 1.78,
-                margin: 0,
-              }}
-            >
-              We carry forward a vision that balances heritage with innovation,
-              ensuring that every client experiences not just jewellery, but a
-              relationship built on transparency, values, and brilliance. At 57
-              Facets, we don't just deliver jewellery — we deliver trust,
-              long-term partnerships, and brilliance that lasts generations.
-            </p>
+            {[
+              "For over three decades, 57 Facets has stood as a symbol of trust, legacy, and excellence in the world of fine diamond jewellery. Based in Mumbai, we proudly supply retailers across India and international markets, offering jewellery that blends modern design innovation with exceptional craftsmanship and integrity. We have our offices in Mumbai and St. Louis (USA).",
+              "From timeless solitaires to contemporary statement pieces, every jewel is created to global export standards, with uncompromising finishing, transparency in pricing, and reliable logistics. Our long-standing relationships with reputed jewellers are built not just on diamonds, but on the values of honesty, consistency, and mutual respect.",
+              "We carry forward a vision that balances heritage with innovation, ensuring that every client experiences not just jewellery, but a relationship built on transparency, values, and brilliance. At 57 Facets, we don't just deliver jewellery — we deliver trust, long-term partnerships, and brilliance that lasts generations.",
+            ].map((text, i) => (
+              <p
+                key={i}
+                style={{
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
+                  fontSize: "clamp(13px, 1.1vw, 15px)",
+                  fontWeight: 400,
+                  color: "#9ba2ad",
+                  lineHeight: 1.78,
+                  margin: 0,
+                }}
+              >
+                {text}
+              </p>
+            ))}
           </div>
         </div>
       </div>
@@ -173,9 +222,11 @@ export function AboutSection() {
           .about-body > div:first-child img {
             height: auto !important;
             width: 100% !important;
+            max-width: 100% !important;
           }
           .about-body > div:last-child {
             padding: 24px 0 !important;
+            min-height: unset !important;
           }
         }
       `}</style>
