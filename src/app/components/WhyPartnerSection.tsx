@@ -384,17 +384,6 @@ export function WhyPartnerSection() {
           ))}
         </div>
 
-        {/* Bottom rule */}
-        <div
-          style={{
-            marginTop: "clamp(56px, 8vw, 96px)",
-            height: "1px",
-            background:
-              "linear-gradient(to right, transparent, #1c3252, #1c3252, transparent)",
-            opacity: visible ? 1 : 0,
-            transition: "opacity 1s ease 0.8s",
-          }}
-        />
       </div>
     </section>
   );

@@ -1,11 +1,11 @@
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
+import { StoneCategories } from "./components/StoneCategories";
 import { ManagementSection } from "./components/ManagementSection";
 import { WhyPartnerSection } from "./components/WhyPartnerSection";
-import { ShowroomPreview } from "./components/ShowroomPreview";
-import { StoneCategories } from "./components/StoneCategories";
 import { ContactSection } from "./components/ContactSection";
+import { Footer } from "./components/Footer";
 
 export default function App() {
   return (
@@ -19,11 +19,11 @@ export default function App() {
       <Navbar />
       <HeroSection />
       <AboutSection />
+      <StoneCategories />
       <ManagementSection />
       <WhyPartnerSection />
-      {/* <ShowroomPreview /> */}
-      <StoneCategories />
       <ContactSection />
+      <Footer />
     </div>
   );
 }

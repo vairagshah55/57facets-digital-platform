@@ -421,18 +421,6 @@ export function ContactSection() {
         }}
       />
 
-      {/* Top border */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "clamp(24px, 6vw, 80px)",
-          right: "clamp(24px, 6vw, 80px)",
-          height: "1px",
-          background: "linear-gradient(to right, transparent, rgba(46,109,164,0.22) 20%, rgba(46,109,164,0.22) 80%, transparent)",
-        }}
-      />
 
       {/* Corner ornaments */}
       <svg
@@ -658,18 +646,6 @@ export function ContactSection() {
         </div>
       </div>
 
-      {/* Bottom border */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "clamp(24px, 6vw, 80px)",
-          right: "clamp(24px, 6vw, 80px)",
-          height: "1px",
-          background: "linear-gradient(to right, transparent, rgba(46,109,164,0.22) 20%, rgba(46,109,164,0.22) 80%, transparent)",
-        }}
-      />
 
       <style>{`
         @media (max-width: 900px) {

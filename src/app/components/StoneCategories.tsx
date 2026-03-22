@@ -260,18 +260,6 @@ export function StoneCategories() {
         position: "relative",
       }}
     >
-      {/* Top divider */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "clamp(24px, 6vw, 80px)",
-          right: "clamp(24px, 6vw, 80px)",
-          height: "1px",
-          background:
-            "linear-gradient(to right, transparent, #1C2535 20%, #1C2535 80%, transparent)",
-        }}
-      />
 
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         {/* ── Header ── */}

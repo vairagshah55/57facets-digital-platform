@@ -4,10 +4,10 @@ import logoImg from "@/assets/Images/logo_png.png";
 
 const navLinks = [
   { label: "About", href: "#about" },
+  { label: "Collections", href: "#collections" },
   { label: "Management", href: "#management" },
   { label: "Why Partner", href: "#why-partner" },
-  { label: "Collections", href: "#collections" },
-  { label: "Contact", href: "#contact" },
+  { label: "Inquire", href: "#contact" },
 ];
 
 export function Navbar() {
