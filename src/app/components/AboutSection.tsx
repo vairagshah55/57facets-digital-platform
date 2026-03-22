@@ -218,7 +218,7 @@ export function AboutSection() {
                   fontFamily: "'General Sans', 'Inter', sans-serif",
                   fontSize: "clamp(13px, 1.1vw, 15px)",
                   fontWeight: 400,
-                  color: "#9ba2ad",
+                  color: "#8A929F",
                   lineHeight: 1.78,
                   margin: 0,
                 }}
