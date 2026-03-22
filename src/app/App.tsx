@@ -21,7 +21,7 @@ export default function App() {
       <AboutSection />
       <ManagementSection />
       <WhyPartnerSection />
-      <ShowroomPreview />
+      {/* <ShowroomPreview /> */}
       <StoneCategories />
       <ContactSection />
     </div>
