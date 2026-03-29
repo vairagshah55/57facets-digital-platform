@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { Menu, X } from "lucide-react";
 import logoImg from "@/assets/Images/logo_png.png";
 
@@ -11,6 +12,7 @@ const navLinks = [
 ];
 
 export function Navbar() {
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -73,6 +75,30 @@ export function Navbar() {
               </li>
             ))}
           </ul>
+
+          {/* Retailer Login CTA */}
+          <button
+            onClick={() => navigate("/retailer/login")}
+            className="hidden md:inline-flex"
+            style={{
+              fontFamily: "'General Sans', 'Inter', sans-serif",
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#080A0D",
+              backgroundColor: "#30B8BF",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 20px",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              transition: "opacity 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Retailer Login
+          </button>
 
           {/* Hamburger toggle */}
           <button
@@ -160,6 +186,30 @@ export function Navbar() {
               </li>
             ))}
           </ul>
+
+          {/* Retailer Login — mobile */}
+          <button
+            onClick={() => { setMobileOpen(false); navigate("/retailer/login"); }}
+            style={{
+              marginTop: "clamp(20px, 4vw, 32px)",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "#080A0D",
+              backgroundColor: "#30B8BF",
+              border: "none",
+              borderRadius: "10px",
+              padding: "14px 0",
+              width: "100%",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              opacity: mobileOpen ? 1 : 0,
+              transition: `opacity 0.5s ease ${0.08 + navLinks.length * 0.07}s`,
+            }}
+          >
+            Retailer Login
+          </button>
 
           {/* Bottom detail */}
           <div

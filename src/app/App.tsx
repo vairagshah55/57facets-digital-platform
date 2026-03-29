@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { BrowserRouter, Routes, Route } from "react-router";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -8,8 +9,16 @@ import { WhyPartnerSection } from "./components/WhyPartnerSection";
 import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { RetailerLogin } from "./components/RetailerLogin";
+import { RetailerLayout } from "./components/RetailerLayout";
+import { RetailerDashboard } from "./components/RetailerDashboard";
+import { ProductCatalog } from "./components/ProductCatalog";
+import { ProductDetail } from "./components/ProductDetail";
+import { RetailerWishlist } from "./components/RetailerWishlist";
+import { RetailerOrders } from "./components/RetailerOrders";
+import { RetailerCollections } from "./components/RetailerCollections";
 
-export default function App() {
+function HomePage() {
   const [loading, setLoading] = useState(true);
   const handleLoadComplete = useCallback(() => setLoading(false), []);
 
@@ -35,5 +44,24 @@ export default function App() {
         <Footer />
       </div>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/retailer/login" element={<RetailerLogin />} />
+        <Route path="/retailer" element={<RetailerLayout />}>
+          <Route path="dashboard" element={<RetailerDashboard />} />
+          <Route path="catalog" element={<ProductCatalog />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="collections" element={<RetailerCollections />} />
+          <Route path="wishlist" element={<RetailerWishlist />} />
+          <Route path="orders" element={<RetailerOrders />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
