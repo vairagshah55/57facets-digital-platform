@@ -15,6 +15,8 @@ const wishlistRoutes = require("./routes/wishlist.routes");
 const orderRoutes = require("./routes/order.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const uploadRoutes = require("./routes/upload.routes");
+const adminAuthRoutes = require("./routes/admin.auth.routes");
+const adminDashboardRoutes = require("./routes/admin.dashboard.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +46,8 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/admin/dashboard", adminDashboardRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

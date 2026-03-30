@@ -6,8 +6,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "db:migrate": "node src/db/migrate.js",
-    "db:seed": "node src/db/seed.js"
+    "db:migrate": "node src/db/migrate.js && node src/db/migrate-admin.js",
+    "db:migrate:admin": "node src/db/migrate-admin.js",
+    "db:seed": "node src/db/seed.js",
+    "db:seed:admin": "node src/db/seed-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

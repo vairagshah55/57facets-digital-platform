@@ -1,6 +1,10 @@
 import { useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { AuthProvider } from "../context/AuthContext";
+import { AdminAuthProvider } from "../context/AdminAuthContext";
+import { AdminLogin } from "./components/admin/AdminLogin";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -62,6 +66,11 @@ export default function App() {
           <Route path="collections" element={<RetailerCollections />} />
           <Route path="wishlist" element={<RetailerWishlist />} />
           <Route path="orders" element={<RetailerOrders />} />
+        </Route>
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminAuthProvider><AdminLogin /></AdminAuthProvider>} />
+        <Route path="/admin" element={<AdminAuthProvider><AdminLayout /></AdminAuthProvider>}>
+          <Route path="dashboard" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
