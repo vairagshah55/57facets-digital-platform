@@ -1,15 +1,15 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   SlidersHorizontal,
   X,
-  Grid3X3,
   LayoutGrid,
   Sparkles,
   Eye,
   ChevronDown,
   Diamond,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -26,29 +26,24 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate } from "react-router";
-
-import ringsImg from "../../assets/Images/rings.jpg";
-import necklaceImg from "../../assets/Images/necklace.jpg";
-import earingsImg from "../../assets/Images/earings.jpg";
-import bengalsImg from "../../assets/Images/bengals.jpg";
-import pendantsImg from "../../assets/Images/pendants.jpg";
-import bracelatesImg from "../../assets/Images/bracelates.jpg";
-import img1 from "../../assets/Images/1.jpg";
-import img3 from "../../assets/Images/3.jpg";
-import img4 from "../../assets/Images/4.jpg";
-import img5 from "../../assets/Images/5.jpg";
-import img7 from "../../assets/Images/7.jpg";
-import img8 from "../../assets/Images/8.jpg";
-import img11 from "../../assets/Images/11.jpg";
-import img12 from "../../assets/Images/12.jpg";
-import img13 from "../../assets/Images/13.jpg";
-import img14 from "../../assets/Images/14.jpg";
-import img9 from "../../assets/Images/9.jpg";
-import img6 from "../../assets/Images/6.jpg";
+import { products as productsApi } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════ */
+
+type ApiProduct = {
+  id: number;
+  name: string;
+  sku: string;
+  base_price: string;
+  carat: number;
+  metal_type: string;
+  availability: "in-stock" | "made-to-order" | "out-of-stock";
+  is_new: boolean;
+  category: string;
+  image: string | null;
+};
 
 type Product = {
   id: number;
@@ -62,43 +57,46 @@ type Product = {
   isNew: boolean;
 };
 
+type Category = {
+  id: number;
+  name: string;
+  image_url: string | null;
+};
+
 type ViewMode = "grid" | "compact";
 
 /* ═══════════════════════════════════════════════════════
-   MOCK DATA — replace with API
+   CONSTANTS
    ═══════════════════════════════════════════════════════ */
-
-const CATEGORIES = [
-  { name: "All", image: "" },
-  { name: "Rings", image: ringsImg },
-  { name: "Necklaces", image: necklaceImg },
-  { name: "Earrings", image: earingsImg },
-  { name: "Bangles", image: bengalsImg },
-  { name: "Pendants", image: pendantsImg },
-  { name: "Bracelets", image: bracelatesImg },
-];
-
-const PRODUCTS: Product[] = [
-  { id: 1, name: "Solitaire Diamond Ring", price: 125000, priceLabel: "₹1,25,000", category: "Rings", carat: 1.5, availability: "in-stock", image: img1, isNew: true },
-  { id: 2, name: "Emerald Drop Earrings", price: 85000, priceLabel: "₹85,000", category: "Earrings", carat: 0.8, availability: "in-stock", image: img3, isNew: true },
-  { id: 3, name: "Pearl Chain Necklace", price: 150000, priceLabel: "₹1,50,000", category: "Necklaces", carat: 2.0, availability: "made-to-order", image: img4, isNew: true },
-  { id: 4, name: "Sapphire Tennis Bracelet", price: 210000, priceLabel: "₹2,10,000", category: "Bracelets", carat: 3.5, availability: "in-stock", image: img5, isNew: true },
-  { id: 5, name: "Diamond Stud Set", price: 95000, priceLabel: "₹95,000", category: "Earrings", carat: 1.0, availability: "in-stock", image: img7, isNew: false },
-  { id: 6, name: "Gold Bangle Pair", price: 75000, priceLabel: "₹75,000", category: "Bangles", carat: 0.0, availability: "in-stock", image: img8, isNew: false },
-  { id: 7, name: "Ruby Pendant", price: 65000, priceLabel: "₹65,000", category: "Pendants", carat: 0.6, availability: "in-stock", image: img11, isNew: false },
-  { id: 8, name: "Platinum Band Ring", price: 180000, priceLabel: "₹1,80,000", category: "Rings", carat: 0.5, availability: "made-to-order", image: img12, isNew: false },
-  { id: 9, name: "Diamond Cluster Necklace", price: 320000, priceLabel: "₹3,20,000", category: "Necklaces", carat: 4.2, availability: "in-stock", image: img13, isNew: true },
-  { id: 10, name: "Tanzanite Drop Earrings", price: 145000, priceLabel: "₹1,45,000", category: "Earrings", carat: 1.8, availability: "in-stock", image: img14, isNew: true },
-  { id: 11, name: "Rose Gold Bangle", price: 55000, priceLabel: "₹55,000", category: "Bangles", carat: 0.0, availability: "out-of-stock", image: img9, isNew: false },
-  { id: 12, name: "Emerald Cocktail Ring", price: 275000, priceLabel: "₹2,75,000", category: "Rings", carat: 2.5, availability: "in-stock", image: img6, isNew: false },
-];
-
-const RECENTLY_VIEWED_IDS = [7, 8, 1, 3];
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 500000;
 const CARAT_MIN = 0;
 const CARAT_MAX = 5;
+
+const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' fill='%23222'%3E%3Crect width='400' height='400' fill='%231a1a2e'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%23555'%3ENo Image%3C/text%3E%3C/svg%3E";
+
+/** Format a number as Indian Rupee label */
+function formatPrice(n: number): string {
+  return "₹" + n.toLocaleString("en-IN");
+}
+
+/** Map an API product to the internal Product shape */
+function mapProduct(p: ApiProduct): Product {
+  const price = Number(p.base_price) || 0;
+  return {
+    id: p.id,
+    name: p.name,
+    price,
+    priceLabel: formatPrice(price),
+    category: p.category,
+    carat: p.carat ?? 0,
+    availability: p.availability,
+    image: p.image || PLACEHOLDER_IMAGE,
+    isNew: p.is_new,
+  };
+}
 
 /* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -120,6 +118,112 @@ export function ProductCatalog() {
     "out-of-stock": false,
   });
 
+  // API data state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  // Debounce ref for search
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [search]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory, activeTab, priceRange, caratRange, availability]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    productsApi.categories().then((data: Category[]) => {
+      setCategories(data);
+    }).catch(() => {
+      // silently fail — category bar will just show "All"
+    });
+  }, []);
+
+  // Fetch products when filters / tab / page change
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    async function fetchProducts() {
+      try {
+        let result: Product[];
+
+        if (activeTab === "viewed") {
+          // Recently viewed uses its own endpoint
+          const data: ApiProduct[] = await productsApi.recentlyViewed();
+          result = (data || []).map(mapProduct);
+          if (!cancelled) {
+            setProducts(result);
+            setTotalProducts(result.length);
+            setTotalPages(1);
+          }
+        } else {
+          // Build query params for productsApi.list
+          const params: Record<string, string> = {};
+
+          if (activeCategory !== "All") params.category = activeCategory;
+          if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+          if (priceRange[0] > PRICE_MIN) params.min_price = String(priceRange[0]);
+          if (priceRange[1] < PRICE_MAX) params.max_price = String(priceRange[1]);
+          if (caratRange[0] > CARAT_MIN) params.min_carat = String(caratRange[0]);
+          if (caratRange[1] < CARAT_MAX) params.max_carat = String(caratRange[1]);
+
+          const activeAvail = Object.entries(availability)
+            .filter(([, v]) => v)
+            .map(([k]) => k);
+          if (activeAvail.length > 0) params.availability = activeAvail.join(",");
+
+          if (activeTab === "new") params.is_new = "true";
+
+          params.page = String(page);
+          params.limit = "24";
+
+          const data = await productsApi.list(params);
+          if (!cancelled) {
+            const mapped = ((data.products || []) as ApiProduct[]).map(mapProduct);
+            setProducts(mapped);
+            setTotalProducts(data.total ?? mapped.length);
+            setTotalPages(data.totalPages ?? 1);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setProducts([]);
+          setTotalProducts(0);
+          setTotalPages(1);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchProducts();
+    return () => { cancelled = true; };
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page]);
+
+  // Derived categories list with "All" prepended
+  const displayCategories = useMemo(() => {
+    const all: { name: string; image: string | null }[] = [{ name: "All", image: null }];
+    return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url })));
+  }, [categories]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) count++;
@@ -133,44 +237,6 @@ export function ProductCatalog() {
     setCaratRange([CARAT_MIN, CARAT_MAX]);
     setAvailability({ "in-stock": false, "made-to-order": false, "out-of-stock": false });
   }, []);
-
-  // Filtered products
-  const filtered = useMemo(() => {
-    let list = PRODUCTS;
-
-    // Tab filter
-    if (activeTab === "new") list = list.filter((p) => p.isNew);
-    if (activeTab === "viewed") list = list.filter((p) => RECENTLY_VIEWED_IDS.includes(p.id));
-
-    // Category
-    if (activeCategory !== "All") list = list.filter((p) => p.category === activeCategory);
-
-    // Search
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      );
-    }
-
-    // Price
-    list = list.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
-
-    // Carat
-    list = list.filter((p) => p.carat >= caratRange[0] && p.carat <= caratRange[1]);
-
-    // Availability
-    const activeAvail = Object.entries(availability)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
-    if (activeAvail.length > 0) {
-      list = list.filter((p) => activeAvail.includes(p.availability));
-    }
-
-    return list;
-  }, [activeTab, activeCategory, search, priceRange, caratRange, availability]);
 
   return (
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -277,7 +343,7 @@ export function ProductCatalog() {
 
         {/* ── Category Nav ─────────────────────────────── */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          {CATEGORIES.map((cat) => (
+          {displayCategories.map((cat) => (
             <button
               key={cat.name}
               onClick={() => setActiveCategory(cat.name)}
@@ -338,7 +404,7 @@ export function ProductCatalog() {
             {/* Results count + active filters */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
-                {filtered.length} product{filtered.length !== 1 ? "s" : ""} found
+                {loading ? "Loading..." : `${totalProducts} product${totalProducts !== 1 ? "s" : ""} found`}
               </p>
               {activeFiltersCount > 0 && (
                 <button
@@ -354,7 +420,23 @@ export function ProductCatalog() {
 
             {/* Product Grid */}
             <AnimatePresence mode="wait">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center py-20"
+                >
+                  <Loader2
+                    className="w-10 h-10 mb-4 animate-spin"
+                    style={{ color: "var(--sf-teal)" }}
+                  />
+                  <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
+                    Loading products...
+                  </p>
+                </motion.div>
+              ) : products.length === 0 ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
@@ -391,7 +473,7 @@ export function ProductCatalog() {
                 </motion.div>
               ) : (
                 <motion.div
-                  key={`${activeTab}-${activeCategory}-${viewMode}`}
+                  key={`${activeTab}-${activeCategory}-${viewMode}-${page}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -402,7 +484,7 @@ export function ProductCatalog() {
                       : "grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-3"
                   }
                 >
-                  {filtered.map((product, i) => (
+                  {products.map((product, i) => (
                     <ProductCard
                       key={product.id}
                       product={product}
@@ -413,6 +495,35 @@ export function ProductCatalog() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm px-3" style={{ color: "var(--sf-text-muted)" }}>
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

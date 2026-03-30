@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
+import { AuthProvider } from "../context/AuthContext";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -49,6 +50,7 @@ function HomePage() {
 
 export default function App() {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -63,5 +65,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }

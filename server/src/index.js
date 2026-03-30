@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const path = require("path");
 const rateLimit = require("express-rate-limit");
 
 const { errorHandler } = require("./middleware/errorHandler");
@@ -13,6 +14,7 @@ const collectionRoutes = require("./routes/collection.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
 const orderRoutes = require("./routes/order.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const uploadRoutes = require("./routes/upload.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +24,9 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
 app.use(morgan("dev"));
+
+// ── Static file serving (uploaded images) ──────────
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -38,6 +43,7 @@ app.use("/api/collections", collectionRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

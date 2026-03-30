@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Plus,
   GripVertical,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -42,56 +43,37 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 
-import ringsImg from "../../assets/Images/rings.jpg";
-import necklaceImg from "../../assets/Images/necklace.jpg";
-import earingsImg from "../../assets/Images/earings.jpg";
-import bengalsImg from "../../assets/Images/bengals.jpg";
-import img1 from "../../assets/Images/1.jpg";
-import img3 from "../../assets/Images/3.jpg";
-import img4 from "../../assets/Images/4.jpg";
-import img5 from "../../assets/Images/5.jpg";
-import img7 from "../../assets/Images/7.jpg";
-import img8 from "../../assets/Images/8.jpg";
-import img11 from "../../assets/Images/11.jpg";
-import img12 from "../../assets/Images/12.jpg";
+import { wishlist as wishlistApi } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════ */
 
 type WishlistProduct = {
-  id: number;
+  wishlist_id: string;
+  id: string;
   name: string;
-  price: number;
-  priceLabel: string;
+  sku: string;
+  base_price: number;
   category: string;
   carat: number;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
-  image: string;
-  addedAt: string;
+  image: string | null;
+  added_at: string;
 };
 
 type Folder = {
   id: string;
   name: string;
   color: string;
-  productIds: number[];
+  productIds: string[];
 };
 
 /* ═══════════════════════════════════════════════════════
-   MOCK DATA — replace with API
+   CONSTANTS
    ═══════════════════════════════════════════════════════ */
 
-const INITIAL_PRODUCTS: WishlistProduct[] = [
-  { id: 1, name: "Solitaire Diamond Ring", price: 125000, priceLabel: "₹1,25,000", category: "Rings", carat: 1.5, availability: "in-stock", image: img1, addedAt: "Mar 28, 2026" },
-  { id: 2, name: "Emerald Drop Earrings", price: 85000, priceLabel: "₹85,000", category: "Earrings", carat: 0.8, availability: "in-stock", image: img3, addedAt: "Mar 27, 2026" },
-  { id: 3, name: "Pearl Chain Necklace", price: 150000, priceLabel: "₹1,50,000", category: "Necklaces", carat: 2.0, availability: "made-to-order", image: img4, addedAt: "Mar 26, 2026" },
-  { id: 4, name: "Sapphire Tennis Bracelet", price: 210000, priceLabel: "₹2,10,000", category: "Bracelets", carat: 3.5, availability: "in-stock", image: img5, addedAt: "Mar 25, 2026" },
-  { id: 5, name: "Diamond Stud Set", price: 95000, priceLabel: "₹95,000", category: "Earrings", carat: 1.0, availability: "in-stock", image: img7, addedAt: "Mar 24, 2026" },
-  { id: 6, name: "Gold Bangle Pair", price: 75000, priceLabel: "₹75,000", category: "Bangles", carat: 0.0, availability: "in-stock", image: img8, addedAt: "Mar 23, 2026" },
-  { id: 7, name: "Ruby Pendant", price: 65000, priceLabel: "₹65,000", category: "Pendants", carat: 0.6, availability: "in-stock", image: img11, addedAt: "Mar 22, 2026" },
-  { id: 8, name: "Platinum Band Ring", price: 180000, priceLabel: "₹1,80,000", category: "Rings", carat: 0.5, availability: "made-to-order", image: img12, addedAt: "Mar 21, 2026" },
-];
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' fill='%23181a1f'%3E%3Crect width='400' height='500'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23555' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 
 const FOLDER_COLORS = [
   "var(--sf-teal)",
@@ -102,11 +84,21 @@ const FOLDER_COLORS = [
   "#22c55e",
 ];
 
-const INITIAL_FOLDERS: Folder[] = [
-  { id: "f1", name: "Wedding Collection", color: FOLDER_COLORS[0], productIds: [1, 3, 4] },
-  { id: "f2", name: "Daily Wear", color: FOLDER_COLORS[1], productIds: [5, 6] },
-  { id: "f3", name: "Gift Ideas", color: FOLDER_COLORS[2], productIds: [2, 7] },
-];
+function formatPrice(price: number): string {
+  return "₹" + price.toLocaleString("en-IN");
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -115,11 +107,12 @@ const INITIAL_FOLDERS: Folder[] = [
 export function RetailerWishlist() {
   const navigate = useNavigate();
 
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [folders, setFolders] = useState(INITIAL_FOLDERS);
+  const [products, setProducts] = useState<WishlistProduct[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFolder, setActiveFolder] = useState<string | null>(null); // null = "All Saved"
   const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
   // Dialogs
@@ -129,6 +122,30 @@ export function RetailerWishlist() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+
+  // Fetch wishlist items and folders on mount
+  useEffect(() => {
+    let cancelled = false;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [itemsData, foldersData] = await Promise.all([
+          wishlistApi.list(),
+          wishlistApi.folders(),
+        ]);
+        if (!cancelled) {
+          setProducts(Array.isArray(itemsData) ? itemsData : itemsData.items ?? []);
+          setFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []);
+        }
+      } catch {
+        // silently handle — empty state will show
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { cancelled = true; };
+  }, []);
 
   // Filtered products
   const displayed = useMemo(() => {
@@ -148,32 +165,40 @@ export function RetailerWishlist() {
 
   const activeFolderData = activeFolder ? folders.find((f) => f.id === activeFolder) : null;
 
-  // ── Actions ───────────────────────────────────────
+  // -- Actions --
 
   const removeProduct = useCallback(
-    (id: number) => {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      setFolders((prev) =>
-        prev.map((f) => ({
+    async (productId: string) => {
+      const prev = products;
+      setProducts((p) => p.filter((item) => item.id !== productId));
+      setFolders((flds) =>
+        flds.map((f) => ({
           ...f,
-          productIds: f.productIds.filter((pid) => pid !== id),
+          productIds: f.productIds.filter((pid) => pid !== productId),
         }))
       );
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
+      setSelectedIds((s) => {
+        const next = new Set(s);
+        next.delete(productId);
         return next;
       });
+      try {
+        await wishlistApi.remove(productId);
+      } catch {
+        setProducts(prev); // revert
+      }
     },
-    []
+    [products]
   );
 
-  const removeSelected = useCallback(() => {
-    selectedIds.forEach((id) => removeProduct(id));
+  const removeSelected = useCallback(async () => {
+    for (const id of selectedIds) {
+      await removeProduct(id);
+    }
     setSelectionMode(false);
   }, [selectedIds, removeProduct]);
 
-  const toggleSelect = useCallback((id: number) => {
+  const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -186,40 +211,59 @@ export function RetailerWishlist() {
     setSelectedIds(new Set(displayed.map((p) => p.id)));
   }, [displayed]);
 
-  const createFolder = useCallback(() => {
+  const createFolder = useCallback(async () => {
     if (!newFolderName.trim()) return;
-    const id = "f" + Date.now();
-    setFolders((prev) => [
-      ...prev,
-      { id, name: newFolderName.trim(), color: newFolderColor, productIds: [] },
-    ]);
+    try {
+      const created = await wishlistApi.createFolder(newFolderName.trim(), newFolderColor);
+      setFolders((prev) => [
+        ...prev,
+        { id: created.id, name: created.name, color: created.color, productIds: created.productIds ?? [] },
+      ]);
+    } catch {
+      // ignore
+    }
     setNewFolderName("");
     setNewFolderColor(FOLDER_COLORS[0]);
     setCreateFolderOpen(false);
   }, [newFolderName, newFolderColor]);
 
-  const renameFolder = useCallback(() => {
+  const renameFolder = useCallback(async () => {
     if (!editingFolder || !newFolderName.trim()) return;
-    setFolders((prev) =>
-      prev.map((f) =>
-        f.id === editingFolder.id ? { ...f, name: newFolderName.trim(), color: newFolderColor } : f
-      )
-    );
+    try {
+      await wishlistApi.updateFolder(editingFolder.id, newFolderName.trim(), newFolderColor);
+      setFolders((prev) =>
+        prev.map((f) =>
+          f.id === editingFolder.id ? { ...f, name: newFolderName.trim(), color: newFolderColor } : f
+        )
+      );
+    } catch {
+      // ignore
+    }
     setRenameFolderOpen(false);
     setEditingFolder(null);
     setNewFolderName("");
   }, [editingFolder, newFolderName, newFolderColor]);
 
   const deleteFolder = useCallback(
-    (folderId: string) => {
-      setFolders((prev) => prev.filter((f) => f.id !== folderId));
+    async (folderId: string) => {
+      const prev = folders;
+      setFolders((f) => f.filter((fl) => fl.id !== folderId));
       if (activeFolder === folderId) setActiveFolder(null);
+      try {
+        await wishlistApi.deleteFolder(folderId);
+      } catch {
+        setFolders(prev); // revert
+      }
     },
-    [activeFolder]
+    [activeFolder, folders]
   );
 
   const moveSelectedToFolder = useCallback(
-    (folderId: string) => {
+    async (folderId: string) => {
+      const wishlistIds = products
+        .filter((p) => selectedIds.has(p.id))
+        .map((p) => p.wishlist_id);
+      // Optimistic
       setFolders((prev) =>
         prev.map((f) => {
           if (f.id !== folderId) return f;
@@ -230,22 +274,41 @@ export function RetailerWishlist() {
       setMoveToFolderOpen(false);
       setSelectionMode(false);
       setSelectedIds(new Set());
+      try {
+        await wishlistApi.moveToFolder(folderId, wishlistIds);
+      } catch {
+        // re-fetch folders to get correct state
+        try {
+          const foldersData = await wishlistApi.folders();
+          setFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []);
+        } catch { /* ignore */ }
+      }
     },
-    [selectedIds]
+    [selectedIds, products]
   );
 
   const orderSelected = useCallback(() => {
-    // TODO: integrate with order API
     alert(`Order request submitted for ${selectedIds.size} item(s)!`);
     setSelectionMode(false);
     setSelectedIds(new Set());
   }, [selectedIds]);
 
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: "var(--sf-teal)" }} />
+          <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Loading wishlist...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex gap-6">
-          {/* ═══ LEFT: Folders Sidebar ═════════════════ */}
+          {/* === LEFT: Folders Sidebar === */}
           <aside className="hidden lg:block w-[240px] shrink-0">
             <div
               className="sticky top-20 rounded-xl border p-4"
@@ -335,7 +398,7 @@ export function RetailerWishlist() {
             </div>
           </aside>
 
-          {/* ═══ RIGHT: Products ═══════════════════════ */}
+          {/* === RIGHT: Products === */}
           <div className="flex-1 min-w-0">
             {/* Mobile folder tabs */}
             <div className="lg:hidden flex gap-2 mb-4 overflow-x-auto pb-1">
@@ -507,7 +570,7 @@ export function RetailerWishlist() {
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {displayed.map((product, i) => (
                   <WishlistCard
-                    key={product.id}
+                    key={product.wishlist_id}
                     product={product}
                     index={i}
                     selectionMode={selectionMode}
@@ -526,7 +589,7 @@ export function RetailerWishlist() {
         </div>
       </main>
 
-      {/* ═══ Create Folder Dialog ═══════════════════ */}
+      {/* === Create Folder Dialog === */}
       <FolderDialog
         open={createFolderOpen}
         onOpenChange={setCreateFolderOpen}
@@ -540,7 +603,7 @@ export function RetailerWishlist() {
         submitLabel="Create"
       />
 
-      {/* ═══ Rename Folder Dialog ═══════════════════ */}
+      {/* === Rename Folder Dialog === */}
       <FolderDialog
         open={renameFolderOpen}
         onOpenChange={setRenameFolderOpen}
@@ -554,7 +617,7 @@ export function RetailerWishlist() {
         submitLabel="Save"
       />
 
-      {/* ═══ Move to Folder Dialog ═════════════════ */}
+      {/* === Move to Folder Dialog === */}
       <Dialog open={moveToFolderOpen} onOpenChange={setMoveToFolderOpen}>
         <DialogContent
           style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
@@ -666,7 +729,8 @@ function WishlistCard({
     "made-to-order": { bg: "rgba(48,184,191,0.15)", text: "var(--sf-teal)", label: "Made to Order" },
     "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
   };
-  const avail = availColors[product.availability];
+  const avail = availColors[product.availability] || availColors["in-stock"];
+  const imgSrc = product.image || PLACEHOLDER_IMAGE;
 
   return (
     <motion.div
@@ -702,7 +766,7 @@ function WishlistCard({
         onClick={selectionMode ? onToggleSelect : onView}
       >
         <img
-          src={product.image}
+          src={imgSrc}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
@@ -741,7 +805,7 @@ function WishlistCard({
         </p>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-            {product.priceLabel}
+            {formatPrice(product.base_price)}
           </p>
           {!selectionMode && (
             <Button
@@ -757,7 +821,7 @@ function WishlistCard({
           )}
         </div>
         <p className="text-[10px] mt-1.5" style={{ color: "var(--sf-text-muted)" }}>
-          Added {product.addedAt}
+          Added {formatDate(product.added_at)}
         </p>
       </div>
     </motion.div>

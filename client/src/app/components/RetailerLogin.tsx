@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, ShieldCheck, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { auth as authApi } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "./ui/input-otp";
@@ -18,6 +20,7 @@ type Step = "phone" | "otp";
 
 export function RetailerLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -31,10 +34,14 @@ export function RetailerLogin() {
     }
     setError("");
     setLoading(true);
-    // TODO: Replace with actual API call to request OTP
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    setStep("otp");
+    try {
+      await authApi.requestOtp(phone);
+      setStep("otp");
+    } catch (err: any) {
+      setError(err.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
   }, [phone]);
 
   const handleVerifyOTP = useCallback(async () => {
@@ -44,11 +51,16 @@ export function RetailerLogin() {
     }
     setError("");
     setLoading(true);
-    // TODO: Replace with actual API call to verify OTP
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    navigate("/retailer/dashboard");
-  }, [otp]);
+    try {
+      const data = await authApi.verifyOtp(phone, otp);
+      login(data.token, data.retailer);
+      navigate("/retailer/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  }, [otp, phone, login, navigate]);
 
   const handleBack = useCallback(() => {
     setStep("phone");

@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -21,6 +22,7 @@ import {
   Shield,
   Award,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -29,6 +31,7 @@ import { Textarea } from "./ui/textarea";
 import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { products as productsApi, wishlist as wishlistApi } from "../../lib/api";
 
 import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
@@ -37,47 +40,81 @@ import img7 from "../../assets/Images/7.jpg";
 import productVideo from "../../assets/Videos/5327599-hd_1280_720_30fps.mp4";
 
 /* ═══════════════════════════════════════════════════════
-   MOCK DATA — replace with API
+   CONSTANTS & TYPES
    ═══════════════════════════════════════════════════════ */
 
-const PRODUCT = {
-  id: 1,
-  name: "Solitaire Diamond Ring",
-  tagline: "Timeless brilliance, handcrafted perfection",
-  category: "Rings",
-  sku: "SF-RNG-0451",
-  availability: "in-stock" as const,
-  basePrice: 125000,
-  images: [img1, img3, img5, img7],
-  video: productVideo,
-  isNew: true,
-  rating: 4.8,
-  reviewCount: 124,
+const FALLBACK_IMAGES = [img1, img3, img5, img7];
 
-  // Specifications (Bluestone-style)
+const CARAT_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
+const METAL_OPTIONS = ["18K White Gold", "18K Yellow Gold", "18K Rose Gold", "Platinum"];
+
+interface ProductData {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  sku: string;
+  availability: string;
+  basePrice: number;
+  images: string[];
+  video: string;
+  isNew: boolean;
+  goldPricePerGram: number;
   specs: {
-    metalType: "18K White Gold",
-    metalWeight: "3.45 g",
-    diamondType: "Natural Diamond",
-    diamondShape: "Round Brilliant",
-    diamondClarity: "VS1",
-    diamondColor: "F",
-    diamondCarat: 1.5,
-    diamondCertification: "GIA Certified",
-    settingType: "Prong Setting",
-    rhodiumPlated: "Yes",
-    hallmark: "BIS 750",
-    width: "2.2 mm",
-    height: "6.8 mm",
-  },
+    metalType: string;
+    metalWeight: string;
+    diamondType: string;
+    diamondShape: string;
+    diamondClarity: string;
+    diamondColor: string;
+    diamondCarat: number;
+    diamondCertification: string;
+    settingType: string;
+    hallmark: string;
+    width: string;
+    height: string;
+  };
+}
 
-  // Customization options
-  caratOptions: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0],
-  metalOptions: ["18K White Gold", "18K Yellow Gold", "18K Rose Gold", "Platinum"],
+/** Map API response to the shape our component expects */
+function mapApiProduct(raw: any): ProductData {
+  const apiImages =
+    raw.images && raw.images.length > 0
+      ? raw.images
+          .filter((img: any) => img.media_type !== "video")
+          .map((img: any) => img.image_url)
+      : [];
+  const videoEntry =
+    raw.images && raw.images.find((img: any) => img.media_type === "video");
 
-  // Gold price (per gram, live)
-  goldPricePerGram: 6250,
-};
+  return {
+    id: raw.id,
+    name: raw.name || "Untitled Product",
+    description: raw.description || "",
+    category: raw.category || "",
+    sku: raw.sku || "",
+    availability: raw.availability || "in-stock",
+    basePrice: Number(raw.base_price) || 0,
+    images: apiImages.length > 0 ? apiImages : FALLBACK_IMAGES,
+    video: videoEntry ? videoEntry.image_url : productVideo,
+    isNew: Boolean(raw.is_new),
+    goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
+    specs: {
+      metalType: raw.metal_type || "18K White Gold",
+      metalWeight: raw.metal_weight ? `${raw.metal_weight} g` : "0 g",
+      diamondType: raw.diamond_type || "Natural Diamond",
+      diamondShape: raw.diamond_shape || "Round Brilliant",
+      diamondClarity: raw.diamond_clarity || "-",
+      diamondColor: raw.diamond_color || "-",
+      diamondCarat: Number(raw.carat) || 1.0,
+      diamondCertification: raw.diamond_certification || "-",
+      settingType: raw.setting_type || "-",
+      hallmark: raw.hallmark || "-",
+      width: raw.width_mm ? `${raw.width_mm} mm` : "-",
+      height: raw.height_mm ? `${raw.height_mm} mm` : "-",
+    },
+  };
+}
 
 /* ═══════════════════════════════════════════════════════
    PRICE CALCULATION
@@ -102,42 +139,141 @@ function calculatePrice(
    ═══════════════════════════════════════════════════════ */
 
 export function ProductDetail() {
+  const { id } = useParams<{ id: string }>();
+
+  // Data fetching state
+  const [product, setProduct] = useState<ProductData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // Image gallery
   const [activeImage, setActiveImage] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Customization
-  const [selectedCarat, setSelectedCarat] = useState(PRODUCT.specs.diamondCarat);
-  const [selectedMetal, setSelectedMetal] = useState(PRODUCT.specs.metalType);
+  const [selectedCarat, setSelectedCarat] = useState(1.0);
+  const [selectedMetal, setSelectedMetal] = useState("18K White Gold");
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
 
-  const totalPrice = useMemo(
-    () =>
+  // ── Fetch product on mount ─────────────────────────
+  useEffect(() => {
+    if (!id) {
+      setError("No product ID provided");
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchProduct() {
+      try {
+        setLoading(true);
+        setError(null);
+        const raw = await productsApi.detail(id!);
+        if (cancelled) return;
+
+        const mapped = mapApiProduct(raw);
+        setProduct(mapped);
+        setSelectedCarat(mapped.specs.diamondCarat);
+        setSelectedMetal(mapped.specs.metalType);
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err.message || "Failed to load product");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchProduct();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  // ── Wishlist toggle ────────────────────────────────
+  const handleWishlistToggle = useCallback(async () => {
+    if (!product || wishlistLoading) return;
+    setWishlistLoading(true);
+    try {
+      if (wishlisted) {
+        await wishlistApi.remove(product.id);
+      } else {
+        await wishlistApi.add(product.id);
+      }
+      setWishlisted((prev) => !prev);
+    } catch (err: any) {
+      console.error("Wishlist error:", err.message);
+    } finally {
+      setWishlistLoading(false);
+    }
+  }, [product, wishlisted, wishlistLoading]);
+
+  const totalPrice = useMemo(() => {
+    if (!product) return 0;
+    return (
       calculatePrice(
-        PRODUCT.specs.diamondCarat,
+        product.specs.diamondCarat,
         selectedCarat,
-        PRODUCT.basePrice,
-        parseFloat(PRODUCT.specs.metalWeight),
-        PRODUCT.goldPricePerGram
-      ) * quantity,
-    [selectedCarat, quantity]
-  );
+        product.basePrice,
+        parseFloat(product.specs.metalWeight),
+        product.goldPricePerGram
+      ) * quantity
+    );
+  }, [product, selectedCarat, quantity]);
 
   const formatPrice = (p: number) =>
     "₹" + p.toLocaleString("en-IN");
 
   const prevImage = useCallback(() => {
+    if (!product) return;
     setShowVideo(false);
-    setActiveImage((i) => (i === 0 ? PRODUCT.images.length - 1 : i - 1));
-  }, []);
+    setActiveImage((i) => (i === 0 ? product.images.length - 1 : i - 1));
+  }, [product]);
 
   const nextImage = useCallback(() => {
+    if (!product) return;
     setShowVideo(false);
-    setActiveImage((i) => (i === PRODUCT.images.length - 1 ? 0 : i + 1));
-  }, []);
+    setActiveImage((i) => (i === product.images.length - 1 ? 0 : i + 1));
+  }, [product]);
+
+  // ── Loading state ──────────────────────────────────
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2
+            className="w-10 h-10 animate-spin"
+            style={{ color: "var(--sf-teal)" }}
+          />
+          <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
+            Loading product details...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Error state ────────────────────────────────────
+  if (error || !product) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Diamond className="w-12 h-12" style={{ color: "var(--sf-text-muted)" }} />
+          <h2
+            className="text-xl font-semibold"
+            style={{ color: "var(--sf-text-primary)" }}
+          >
+            Product Not Found
+          </h2>
+          <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>
+            {error || "The product you're looking for doesn't exist or has been removed."}
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -160,7 +296,7 @@ export function ProductDetail() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    src={PRODUCT.video}
+                    src={product.video}
                     autoPlay
                     loop
                     muted
@@ -174,8 +310,8 @@ export function ProductDetail() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    src={PRODUCT.images[activeImage]}
-                    alt={PRODUCT.name}
+                    src={product.images[activeImage]}
+                    alt={product.name}
                     className="w-full h-full object-cover"
                   />
                 )}
@@ -210,7 +346,7 @@ export function ProductDetail() {
               )}
 
               {/* Badges */}
-              {PRODUCT.isNew && (
+              {product.isNew && (
                 <Badge
                   className="absolute top-3 left-3 text-xs"
                   style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
@@ -227,13 +363,13 @@ export function ProductDetail() {
                   color: "var(--sf-text-secondary)",
                 }}
               >
-                {showVideo ? "Video" : `${activeImage + 1} / ${PRODUCT.images.length}`}
+                {showVideo ? "Video" : `${activeImage + 1} / ${product.images.length}`}
               </div>
             </div>
 
             {/* Thumbnails */}
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {PRODUCT.images.map((img, i) => (
+              {product.images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => { setActiveImage(i); setShowVideo(false); }}
@@ -259,7 +395,7 @@ export function ProductDetail() {
                   backgroundColor: "var(--sf-bg-surface-2)",
                 }}
               >
-                <video src={PRODUCT.video} muted className="w-full h-full object-cover" />
+                <video src={product.video} muted className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <Play className="w-5 h-5" style={{ color: "var(--sf-text-primary)" }} fill="white" />
                 </div>
@@ -291,7 +427,7 @@ export function ProductDetail() {
             {/* Header */}
             <div className="mb-4">
               <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
-                {PRODUCT.category}
+                {product.category}
               </p>
               <h1
                 className="text-2xl sm:text-3xl font-semibold mb-2"
@@ -300,15 +436,15 @@ export function ProductDetail() {
                   color: "var(--sf-text-primary)",
                 }}
               >
-                {PRODUCT.name}
+                {product.name}
               </h1>
               <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
-                {PRODUCT.tagline}
+                {product.description}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
-                <AvailabilityBadge status={PRODUCT.availability} />
+                <AvailabilityBadge status={product.availability} />
                 <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                  SKU: {PRODUCT.sku}
+                  SKU: {product.sku}
                 </span>
               </div>
             </div>
@@ -333,12 +469,12 @@ export function ProductDetail() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Price includes diamond, metal, and making charges.</p>
-                    <p>Gold rate: {formatPrice(PRODUCT.goldPricePerGram)}/g (live)</p>
+                    <p>Gold rate: {formatPrice(product.goldPricePerGram)}/g (live)</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
               <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
-                Gold rate: {formatPrice(PRODUCT.goldPricePerGram)}/g (live) &bull; Making charges: 12%
+                Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Making charges: 12%
               </p>
             </div>
 
@@ -369,7 +505,7 @@ export function ProductDetail() {
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {PRODUCT.caratOptions.map((ct) => (
+                  {CARAT_OPTIONS.map((ct) => (
                     <button
                       key={ct}
                       onClick={() => setSelectedCarat(ct)}
@@ -395,7 +531,7 @@ export function ProductDetail() {
                   Metal Type
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {PRODUCT.metalOptions.map((metal) => (
+                  {METAL_OPTIONS.map((metal) => (
                     <button
                       key={metal}
                       onClick={() => setSelectedMetal(metal)}
@@ -504,7 +640,8 @@ export function ProductDetail() {
                   backgroundColor: "var(--sf-bg-surface-1)",
                   color: wishlisted ? "#ef4444" : "var(--sf-text-secondary)",
                 }}
-                onClick={() => setWishlisted(!wishlisted)}
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading}
               >
                 <Heart className="w-5 h-5" fill={wishlisted ? "#ef4444" : "none"} />
                 {wishlisted ? "Wishlisted" : "Wishlist"}
@@ -548,12 +685,11 @@ export function ProductDetail() {
                   }}
                 >
                   <SpecRow icon={<Palette />} label="Metal Type" value={selectedMetal} />
-                  <SpecRow icon={<Weight />} label="Metal Weight" value={PRODUCT.specs.metalWeight} />
-                  <SpecRow icon={<Ruler />} label="Width" value={PRODUCT.specs.width} />
-                  <SpecRow icon={<Ruler />} label="Height" value={PRODUCT.specs.height} />
-                  <SpecRow icon={<Diamond />} label="Setting Type" value={PRODUCT.specs.settingType} />
-                  <SpecRow icon={<Shield />} label="Hallmark" value={PRODUCT.specs.hallmark} />
-                  <SpecRow icon={<Check />} label="Rhodium Plated" value={PRODUCT.specs.rhodiumPlated} last />
+                  <SpecRow icon={<Weight />} label="Metal Weight" value={product.specs.metalWeight} />
+                  <SpecRow icon={<Ruler />} label="Width" value={product.specs.width} />
+                  <SpecRow icon={<Ruler />} label="Height" value={product.specs.height} />
+                  <SpecRow icon={<Diamond />} label="Setting Type" value={product.specs.settingType} />
+                  <SpecRow icon={<Shield />} label="Hallmark" value={product.specs.hallmark} last />
                 </div>
               </TabsContent>
 
@@ -565,12 +701,12 @@ export function ProductDetail() {
                     borderColor: "var(--sf-divider)",
                   }}
                 >
-                  <SpecRow icon={<Gem />} label="Diamond Type" value={PRODUCT.specs.diamondType} />
-                  <SpecRow icon={<Diamond />} label="Shape" value={PRODUCT.specs.diamondShape} />
+                  <SpecRow icon={<Gem />} label="Diamond Type" value={product.specs.diamondType} />
+                  <SpecRow icon={<Diamond />} label="Shape" value={product.specs.diamondShape} />
                   <SpecRow icon={<Sparkles />} label="Carat" value={`${selectedCarat} ct`} />
-                  <SpecRow icon={<Palette />} label="Color Grade" value={PRODUCT.specs.diamondColor} />
-                  <SpecRow icon={<Award />} label="Clarity Grade" value={PRODUCT.specs.diamondClarity} />
-                  <SpecRow icon={<Shield />} label="Certification" value={PRODUCT.specs.diamondCertification} last />
+                  <SpecRow icon={<Palette />} label="Color Grade" value={product.specs.diamondColor} />
+                  <SpecRow icon={<Award />} label="Clarity Grade" value={product.specs.diamondClarity} />
+                  <SpecRow icon={<Shield />} label="Certification" value={product.specs.diamondCertification} last />
                 </div>
               </TabsContent>
 
@@ -585,20 +721,20 @@ export function ProductDetail() {
                   <PriceRow
                     label="Diamond Value"
                     value={formatPrice(
-                      Math.round(PRODUCT.basePrice * 0.65 * (selectedCarat / PRODUCT.specs.diamondCarat))
+                      Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat))
                     )}
-                    sub={`${selectedCarat} ct ${PRODUCT.specs.diamondShape}`}
+                    sub={`${selectedCarat} ct ${product.specs.diamondShape}`}
                   />
                   <PriceRow
                     label="Metal Value"
                     value={formatPrice(
-                      Math.round(parseFloat(PRODUCT.specs.metalWeight) * PRODUCT.goldPricePerGram)
+                      Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram)
                     )}
-                    sub={`${PRODUCT.specs.metalWeight} × ${formatPrice(PRODUCT.goldPricePerGram)}/g`}
+                    sub={`${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`}
                   />
                   <PriceRow
                     label="Making Charges"
-                    value={formatPrice(Math.round(PRODUCT.basePrice * 0.12))}
+                    value={formatPrice(Math.round(product.basePrice * 0.12))}
                     sub="12% of base price"
                   />
                   {quantity > 1 && (

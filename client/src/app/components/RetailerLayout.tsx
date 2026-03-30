@@ -14,8 +14,9 @@ import {
   Layers,
   Megaphone,
   Check,
+  Loader2,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -27,8 +28,10 @@ import {
   PopoverContent,
 } from "./ui/popover";
 
+import { notifications as notificationsApi } from "../../lib/api";
+
 /* ═══════════════════════════════════════════════════════
-   NOTIFICATION TYPES & MOCK DATA
+   NOTIFICATION TYPES
    ═══════════════════════════════════════════════════════ */
 
 type NotificationType = "order-update" | "new-collection" | "announcement" | "system";
@@ -38,75 +41,10 @@ type Notification = {
   type: NotificationType;
   title: string;
   message: string;
-  time: string;
-  read: boolean;
-  actionPath?: string;
+  is_read: boolean;
+  action_path?: string;
+  created_at: string;
 };
-
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    type: "order-update",
-    title: "Order Shipped",
-    message: "ORD-2026-0318 has been dispatched via BlueDart",
-    time: "2 hours ago",
-    read: false,
-    actionPath: "/retailer/orders",
-  },
-  {
-    id: "n2",
-    type: "new-collection",
-    title: "New Collection: Spring Bloom 2026",
-    message: "A fresh collection with pastel gemstones is now available",
-    time: "5 hours ago",
-    read: false,
-    actionPath: "/retailer/collections",
-  },
-  {
-    id: "n3",
-    type: "order-update",
-    title: "Order Confirmed",
-    message: "ORD-2026-0305 payment verified and confirmed",
-    time: "1 day ago",
-    read: false,
-    actionPath: "/retailer/orders",
-  },
-  {
-    id: "n4",
-    type: "announcement",
-    title: "Special Discount: 15% Off Bulk Orders",
-    message: "Valid on orders of 5+ items until April 10",
-    time: "2 days ago",
-    read: true,
-  },
-  {
-    id: "n5",
-    type: "order-update",
-    title: "Order Delivered",
-    message: "ORD-2026-0312 has been delivered successfully",
-    time: "3 days ago",
-    read: true,
-    actionPath: "/retailer/orders",
-  },
-  {
-    id: "n6",
-    type: "new-collection",
-    title: "Summer Radiance 2026 Launching Soon",
-    message: "Preview the new summer collection before it drops Apr 1",
-    time: "4 days ago",
-    read: true,
-    actionPath: "/retailer/collections",
-  },
-  {
-    id: "n7",
-    type: "system",
-    title: "Welcome to 57Facets Retailer Portal",
-    message: "Your account has been set up. Start browsing the catalog!",
-    time: "1 week ago",
-    read: true,
-    actionPath: "/retailer/catalog",
-  },
-];
 
 const NOTIFICATION_ICON: Record<NotificationType, { icon: React.ReactNode; color: string; bg: string }> = {
   "order-update": { icon: <Truck className="w-4 h-4" />, color: "#a855f7", bg: "rgba(168,85,247,0.15)" },
@@ -114,6 +52,42 @@ const NOTIFICATION_ICON: Record<NotificationType, { icon: React.ReactNode; color
   announcement: { icon: <Megaphone className="w-4 h-4" />, color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
   system: { icon: <Bell className="w-4 h-4" />, color: "var(--sf-blue-secondary)", bg: "rgba(56,128,190,0.15)" },
 };
+
+/* ═══════════════════════════════════════════════════════
+   RELATIVE TIME HELPER
+   ═══════════════════════════════════════════════════════ */
+
+function formatRelativeTime(dateStr: string): string {
+  try {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    if (diffMs < 0) return "just now";
+
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return "just now";
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days !== 1 ? "s" : ""} ago`;
+
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
+
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months !== 1 ? "s" : ""} ago`;
+
+    const years = Math.floor(days / 365);
+    return `${years} year${years !== 1 ? "s" : ""} ago`;
+  } catch {
+    return dateStr;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════
    NAV ITEMS
@@ -154,25 +128,76 @@ function RetailerHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Fetch notifications on mount
+  useEffect(() => {
+    let cancelled = false;
+    const fetchNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const data = await notificationsApi.list();
+        if (!cancelled) {
+          setNotifications(Array.isArray(data) ? data : data.notifications ?? []);
+          setUnreadCount(
+            typeof data.unreadCount === "number"
+              ? data.unreadCount
+              : (Array.isArray(data) ? data : data.notifications ?? []).filter(
+                  (n: Notification) => !n.is_read
+                ).length
+          );
+        }
+      } catch {
+        // silently handle
+      } finally {
+        if (!cancelled) setLoadingNotifications(false);
+      }
+    };
+    fetchNotifications();
+    return () => { cancelled = true; };
+  }, []);
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
+    // Optimistic
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await notificationsApi.markRead(id);
+    } catch {
+      // revert
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: false } : n))
+      );
+      setUnreadCount((c) => c + 1);
+    }
   }, []);
 
-  const markAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+  const markAllRead = useCallback(async () => {
+    const prev = notifications;
+    const prevCount = unreadCount;
+    // Optimistic
+    setNotifications((ns) => ns.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    try {
+      await notificationsApi.markAllRead();
+    } catch {
+      // revert
+      setNotifications(prev);
+      setUnreadCount(prevCount);
+    }
+  }, [notifications, unreadCount]);
 
   const handleNotificationClick = useCallback(
     (notification: Notification) => {
-      markAsRead(notification.id);
-      if (notification.actionPath) {
-        navigate(notification.actionPath);
+      if (!notification.is_read) {
+        markAsRead(notification.id);
+      }
+      if (notification.action_path) {
+        navigate(notification.action_path);
       }
     },
     [markAsRead, navigate]
@@ -334,7 +359,12 @@ function RetailerHeader() {
                 {/* Notification list */}
                 <ScrollArea className="max-h-[400px]">
                   <div className="py-1">
-                    {notifications.length === 0 ? (
+                    {loadingNotifications ? (
+                      <div className="flex flex-col items-center py-10">
+                        <Loader2 className="w-6 h-6 animate-spin mb-2" style={{ color: "var(--sf-teal)" }} />
+                        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Loading...</p>
+                      </div>
+                    ) : notifications.length === 0 ? (
                       <div className="flex flex-col items-center py-10">
                         <Bell
                           className="w-8 h-8 mb-2"
@@ -422,14 +452,14 @@ function NotificationItem({
   notification: Notification;
   onClick: () => void;
 }) {
-  const cfg = NOTIFICATION_ICON[notification.type];
+  const cfg = NOTIFICATION_ICON[notification.type] || NOTIFICATION_ICON.system;
 
   return (
     <button
       onClick={onClick}
       className="w-full text-left px-4 py-3 flex gap-3 transition-colors hover:bg-[var(--sf-bg-surface-2)]"
       style={{
-        background: notification.read ? "none" : "rgba(48, 184, 191, 0.04)",
+        background: notification.is_read ? "none" : "rgba(48, 184, 191, 0.04)",
         border: "none",
         cursor: "pointer",
       }}
@@ -449,12 +479,12 @@ function NotificationItem({
             className="text-sm truncate"
             style={{
               color: "var(--sf-text-primary)",
-              fontWeight: notification.read ? 400 : 600,
+              fontWeight: notification.is_read ? 400 : 600,
             }}
           >
             {notification.title}
           </p>
-          {!notification.read && (
+          {!notification.is_read && (
             <div
               className="w-2 h-2 rounded-full shrink-0 mt-1.5"
               style={{ backgroundColor: "var(--sf-teal)" }}
@@ -471,7 +501,7 @@ function NotificationItem({
           className="text-[10px] mt-1"
           style={{ color: "var(--sf-text-muted)" }}
         >
-          {notification.time}
+          {formatRelativeTime(notification.created_at)}
         </p>
       </div>
     </button>

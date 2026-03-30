@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
@@ -14,6 +14,7 @@ import {
   Star,
   Layers,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -30,35 +31,21 @@ import {
   DialogClose,
 } from "./ui/dialog";
 
-import img1 from "../../assets/Images/1.jpg";
-import img3 from "../../assets/Images/3.jpg";
-import img4 from "../../assets/Images/4.jpg";
-import img5 from "../../assets/Images/5.jpg";
-import img6 from "../../assets/Images/6.jpg";
-import img7 from "../../assets/Images/7.jpg";
-import img8 from "../../assets/Images/8.jpg";
-import img9 from "../../assets/Images/9.jpg";
-import img11 from "../../assets/Images/11.jpg";
-import img12 from "../../assets/Images/12.jpg";
-import img13 from "../../assets/Images/13.jpg";
-import img14 from "../../assets/Images/14.jpg";
-import img15 from "../../assets/Images/15.jpg";
-import img16 from "../../assets/Images/16.jpg";
-import img17 from "../../assets/Images/17.jpg";
-import img18 from "../../assets/Images/18.jpg";
+import { collections as collectionsApi, wishlist as wishlistApi } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════ */
 
 type CollectionProduct = {
-  id: number;
+  id: string;
   name: string;
-  priceLabel: string;
+  base_price: number;
   category: string;
   carat: number;
-  image: string;
+  image: string | null;
   availability: "in-stock" | "made-to-order";
+  sku?: string;
 };
 
 type Collection = {
@@ -67,84 +54,26 @@ type Collection = {
   tagline: string;
   description: string;
   tag: "seasonal" | "themed" | "bridal" | "new-launch";
-  coverImage: string;
-  heroGradient: string;
-  products: CollectionProduct[];
-  launchDate: string;
+  cover_image: string | null;
+  launch_date: string;
+  product_count: number;
+  products?: CollectionProduct[];
 };
 
 type FilterTag = "all" | Collection["tag"];
 
 /* ═══════════════════════════════════════════════════════
-   MOCK DATA — replace with API
+   CONSTANTS
    ═══════════════════════════════════════════════════════ */
 
-const COLLECTIONS: Collection[] = [
-  {
-    id: "c1",
-    name: "Summer Radiance 2026",
-    tagline: "Light as sunbeams, bold as summer",
-    description: "A curated selection of vibrant gemstone pieces designed for the summer season. Featuring lighter metals and vivid stones that catch the light beautifully.",
-    tag: "seasonal",
-    coverImage: img15,
-    heroGradient: "linear-gradient(135deg, rgba(48,184,191,0.3), rgba(38,96,160,0.2))",
-    launchDate: "Apr 1, 2026",
-    products: [
-      { id: 1, name: "Solitaire Diamond Ring", priceLabel: "₹1,25,000", category: "Rings", carat: 1.5, image: img1, availability: "in-stock" },
-      { id: 2, name: "Emerald Drop Earrings", priceLabel: "₹85,000", category: "Earrings", carat: 0.8, image: img3, availability: "in-stock" },
-      { id: 9, name: "Diamond Cluster Necklace", priceLabel: "₹3,20,000", category: "Necklaces", carat: 4.2, image: img13, availability: "in-stock" },
-      { id: 10, name: "Tanzanite Drop Earrings", priceLabel: "₹1,45,000", category: "Earrings", carat: 1.8, image: img14, availability: "made-to-order" },
-    ],
-  },
-  {
-    id: "c2",
-    name: "Eternal Bonds",
-    tagline: "For promises that last forever",
-    description: "Our signature bridal collection featuring timeless engagement rings, wedding bands, and ceremonial sets. Each piece is crafted to symbolize enduring love.",
-    tag: "bridal",
-    coverImage: img16,
-    heroGradient: "linear-gradient(135deg, rgba(168,85,247,0.25), rgba(236,72,153,0.15))",
-    launchDate: "Feb 14, 2026",
-    products: [
-      { id: 1, name: "Solitaire Diamond Ring", priceLabel: "₹1,25,000", category: "Rings", carat: 1.5, image: img1, availability: "in-stock" },
-      { id: 8, name: "Platinum Band Ring", priceLabel: "₹1,80,000", category: "Rings", carat: 0.5, image: img12, availability: "made-to-order" },
-      { id: 12, name: "Emerald Cocktail Ring", priceLabel: "₹2,75,000", category: "Rings", carat: 2.5, image: img6, availability: "in-stock" },
-      { id: 3, name: "Pearl Chain Necklace", priceLabel: "₹1,50,000", category: "Necklaces", carat: 2.0, image: img4, availability: "in-stock" },
-      { id: 5, name: "Diamond Stud Set", priceLabel: "₹95,000", category: "Earrings", carat: 1.0, image: img7, availability: "in-stock" },
-    ],
-  },
-  {
-    id: "c3",
-    name: "Heritage Luxe",
-    tagline: "Where tradition meets modern craft",
-    description: "A themed collection inspired by royal Indian jewelry traditions. Heavy gold pieces with intricate detailing and heritage motifs, reimagined for the contemporary wearer.",
-    tag: "themed",
-    coverImage: img17,
-    heroGradient: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(194,23,59,0.15))",
-    launchDate: "Jan 26, 2026",
-    products: [
-      { id: 6, name: "Gold Bangle Pair", priceLabel: "₹75,000", category: "Bangles", carat: 0.0, image: img8, availability: "in-stock" },
-      { id: 11, name: "Rose Gold Bangle", priceLabel: "₹55,000", category: "Bangles", carat: 0.0, image: img9, availability: "in-stock" },
-      { id: 7, name: "Ruby Pendant", priceLabel: "₹65,000", category: "Pendants", carat: 0.6, image: img11, availability: "in-stock" },
-      { id: 4, name: "Sapphire Tennis Bracelet", priceLabel: "₹2,10,000", category: "Bracelets", carat: 3.5, image: img5, availability: "in-stock" },
-    ],
-  },
-  {
-    id: "c4",
-    name: "Spring Bloom 2026",
-    tagline: "Fresh designs for the new season",
-    description: "Launching this April — our newest collection featuring pastel gemstones, delicate settings, and nature-inspired motifs. Perfect for spring gifting.",
-    tag: "new-launch",
-    coverImage: img18,
-    heroGradient: "linear-gradient(135deg, rgba(34,197,94,0.25), rgba(48,184,191,0.15))",
-    launchDate: "Apr 15, 2026",
-    products: [
-      { id: 2, name: "Emerald Drop Earrings", priceLabel: "₹85,000", category: "Earrings", carat: 0.8, image: img3, availability: "in-stock" },
-      { id: 7, name: "Ruby Pendant", priceLabel: "₹65,000", category: "Pendants", carat: 0.6, image: img11, availability: "in-stock" },
-      { id: 10, name: "Tanzanite Drop Earrings", priceLabel: "₹1,45,000", category: "Earrings", carat: 1.8, image: img14, availability: "made-to-order" },
-    ],
-  },
-];
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23181a1f'%3E%3Crect width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23555' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
+
+const HERO_GRADIENTS: Record<Collection["tag"], string> = {
+  seasonal: "linear-gradient(135deg, rgba(48,184,191,0.3), rgba(38,96,160,0.2))",
+  themed: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(194,23,59,0.15))",
+  bridal: "linear-gradient(135deg, rgba(168,85,247,0.25), rgba(236,72,153,0.15))",
+  "new-launch": "linear-gradient(135deg, rgba(34,197,94,0.25), rgba(48,184,191,0.15))",
+};
 
 const TAG_CONFIG: Record<Collection["tag"], { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   seasonal: { label: "Seasonal", color: "var(--sf-teal)", bg: "rgba(48,184,191,0.15)", icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -161,6 +90,10 @@ const FILTER_TABS: { key: FilterTag; label: string }[] = [
   { key: "themed", label: "Themed" },
 ];
 
+function formatPrice(price: number): string {
+  return "₹" + price.toLocaleString("en-IN");
+}
+
 /* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════ */
@@ -169,37 +102,108 @@ export function RetailerCollections() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTag>("all");
-  const [openCollection, setOpenCollection] = useState<Collection | null>(null);
-  const [wishlistedIds, setWishlistedIds] = useState<Set<number>>(new Set());
+  const [collectionsList, setCollectionsList] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    let list = COLLECTIONS;
-    if (activeFilter !== "all") list = list.filter((c) => c.tag === activeFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.tagline.toLowerCase().includes(q) ||
-          c.products.some((p) => p.name.toLowerCase().includes(q))
-      );
-    }
-    return list;
+  // Detail dialog state
+  const [openCollectionId, setOpenCollectionId] = useState<string | null>(null);
+  const [detailCollection, setDetailCollection] = useState<(Collection & { products: CollectionProduct[] }) | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+
+  // Fetch collections when filter or search changes
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCollections = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: Record<string, string> = {};
+        if (activeFilter !== "all") params.tag = activeFilter;
+        if (search.trim()) params.search = search.trim();
+        const data = await collectionsApi.list(params);
+        if (!cancelled) {
+          setCollectionsList(Array.isArray(data) ? data : data.collections ?? []);
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || "Failed to load collections");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchCollections();
+    return () => { cancelled = true; };
   }, [activeFilter, search]);
 
-  const toggleWishlist = (productId: number) => {
+  // Fetch collection detail when dialog opens
+  useEffect(() => {
+    if (!openCollectionId) {
+      setDetailCollection(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchDetail = async () => {
+      setDetailLoading(true);
+      try {
+        const data = await collectionsApi.detail(openCollectionId);
+        if (!cancelled) setDetailCollection(data);
+      } catch {
+        if (!cancelled) setDetailCollection(null);
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    };
+    fetchDetail();
+    return () => { cancelled = true; };
+  }, [openCollectionId]);
+
+  const toggleWishlist = useCallback(async (productId: string) => {
+    const wasWishlisted = wishlistedIds.has(productId);
+    // Optimistic update
     setWishlistedIds((prev) => {
       const next = new Set(prev);
       if (next.has(productId)) next.delete(productId);
       else next.add(productId);
       return next;
     });
-  };
+    try {
+      if (wasWishlisted) {
+        await wishlistApi.remove(productId);
+      } else {
+        await wishlistApi.add(productId);
+      }
+    } catch {
+      // Revert on failure
+      setWishlistedIds((prev) => {
+        const next = new Set(prev);
+        if (wasWishlisted) next.add(productId);
+        else next.delete(productId);
+        return next;
+      });
+    }
+  }, [wishlistedIds]);
+
+  const saveAllToWishlist = useCallback(async (products: CollectionProduct[]) => {
+    const ids = products.map((p) => p.id);
+    setWishlistedIds((prev) => new Set([...prev, ...ids]));
+    try {
+      await wishlistApi.bulkAdd(ids);
+    } catch {
+      // Revert on failure
+      setWishlistedIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+  }, []);
 
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* ── Filter tabs ──────────────────────────── */}
+        {/* -- Filter tabs */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {FILTER_TABS.map((tab) => (
             <button
@@ -218,7 +222,7 @@ export function RetailerCollections() {
           ))}
         </div>
 
-        {/* ── Search ───────────────────────────────── */}
+        {/* -- Search */}
         <div className="relative mb-6">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
@@ -242,8 +246,21 @@ export function RetailerCollections() {
           )}
         </div>
 
-        {/* ── Collection Grid ──────────────────────── */}
-        {filtered.length === 0 ? (
+        {/* -- Loading / Error / Collection Grid */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: "var(--sf-teal)" }} />
+            <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Loading collections...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Layers className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)" }} />
+            <p className="text-lg font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
+              Failed to load collections
+            </p>
+            <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>{error}</p>
+          </div>
+        ) : collectionsList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Layers className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)" }} />
             <p className="text-lg font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
@@ -255,41 +272,45 @@ export function RetailerCollections() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filtered.map((collection, i) => (
+            {collectionsList.map((collection, i) => (
               <CollectionCard
                 key={collection.id}
                 collection={collection}
                 index={i}
-                onOpen={() => setOpenCollection(collection)}
+                onOpen={() => setOpenCollectionId(collection.id)}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* ═══ Collection Detail Dialog ═══════════════ */}
-      <Dialog open={!!openCollection} onOpenChange={() => setOpenCollection(null)}>
+      {/* === Collection Detail Dialog === */}
+      <Dialog open={!!openCollectionId} onOpenChange={() => setOpenCollectionId(null)}>
         <DialogContent
           className="max-w-3xl max-h-[90vh] p-0 overflow-hidden"
           style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
         >
-          {openCollection && (
+          {detailLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--sf-teal)" }} />
+            </div>
+          ) : detailCollection ? (
             <>
               {/* Hero banner */}
               <div
                 className="relative h-48 sm:h-56 overflow-hidden"
-                style={{ background: openCollection.heroGradient }}
+                style={{ background: HERO_GRADIENTS[detailCollection.tag] || HERO_GRADIENTS.seasonal }}
               >
                 <img
-                  src={openCollection.coverImage}
-                  alt={openCollection.name}
+                  src={detailCollection.cover_image || PLACEHOLDER_IMAGE}
+                  alt={detailCollection.name}
                   className="w-full h-full object-cover opacity-40"
                 />
                 <div className="absolute inset-0 flex flex-col justify-end p-6">
                   <div className="flex items-center gap-2 mb-2">
-                    <CollectionTag tag={openCollection.tag} />
+                    <CollectionTag tag={detailCollection.tag} />
                     <span className="text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
-                      Launched {openCollection.launchDate}
+                      Launched {detailCollection.launch_date}
                     </span>
                   </div>
                   <h2
@@ -299,10 +320,10 @@ export function RetailerCollections() {
                       color: "#fff",
                     }}
                   >
-                    {openCollection.name}
+                    {detailCollection.name}
                   </h2>
                   <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
-                    {openCollection.tagline}
+                    {detailCollection.tagline}
                   </p>
                 </div>
               </div>
@@ -311,7 +332,7 @@ export function RetailerCollections() {
                 <div className="p-6 space-y-6">
                   {/* Description */}
                   <p className="text-sm leading-relaxed" style={{ color: "var(--sf-text-secondary)" }}>
-                    {openCollection.description}
+                    {detailCollection.description}
                   </p>
 
                   <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
@@ -319,20 +340,20 @@ export function RetailerCollections() {
                   {/* Products header */}
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                      {openCollection.products.length} Products in this Collection
+                      {detailCollection.products?.length ?? 0} Products in this Collection
                     </p>
                   </div>
 
                   {/* Product list */}
                   <div className="space-y-3">
-                    {openCollection.products.map((product) => (
+                    {(detailCollection.products ?? []).map((product) => (
                       <CollectionProductRow
                         key={product.id}
                         product={product}
                         wishlisted={wishlistedIds.has(product.id)}
                         onToggleWishlist={() => toggleWishlist(product.id)}
                         onView={() => {
-                          setOpenCollection(null);
+                          setOpenCollectionId(null);
                           navigate(`/retailer/product/${product.id}`);
                         }}
                         onOrder={() => {
@@ -353,9 +374,9 @@ export function RetailerCollections() {
                   className="flex-1 h-10 gap-2 text-sm"
                   style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
                   onClick={() => {
-                    openCollection.products.forEach((p) => {
-                      setWishlistedIds((prev) => new Set([...prev, p.id]));
-                    });
+                    if (detailCollection.products) {
+                      saveAllToWishlist(detailCollection.products);
+                    }
                   }}
                 >
                   <Heart className="w-4 h-4" />
@@ -366,7 +387,7 @@ export function RetailerCollections() {
                   className="flex-1 h-10 gap-2 text-sm border-[var(--sf-divider)]"
                   style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}
                   onClick={() => {
-                    alert(`Order request submitted for all ${openCollection.products.length} items!`);
+                    alert(`Order request submitted for all ${detailCollection.products?.length ?? 0} items!`);
                   }}
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -374,6 +395,10 @@ export function RetailerCollections() {
                 </Button>
               </div>
             </>
+          ) : (
+            <div className="flex items-center justify-center py-20">
+              <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Failed to load collection details.</p>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -387,6 +412,7 @@ export function RetailerCollections() {
 
 function CollectionTag({ tag }: { tag: Collection["tag"] }) {
   const cfg = TAG_CONFIG[tag];
+  if (!cfg) return null;
   return (
     <Badge
       className="text-[10px] gap-1"
@@ -408,6 +434,8 @@ function CollectionCard({
   onOpen: () => void;
 }) {
   const cfg = TAG_CONFIG[collection.tag];
+  const gradient = HERO_GRADIENTS[collection.tag] || HERO_GRADIENTS.seasonal;
+  const coverSrc = collection.cover_image || PLACEHOLDER_IMAGE;
 
   return (
     <motion.div
@@ -425,14 +453,14 @@ function CollectionCard({
       {/* Cover image with gradient overlay */}
       <div className="relative h-48 sm:h-56 overflow-hidden">
         <img
-          src={collection.coverImage}
+          src={coverSrc}
           alt={collection.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div
           className="absolute inset-0"
           style={{
-            background: `${collection.heroGradient}, linear-gradient(to top, rgba(8,10,13,0.85) 0%, transparent 60%)`,
+            background: `${gradient}, linear-gradient(to top, rgba(8,10,13,0.85) 0%, transparent 60%)`,
           }}
         />
 
@@ -450,7 +478,7 @@ function CollectionCard({
           }}
         >
           <Layers className="w-3 h-3" />
-          {collection.products.length} items
+          {collection.product_count} items
         </div>
 
         {/* Title overlay */}
@@ -470,39 +498,11 @@ function CollectionCard({
         </div>
       </div>
 
-      {/* Bottom strip — product thumbnails + CTA */}
+      {/* Bottom strip */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center">
-          {/* Stacked thumbnails */}
-          <div className="flex -space-x-2">
-            {collection.products.slice(0, 4).map((p, i) => (
-              <img
-                key={p.id}
-                src={p.image}
-                alt={p.name}
-                className="w-8 h-8 rounded-full object-cover border-2"
-                style={{
-                  borderColor: "var(--sf-bg-surface-1)",
-                  zIndex: 4 - i,
-                  position: "relative",
-                }}
-              />
-            ))}
-            {collection.products.length > 4 && (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 relative"
-                style={{
-                  backgroundColor: "var(--sf-bg-surface-2)",
-                  borderColor: "var(--sf-bg-surface-1)",
-                  color: "var(--sf-text-muted)",
-                }}
-              >
-                +{collection.products.length - 4}
-              </div>
-            )}
-          </div>
-          <span className="text-xs ml-3" style={{ color: "var(--sf-text-muted)" }}>
-            {collection.launchDate}
+          <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+            {collection.launch_date}
           </span>
         </div>
 
@@ -531,6 +531,8 @@ function CollectionProductRow({
   onView: () => void;
   onOrder: () => void;
 }) {
+  const imgSrc = product.image || PLACEHOLDER_IMAGE;
+
   return (
     <div
       className="flex items-center gap-3 p-3 rounded-xl border transition-colors hover:bg-[var(--sf-bg-surface-2)]"
@@ -538,7 +540,7 @@ function CollectionProductRow({
     >
       {/* Image */}
       <img
-        src={product.image}
+        src={imgSrc}
         alt={product.name}
         className="w-14 h-14 rounded-lg object-cover shrink-0 cursor-pointer"
         onClick={onView}
@@ -559,7 +561,7 @@ function CollectionProductRow({
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-            {product.priceLabel}
+            {formatPrice(product.base_price)}
           </span>
           <Badge
             className="text-[9px]"

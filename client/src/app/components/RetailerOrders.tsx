@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
@@ -17,6 +17,7 @@ import {
   Filter,
   Eye,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -48,12 +49,7 @@ import {
 } from "./ui/table";
 import { ScrollArea } from "./ui/scroll-area";
 
-import img1 from "../../assets/Images/1.jpg";
-import img3 from "../../assets/Images/3.jpg";
-import img4 from "../../assets/Images/4.jpg";
-import img5 from "../../assets/Images/5.jpg";
-import img7 from "../../assets/Images/7.jpg";
-import img11 from "../../assets/Images/11.jpg";
+import { orders as ordersApi } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -62,9 +58,9 @@ import img11 from "../../assets/Images/11.jpg";
 type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled";
 
 type OrderItem = {
-  id: number;
+  id: string;
   name: string;
-  image: string;
+  image: string | null;
   category: string;
   carat: number;
   metal: string;
@@ -75,109 +71,23 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  date: string;
+  order_number: string;
   status: OrderStatus;
-  items: OrderItem[];
   total: number;
-  totalLabel: string;
   note: string;
-  trackingUpdates: { date: string; status: string; detail: string }[];
+  created_at: string;
+  item_count: number;
+  items?: OrderItem[];
+  trackingUpdates?: { date: string; status: string; detail: string }[];
 };
 
 type StatusTab = "all" | OrderStatus;
 
 /* ═══════════════════════════════════════════════════════
-   MOCK DATA — replace with API
+   CONSTANTS
    ═══════════════════════════════════════════════════════ */
 
-const ORDERS: Order[] = [
-  {
-    id: "ORD-2026-0318",
-    date: "Mar 28, 2026",
-    status: "shipped",
-    items: [
-      { id: 1, name: "Solitaire Diamond Ring", image: img1, category: "Rings", carat: 1.5, metal: "18K White Gold", quantity: 1, unitPrice: 125000, priceLabel: "₹1,25,000" },
-      { id: 2, name: "Emerald Drop Earrings", image: img3, category: "Earrings", carat: 0.8, metal: "18K Yellow Gold", quantity: 2, unitPrice: 85000, priceLabel: "₹85,000" },
-    ],
-    total: 295000,
-    totalLabel: "₹2,95,000",
-    note: "Please gift wrap all items separately.",
-    trackingUpdates: [
-      { date: "Mar 28, 2026", status: "Order Placed", detail: "Your order has been received" },
-      { date: "Mar 28, 2026", status: "Confirmed", detail: "Payment verified and order confirmed" },
-      { date: "Mar 29, 2026", status: "Processing", detail: "Items are being prepared" },
-      { date: "Mar 30, 2026", status: "Shipped", detail: "Package dispatched via BlueDart — AWB: BD9283746" },
-    ],
-  },
-  {
-    id: "ORD-2026-0312",
-    date: "Mar 26, 2026",
-    status: "delivered",
-    items: [
-      { id: 3, name: "Pearl Chain Necklace", image: img4, category: "Necklaces", carat: 2.0, metal: "Platinum", quantity: 1, unitPrice: 150000, priceLabel: "₹1,50,000" },
-      { id: 4, name: "Sapphire Tennis Bracelet", image: img5, category: "Bracelets", carat: 3.5, metal: "18K White Gold", quantity: 1, unitPrice: 210000, priceLabel: "₹2,10,000" },
-    ],
-    total: 360000,
-    totalLabel: "₹3,60,000",
-    note: "",
-    trackingUpdates: [
-      { date: "Mar 26, 2026", status: "Order Placed", detail: "Your order has been received" },
-      { date: "Mar 26, 2026", status: "Confirmed", detail: "Payment verified" },
-      { date: "Mar 27, 2026", status: "Processing", detail: "Items prepared" },
-      { date: "Mar 28, 2026", status: "Shipped", detail: "Dispatched via BlueDart" },
-      { date: "Mar 29, 2026", status: "Delivered", detail: "Received by retailer" },
-    ],
-  },
-  {
-    id: "ORD-2026-0305",
-    date: "Mar 22, 2026",
-    status: "processing",
-    items: [
-      { id: 5, name: "Diamond Stud Set", image: img7, category: "Earrings", carat: 1.0, metal: "18K Rose Gold", quantity: 3, unitPrice: 95000, priceLabel: "₹95,000" },
-    ],
-    total: 285000,
-    totalLabel: "₹2,85,000",
-    note: "Need by April 5th for client delivery. Please prioritize.",
-    trackingUpdates: [
-      { date: "Mar 22, 2026", status: "Order Placed", detail: "Your order has been received" },
-      { date: "Mar 22, 2026", status: "Confirmed", detail: "Payment verified" },
-      { date: "Mar 24, 2026", status: "Processing", detail: "Custom order in production" },
-    ],
-  },
-  {
-    id: "ORD-2026-0298",
-    date: "Mar 18, 2026",
-    status: "pending",
-    items: [
-      { id: 7, name: "Ruby Pendant", image: img11, category: "Pendants", carat: 0.6, metal: "18K Yellow Gold", quantity: 1, unitPrice: 65000, priceLabel: "₹65,000" },
-    ],
-    total: 65000,
-    totalLabel: "₹65,000",
-    note: "Please confirm availability before processing.",
-    trackingUpdates: [
-      { date: "Mar 18, 2026", status: "Order Placed", detail: "Awaiting confirmation from 57Facets" },
-    ],
-  },
-  {
-    id: "ORD-2026-0280",
-    date: "Mar 10, 2026",
-    status: "cancelled",
-    items: [
-      { id: 1, name: "Solitaire Diamond Ring", image: img1, category: "Rings", carat: 1.5, metal: "Platinum", quantity: 1, unitPrice: 145000, priceLabel: "₹1,45,000" },
-    ],
-    total: 145000,
-    totalLabel: "₹1,45,000",
-    note: "",
-    trackingUpdates: [
-      { date: "Mar 10, 2026", status: "Order Placed", detail: "Your order has been received" },
-      { date: "Mar 11, 2026", status: "Cancelled", detail: "Cancelled by retailer — item out of stock in requested size" },
-    ],
-  },
-];
-
-/* ═══════════════════════════════════════════════════════
-   STATUS CONFIG
-   ═══════════════════════════════════════════════════════ */
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' fill='%23181a1f'%3E%3Crect width='80' height='80'/%3E%3C/svg%3E";
 
 const STATUS_CONFIG: Record<
   OrderStatus,
@@ -200,6 +110,22 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
+function formatPrice(price: number): string {
+  return "₹" + price.toLocaleString("en-IN");
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════ */
@@ -209,37 +135,99 @@ export function RetailerOrders() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
+  // Data
+  const [ordersList, setOrdersList] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<Record<string, number>>({});
+
+  // Detail dialog
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [newOrderNote, setNewOrderNote] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  const filtered = useMemo(() => {
-    let list = ORDERS;
-    if (activeTab !== "all") list = list.filter((o) => o.status === activeTab);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (o) =>
-          o.id.toLowerCase().includes(q) ||
-          o.items.some((it) => it.name.toLowerCase().includes(q))
-      );
-    }
-    return list;
+  // Fetch orders on mount and when filter/search change
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOrders = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params: Record<string, string> = {};
+        if (activeTab !== "all") params.status = activeTab;
+        if (search.trim()) params.search = search.trim();
+        const data = await ordersApi.list(params);
+        if (!cancelled) {
+          setOrdersList(Array.isArray(data) ? data : data.orders ?? []);
+          if (data.summary) {
+            const s: Record<string, number> = { all: data.total ?? 0 };
+            Object.entries(data.summary).forEach(([k, v]) => { s[k] = v as number; });
+            setSummary(s);
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || "Failed to load orders");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchOrders();
+    return () => { cancelled = true; };
   }, [activeTab, search]);
 
-  // Summary counts
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: ORDERS.length };
-    for (const o of ORDERS) c[o.status] = (c[o.status] || 0) + 1;
-    return c;
+  // Fetch order detail
+  const openDetail = useCallback(async (order: Order) => {
+    setDetailOrder(order);
+    setDetailLoading(true);
+    try {
+      const data = await ordersApi.detail(order.id);
+      setDetailOrder(data);
+    } catch {
+      // keep the summary-level order in the dialog
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
+
+  // Create order
+  const handleCreateOrder = useCallback(async () => {
+    setCreating(true);
+    try {
+      await ordersApi.create([], newOrderNote || undefined);
+      setNewOrderOpen(false);
+      setNewOrderNote("");
+      // Re-fetch orders
+      const data = await ordersApi.list({});
+      setOrdersList(Array.isArray(data) ? data : data.orders ?? []);
+      if (data.summary) {
+        const s: Record<string, number> = { all: data.total ?? 0 };
+        Object.entries(data.summary).forEach(([k, v]) => { s[k] = v as number; });
+        setSummary(s);
+      }
+    } catch {
+      alert("Failed to create order. Please try again.");
+    } finally {
+      setCreating(false);
+    }
+  }, [newOrderNote]);
+
+  // Summary counts derived from API summary or from local data
+  const counts = useMemo(() => {
+    if (Object.keys(summary).length > 0) return summary;
+    const c: Record<string, number> = { all: ordersList.length };
+    for (const o of ordersList) c[o.status] = (c[o.status] || 0) + 1;
+    return c;
+  }, [summary, ordersList]);
 
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* ── New Order Button ─────────────────────── */}
+        {/* -- New Order Button */}
         <div className="flex justify-end mb-6">
           <Button
             className="h-9 text-xs gap-1.5"
@@ -251,7 +239,7 @@ export function RetailerOrders() {
           </Button>
         </div>
 
-        {/* ── Summary Cards ────────────────────────── */}
+        {/* -- Summary Cards */}
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 mb-6">
           {STATUS_TABS.map((tab) => {
             const isAll = tab.key === "all";
@@ -286,7 +274,7 @@ export function RetailerOrders() {
           })}
         </div>
 
-        {/* ── Search ───────────────────────────────── */}
+        {/* -- Search */}
         <div className="flex items-center gap-3 mb-6">
           <div className="relative flex-1">
             <Search
@@ -315,8 +303,21 @@ export function RetailerOrders() {
           </div>
         </div>
 
-        {/* ── Order List ───────────────────────────── */}
-        {filtered.length === 0 ? (
+        {/* -- Order List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: "var(--sf-teal)" }} />
+            <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Loading orders...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Package className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)" }} />
+            <p className="text-lg font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
+              Failed to load orders
+            </p>
+            <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>{error}</p>
+          </div>
+        ) : ordersList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Package className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)" }} />
             <p className="text-lg font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
@@ -335,7 +336,7 @@ export function RetailerOrders() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map((order, i) => (
+            {ordersList.map((order, i) => (
               <OrderCard
                 key={order.id}
                 order={order}
@@ -344,7 +345,7 @@ export function RetailerOrders() {
                 onToggle={() =>
                   setExpandedOrder(expandedOrder === order.id ? null : order.id)
                 }
-                onViewDetail={() => setDetailOrder(order)}
+                onViewDetail={() => openDetail(order)}
                 onReorder={() => navigate("/retailer/catalog")}
               />
             ))}
@@ -352,7 +353,7 @@ export function RetailerOrders() {
         )}
       </main>
 
-      {/* ═══ New Order Dialog ═══════════════════════ */}
+      {/* === New Order Dialog === */}
       <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
         <DialogContent
           style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
@@ -389,16 +390,20 @@ export function RetailerOrders() {
               </Button>
             </DialogClose>
             <Button
-              onClick={() => navigate("/retailer/catalog")}
+              onClick={handleCreateOrder}
+              disabled={creating}
               style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
             >
-              Add Items from Catalog
+              {creating ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : null}
+              Submit Order
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ═══ Order Detail Dialog ═══════════════════ */}
+      {/* === Order Detail Dialog === */}
       <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
         <DialogContent
           className="max-w-2xl max-h-[90vh]"
@@ -409,110 +414,132 @@ export function RetailerOrders() {
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <DialogTitle style={{ color: "var(--sf-text-primary)" }}>
-                    {detailOrder.id}
+                    {detailOrder.order_number}
                   </DialogTitle>
                   <StatusBadge status={detailOrder.status} />
                 </div>
                 <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
-                  Placed on {detailOrder.date}
+                  Placed on {formatDate(detailOrder.created_at)}
                 </DialogDescription>
               </DialogHeader>
 
-              <ScrollArea className="max-h-[60vh]">
-                <div className="space-y-5 pr-2">
-                  {/* Items table */}
-                  <div>
-                    <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-secondary)" }}>
-                      ITEMS
-                    </p>
-                    <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
-                      <Table>
-                        <TableHeader>
-                          <TableRow style={{ borderColor: "var(--sf-divider)" }}>
-                            <TableHead className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Product</TableHead>
-                            <TableHead className="text-xs text-right" style={{ color: "var(--sf-text-muted)" }}>Qty</TableHead>
-                            <TableHead className="text-xs text-right" style={{ color: "var(--sf-text-muted)" }}>Price</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {detailOrder.items.map((item) => (
-                            <TableRow key={item.id} style={{ borderColor: "var(--sf-divider)" }}>
-                              <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <img
-                                    src={item.image}
-                                    alt={item.name}
-                                    className="w-10 h-10 rounded-lg object-cover shrink-0"
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>
-                                      {item.name}
-                                    </p>
-                                    <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                                      {item.category} · {item.carat} ct · {item.metal}
-                                    </p>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right text-sm" style={{ color: "var(--sf-text-primary)" }}>
-                                {item.quantity}
-                              </TableCell>
-                              <TableCell className="text-right text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>
-                                {item.priceLabel}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    <div className="flex justify-between items-center mt-3 px-1">
-                      <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                        Total
-                      </span>
-                      <span className="text-lg font-semibold" style={{ color: "var(--sf-teal)" }}>
-                        {detailOrder.totalLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  {detailOrder.note && (
-                    <div>
-                      <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-secondary)" }}>
-                        NOTES
-                      </p>
-                      <div
-                        className="rounded-lg p-3 border"
-                        style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
-                      >
-                        <div className="flex gap-2">
-                          <StickyNote className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--sf-teal)" }} />
-                          <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>
-                            {detailOrder.note}
-                          </p>
+              {detailLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} />
+                </div>
+              ) : (
+                <ScrollArea className="max-h-[60vh]">
+                  <div className="space-y-5 pr-2">
+                    {/* Items table */}
+                    {detailOrder.items && detailOrder.items.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-secondary)" }}>
+                          ITEMS
+                        </p>
+                        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+                          <Table>
+                            <TableHeader>
+                              <TableRow style={{ borderColor: "var(--sf-divider)" }}>
+                                <TableHead className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Product</TableHead>
+                                <TableHead className="text-xs text-right" style={{ color: "var(--sf-text-muted)" }}>Qty</TableHead>
+                                <TableHead className="text-xs text-right" style={{ color: "var(--sf-text-muted)" }}>Price</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {detailOrder.items.map((item) => (
+                                <TableRow key={item.id} style={{ borderColor: "var(--sf-divider)" }}>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <img
+                                        src={item.image || PLACEHOLDER_IMAGE}
+                                        alt={item.name}
+                                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>
+                                          {item.name}
+                                        </p>
+                                        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                                          {item.category} · {item.carat} ct · {item.metal}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right text-sm" style={{ color: "var(--sf-text-primary)" }}>
+                                    {item.quantity}
+                                  </TableCell>
+                                  <TableCell className="text-right text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>
+                                    {item.priceLabel || formatPrice(item.unitPrice)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="flex justify-between items-center mt-3 px-1">
+                          <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                            Total
+                          </span>
+                          <span className="text-lg font-semibold" style={{ color: "var(--sf-teal)" }}>
+                            {formatPrice(detailOrder.total)}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Tracking timeline */}
-                  <div>
-                    <p className="text-xs font-semibold mb-3" style={{ color: "var(--sf-text-secondary)" }}>
-                      ORDER TRACKING
-                    </p>
-                    <div className="space-y-0">
-                      {detailOrder.trackingUpdates.map((update, idx) => (
-                        <TrackingStep
-                          key={idx}
-                          update={update}
-                          isLast={idx === detailOrder.trackingUpdates.length - 1}
-                          isFirst={idx === 0}
-                        />
-                      ))}
-                    </div>
+                    {/* No items but total */}
+                    {(!detailOrder.items || detailOrder.items.length === 0) && (
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                          Total ({detailOrder.item_count} items)
+                        </span>
+                        <span className="text-lg font-semibold" style={{ color: "var(--sf-teal)" }}>
+                          {formatPrice(detailOrder.total)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {detailOrder.note && (
+                      <div>
+                        <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-secondary)" }}>
+                          NOTES
+                        </p>
+                        <div
+                          className="rounded-lg p-3 border"
+                          style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
+                        >
+                          <div className="flex gap-2">
+                            <StickyNote className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--sf-teal)" }} />
+                            <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>
+                              {detailOrder.note}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tracking timeline */}
+                    {detailOrder.trackingUpdates && detailOrder.trackingUpdates.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold mb-3" style={{ color: "var(--sf-text-secondary)" }}>
+                          ORDER TRACKING
+                        </p>
+                        <div className="space-y-0">
+                          {detailOrder.trackingUpdates.map((update, idx) => (
+                            <TrackingStep
+                              key={idx}
+                              update={update}
+                              isLast={idx === detailOrder.trackingUpdates!.length - 1}
+                              isFirst={idx === 0}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </ScrollArea>
+                </ScrollArea>
+              )}
 
               <DialogFooter>
                 <DialogClose asChild>
@@ -535,6 +562,7 @@ export function RetailerOrders() {
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   const cfg = STATUS_CONFIG[status];
+  if (!cfg) return null;
   return (
     <Badge
       className="text-xs gap-1"
@@ -592,16 +620,16 @@ function OrderCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                  {order.id}
+                  {order.order_number}
                 </span>
                 <StatusBadge status={order.status} />
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <span className="text-xs flex items-center gap-1" style={{ color: "var(--sf-text-muted)" }}>
-                  <CalendarDays className="w-3 h-3" /> {order.date}
+                  <CalendarDays className="w-3 h-3" /> {formatDate(order.created_at)}
                 </span>
                 <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                  {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                  {order.item_count} item{order.item_count !== 1 ? "s" : ""}
                 </span>
               </div>
             </div>
@@ -609,7 +637,7 @@ function OrderCard({
             {/* Price + chevron */}
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-                {order.totalLabel}
+                {formatPrice(order.total)}
               </span>
               <ChevronDown
                 className="w-4 h-4 transition-transform"
@@ -635,25 +663,27 @@ function OrderCard({
               <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
               <div className="p-4 sm:px-6 space-y-4">
                 {/* Item previews */}
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>
-                          {item.name}
-                        </p>
-                        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                          Qty: {item.quantity} · {item.priceLabel}
-                        </p>
+                {order.items && order.items.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {order.items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 shrink-0">
+                        <img
+                          src={item.image || PLACEHOLDER_IMAGE}
+                          alt={item.name}
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>
+                            {item.name}
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                            Qty: {item.quantity} · {item.priceLabel || formatPrice(item.unitPrice)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Note */}
                 {order.note && (
@@ -669,7 +699,7 @@ function OrderCard({
                 )}
 
                 {/* Latest tracking */}
-                {order.trackingUpdates.length > 0 && (
+                {order.trackingUpdates && order.trackingUpdates.length > 0 && (
                   <div
                     className="flex items-center gap-2 p-3 rounded-lg"
                     style={{ backgroundColor: "var(--sf-bg-surface-2)" }}
