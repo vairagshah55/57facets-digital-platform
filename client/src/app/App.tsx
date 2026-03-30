@@ -6,6 +6,7 @@ import { AdminLogin } from "./components/admin/AdminLogin";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { AdminRetailers } from "./components/admin/AdminRetailers";
+import { AdminProducts } from "./components/admin/AdminProducts";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/admin" element={<AdminAuthProvider><AdminLayout /></AdminAuthProvider>}>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="retailers" element={<AdminRetailers />} />
+          <Route path="products" element={<AdminProducts />} />
         </Route>
       </Routes>
     </BrowserRouter>

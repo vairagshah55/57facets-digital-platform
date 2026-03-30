@@ -96,3 +96,37 @@ export const adminRetailers = {
     return data;
   },
 };
+
+// ── Products (Admin) ──────────────────────────────
+export const adminProducts = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/products${qs}`);
+  },
+  detail: (id: string) => request(`/products/${id}`),
+  create: (data: any) =>
+    request("/products", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: any) =>
+    request(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request(`/products/${id}`, { method: "DELETE" }),
+  categories: () => request("/products/meta/categories"),
+  collections: () => request("/products/meta/collections"),
+  uploadImages: async (productId: string, files: FileList | File[]) => {
+    const formData = new FormData();
+    for (const file of Array.from(files)) formData.append("images", file);
+    const token = getAdminToken();
+    const res = await fetch(`http://localhost:5000/api/upload/product-images/${productId}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed");
+    return data;
+  },
+  setPrimaryImage: (imageId: string) =>
+    request(`/upload/product-images/${imageId}/primary`, { method: "PUT" }),
+  deleteImage: (imageId: string) =>
+    request(`/upload/product-images/${imageId}`, { method: "DELETE" }),
+};
