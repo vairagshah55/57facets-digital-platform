@@ -17,6 +17,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const uploadRoutes = require("./routes/upload.routes");
 const adminAuthRoutes = require("./routes/admin.auth.routes");
 const adminDashboardRoutes = require("./routes/admin.dashboard.routes");
+const adminRetailerRoutes = require("./routes/admin.retailer.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,6 +49,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
+app.use("/api/admin/retailers", adminRetailerRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

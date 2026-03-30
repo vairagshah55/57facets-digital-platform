@@ -60,3 +60,39 @@ export const adminDashboard = {
   topProducts: () => request("/dashboard/charts/top-products"),
   topRetailers: () => request("/dashboard/charts/top-retailers"),
 };
+
+// ── Retailers ─────────────────────────────────────
+export const adminRetailers = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/retailers${qs}`);
+  },
+  detail: (id: string) => request(`/retailers/${id}`),
+  create: (data: any) =>
+    request("/retailers", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: any) =>
+    request(`/retailers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  activate: (id: string) =>
+    request(`/retailers/${id}/activate`, { method: "PUT" }),
+  deactivate: (id: string) =>
+    request(`/retailers/${id}/deactivate`, { method: "PUT" }),
+  forceLogout: (id: string) =>
+    request(`/retailers/${id}/force-logout`, { method: "POST" }),
+  notify: (id: string, title: string, message: string, type = "announcement") =>
+    request(`/retailers/${id}/notify`, { method: "POST", body: JSON.stringify({ title, message, type }) }),
+  notifyBulk: (retailerIds: string[], title: string, message: string, type = "announcement") =>
+    request("/retailers/notify-bulk", { method: "POST", body: JSON.stringify({ retailerIds, title, message, type }) }),
+  importCsv: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = getAdminToken();
+    const res = await fetch(`${API_BASE}/retailers/import-csv`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Import failed");
+    return data;
+  },
+};
