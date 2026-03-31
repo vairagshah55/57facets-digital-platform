@@ -8,10 +8,19 @@ const footerLinks = [
   { label: "Inquire", href: "#contact" },
 ];
 
-const TICKER_ITEM = "57 Facets";
-const SEPARATOR = "◆";
-const REPEAT = 8;
+// const TICKER_ITEMS = [
+//   "Private B2B Jewellery Platform",       // Hero
+//   "35+ Years of Diamond Excellence",      // About
+//   "Why Retailers Partner With 57 Facets", // Why Partner
+//   "Rings · Necklaces · Bangles · Earrings · Pendants", // Stone Categories
+//   "Led by Bipin Jain & Anupreksha Jain",  // Management
+//   "Get in Touch · Mumbai · St. Louis",    // Contact
+//   "B2B Only · Strictly Confidential",     // Footer
+// ];
+// const SEPARATOR = "◆";
+// const REPEAT = 2;
 
+/* SignatureText ticker — commented out
 function SignatureText() {
   return (
     <div
@@ -31,59 +40,38 @@ function SignatureText() {
       }}
     >
       <div className="footer-ticker">
-        {Array.from({ length: REPEAT }).map((_, i) => (
-          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "20px", paddingRight: "20px" }}>
-            <span
-              style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
-                fontSize: "clamp(28px, 3.5vw, 48px)",
-                fontWeight: 500,
-                letterSpacing: "0.04em",
-                color: "rgba(255,255,255,0.22)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {TICKER_ITEM}
+        {Array.from({ length: REPEAT }).flatMap((_, r) =>
+          TICKER_ITEMS.map((item, i) => (
+            <span key={`${r}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: "20px", paddingRight: "20px" }}>
+              <span
+                style={{
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
+                  fontSize: "clamp(13px, 1.2vw, 16px)",
+                  fontWeight: 500,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.28)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item}
+              </span>
+              <span
+                style={{
+                  fontSize: "clamp(8px, 1vw, 12px)",
+                  color: "rgba(54,192,199,0.35)",
+                }}
+              >
+                {SEPARATOR}
+              </span>
             </span>
-            <span
-              style={{
-                fontSize: "clamp(8px, 1vw, 12px)",
-                color: "rgba(54,192,199,0.25)",
-              }}
-            >
-              {SEPARATOR}
-            </span>
-          </span>
-        ))}
-        {/* Duplicate for seamless loop */}
-        {Array.from({ length: REPEAT }).map((_, i) => (
-          <span key={`dup-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: "20px", paddingRight: "20px" }}>
-            <span
-              style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
-                fontSize: "clamp(28px, 3.5vw, 48px)",
-                fontWeight: 500,
-                letterSpacing: "0.04em",
-                color: "rgba(255,255,255,0.22)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {TICKER_ITEM}
-            </span>
-            <span
-              style={{
-                fontSize: "clamp(8px, 1vw, 12px)",
-                color: "rgba(54,192,199,0.25)",
-              }}
-            >
-              {SEPARATOR}
-            </span>
-          </span>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
 }
+*/
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -271,12 +259,12 @@ export function Footer() {
       </div>
 
       {/* Decorative signature — full bleed below footer content */}
-      <SignatureText />
+      {/* <SignatureText /> */}
 
       <style>{`
         .footer-ticker {
           display: inline-flex;
-          animation: footer-scroll 30s linear infinite;
+          animation: footer-scroll 40s linear infinite;
           will-change: transform;
         }
         @keyframes footer-scroll {

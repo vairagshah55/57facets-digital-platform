@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
-import aboutImg from "@/assets/Images/About section image..jpg";
+import aboutImg from "@/assets/Images/about.jpeg";
 
 // ── Per-word animated span — each calls its own useTransform ─────────────────
 function AnimatedWord({
@@ -187,7 +187,9 @@ export function AboutSection() {
               alt="57 Facets diamond jewellery"
               style={{
                 height: "clamp(220px, 26vw, 340px)",
-                width: "auto",
+                width: "clamp(124px, 14.6vw, 191px)",
+                objectFit: "cover",
+                objectPosition: "center center",
                 display: "block",
                 borderRadius: "8px",
               }}
