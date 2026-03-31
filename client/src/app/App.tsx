@@ -44,9 +44,9 @@ function HomePage() {
         <Navbar />
         <HeroSection />
         <AboutSection />
+        <WhyPartnerSection />
         <StoneCategories />
         <ManagementSection />
-        <WhyPartnerSection />
         <ContactSection />
         <Footer />
       </div>
