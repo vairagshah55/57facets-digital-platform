@@ -102,13 +102,17 @@ export function AboutSection() {
     return () => observer.disconnect();
   }, []);
 
-  const line1 = "Precision is the Point.";
-  const line2 = "Every Diamond Has";
-  const line3 = "57 Facets.";
+  // const line1 = "Precision is the Point.";
+  // const line2 = "Every Diamond Has";
+  // const line3 = "57 Facets.";
+  const line1 = "Innovation";
+   const line2 = "in Every Cut";
+  // const line3 = "57 Facets.";
   const line1Words = line1.split(" ");
   const line2Words = line2.split(" ");
-  const line3Words = line3.split(" ");
-  const totalWords = line1Words.length + line2Words.length + line3Words.length;
+  // const line3Words = line3.split(" ");
+  // const totalWords = line1Words.length + line2Words.length + line3Words.length;
+   const totalWords = line1Words.length  + line2Words.length;
 
   const headlineStyle: React.CSSProperties = {
     fontFamily: "'Melodrama', 'Georgia', serif",
@@ -131,7 +135,7 @@ export function AboutSection() {
 
         {/* ── Scroll-revealed headlines ── */}
         <div ref={headlineRef} style={{ marginBottom: "52px" }}>
-          <AnimatedHeadline
+            <AnimatedHeadline
             text={line1}
             scrollYProgress={scrollYProgress}
             wordOffset={0}
@@ -139,7 +143,7 @@ export function AboutSection() {
             gradient={false}
             style={{ ...headlineStyle, marginBottom: "0.1em" }}
           />
-          <AnimatedHeadline
+           <AnimatedHeadline
             text={line2}
             scrollYProgress={scrollYProgress}
             wordOffset={line1Words.length}
@@ -147,14 +151,14 @@ export function AboutSection() {
             gradient={false}
             style={{ ...headlineStyle, marginBottom: "0.05em" }}
           />
-          <AnimatedHeadline
+          {/* <AnimatedHeadline
             text={line3}
             scrollYProgress={scrollYProgress}
             wordOffset={line1Words.length + line2Words.length}
             totalWords={totalWords}
             gradient={true}
             style={headlineStyle}
-          />
+          /> ── */}
         </div>
 
         {/* ── Row: image left + text right ── */}
