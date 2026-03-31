@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import { products as productsApi, orders as ordersApi } from "../../lib/api";
+import { products as productsApi, orders as ordersApi, imageUrl } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
@@ -92,7 +92,7 @@ export function RetailerDashboard() {
           setCategories(
             (categoriesRes.value as any[]).map((c: any) => ({
               name: c.name,
-              image: c.image || null,
+              image: c.image ? imageUrl(c.image) : null,
             }))
           );
         }
@@ -105,7 +105,7 @@ export function RetailerDashboard() {
               name: p.name,
               price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
               category: p.category || "",
-              image: p.image || p.images?.[0] || null,
+              image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
             }))
           );
         }
@@ -118,7 +118,7 @@ export function RetailerDashboard() {
               name: p.name,
               price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
               category: p.category || "",
-              image: p.image || p.images?.[0] || null,
+              image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
             }))
           );
         }
