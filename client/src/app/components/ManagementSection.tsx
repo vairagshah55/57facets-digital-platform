@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AmbientOrbs } from "./AmbientOrbs";
+import maleImg from "../../assets/partner/57-male.jpeg";
+import femaleImg from "../../assets/partner/57-frmale.jpeg";
 
 const leaders = [
   {
@@ -11,9 +13,8 @@ const leaders = [
       "At the helm is Mr. Bipin Jain, a veteran with over 35 years of experience in the diamond jewellery industry. Beyond his business acumen, Mr. Jain is an internationally renowned Jain scholar, who has been sharing the wisdom of Jainism in India and the USA for over three decades.",
       "His deep-rooted values of integrity, honesty, and ethical living form the foundation of 57 Facets, making him a sourcing partner that jewellers can trust wholeheartedly.",
     ],
-    image:
-      "https://images.unsplash.com/photo-1645856046662-6c2116952317?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwaW5kaWFuJTIwYnVzaW5lc3NtYW4lMjBwb3J0cmFpdCUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM5MjgyMjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    facePosition: "center 55%",
+    image: maleImg,
+    facePosition: "center 10%",
     accent: "#2E6DA4",
     accentLight: "#3F8BC3",
   },
@@ -25,8 +26,7 @@ const leaders = [
       "Ms. Anupreksha Jain, an MBA from Flame University, Pune, has been an integral part of the business for the last 15 years. She manages the operational and strategic aspects with precision and foresight.",
       "She is a Jain scholar too, sharing the wisdom of Jainism in India and the USA for the past 15 years. Her Jain values and operational strength make her the perfect partner.",
     ],
-    image:
-      "https://images.unsplash.com/photo-1705164454513-d8274719fdf5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBpbmRpYW4lMjB3b21hbiUyMGV4ZWN1dGl2ZSUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MzkyODIyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+    image: femaleImg,
     facePosition: "center 70%",
     accent: "#36C0C7",
     accentLight: "#4DD6DC",
@@ -427,7 +427,7 @@ export function ManagementSection() {
           }
           /* Bipin Jain — face is in the center-upper area */
           .leader-img-0 {
-            object-position: center 40% !important;
+            object-position: center 10% !important;
           }
           /* Anupreksha Jain — face is in the lower portion */
           .leader-img-1 {
