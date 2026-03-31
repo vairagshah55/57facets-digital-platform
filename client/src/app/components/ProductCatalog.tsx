@@ -26,7 +26,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate } from "react-router";
-import { products as productsApi } from "../../lib/api";
+import { products as productsApi, imageUrl } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -93,7 +93,7 @@ function mapProduct(p: ApiProduct): Product {
     category: p.category,
     carat: p.carat ?? 0,
     availability: p.availability,
-    image: p.image || PLACEHOLDER_IMAGE,
+    image: p.image ? imageUrl(p.image) : PLACEHOLDER_IMAGE,
     isNew: p.is_new,
   };
 }
@@ -365,7 +365,7 @@ export function ProductCatalog() {
             >
               {cat.image && (
                 <img
-                  src={cat.image}
+                  src={imageUrl(cat.image)}
                   alt={cat.name}
                   className="w-6 h-6 rounded-full object-cover"
                 />

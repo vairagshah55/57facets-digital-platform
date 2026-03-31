@@ -80,7 +80,7 @@ router.get("/:id", async (req, res, next) => {
     if (rows.length === 0) throw new AppError("Product not found", 404);
 
     const { rows: images } = await query(
-      "SELECT * FROM product_images WHERE product_id = $1 ORDER BY sort_order",
+      "SELECT id, image_url AS url, is_primary, sort_order FROM product_images WHERE product_id = $1 ORDER BY sort_order",
       [req.params.id]
     );
 

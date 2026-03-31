@@ -30,7 +30,10 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 // ── Static file serving (uploaded images) ──────────
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+}, express.static(path.join(__dirname, "../uploads")));
 
 // Rate limiting
 const limiter = rateLimit({

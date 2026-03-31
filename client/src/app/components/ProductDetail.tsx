@@ -31,7 +31,7 @@ import { Textarea } from "./ui/textarea";
 import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import { products as productsApi, wishlist as wishlistApi } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
 
 import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
@@ -82,7 +82,7 @@ function mapApiProduct(raw: any): ProductData {
     raw.images && raw.images.length > 0
       ? raw.images
           .filter((img: any) => img.media_type !== "video")
-          .map((img: any) => img.image_url)
+          .map((img: any) => imageUrl(img.image_url))
       : [];
   const videoEntry =
     raw.images && raw.images.find((img: any) => img.media_type === "video");
@@ -96,7 +96,7 @@ function mapApiProduct(raw: any): ProductData {
     availability: raw.availability || "in-stock",
     basePrice: Number(raw.base_price) || 0,
     images: apiImages.length > 0 ? apiImages : FALLBACK_IMAGES,
-    video: videoEntry ? videoEntry.image_url : productVideo,
+    video: videoEntry ? imageUrl(videoEntry.image_url) : productVideo,
     isNew: Boolean(raw.is_new),
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
     specs: {
