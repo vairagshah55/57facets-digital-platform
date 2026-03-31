@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
-import aboutImg from "@/assets/Images/about.jpeg";
+import aboutVideo from "@/assets/Videos/about-video.mp4";
 
 // ── Per-word animated span — each calls its own useTransform ─────────────────
 function AnimatedWord({
@@ -182,16 +182,17 @@ export function AboutSection() {
                 "opacity 0.9s cubic-bezier(0.22,1,0.36,1) 0.1s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.1s",
             }}
           >
-            <img
-              src={aboutImg}
-              alt="57 Facets diamond jewellery"
+            <video
+              src={aboutVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
               style={{
-                height: "clamp(220px, 26vw, 340px)",
-                width: "clamp(124px, 14.6vw, 191px)",
-                objectFit: "cover",
-                objectPosition: "center center",
+                height: "clamp(260px, 30vw, 420px)",
+                width: "clamp(240px, 26vw, 380px)",
                 display: "block",
-                borderRadius: "8px",
+                mixBlendMode: "screen",
               }}
             />
           </div>

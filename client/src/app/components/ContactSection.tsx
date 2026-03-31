@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AmbientOrbs } from "./AmbientOrbs";
+import contactVideo from "@/assets/Videos/contact-video.mp4";
 
 // ─── 3D Diamond Geometry ────────────────────────────────────────────────────
 
@@ -462,8 +463,20 @@ export function ContactSection() {
               minHeight: "520px",
             }}
           >
-            <div style={{ width: "100%", maxWidth: "440px", aspectRatio: "1/1" }}>
-              <DiamondCanvas />
+            <div style={{ width: "100%", maxWidth: "280px" }}>
+              <video
+                src={contactVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                  mixBlendMode: "screen",
+                }}
+              />
             </div>
 
             <div style={{ textAlign: "center", marginTop: "32px" }}>
