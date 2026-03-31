@@ -10,7 +10,7 @@ router.use(adminAuth);
 router.get("/", async (req, res, next) => {
   try {
     const { search, category, availability, is_new, page = 1, limit = 20 } = req.query;
-    const conditions = [];
+    const conditions = ["p.is_active = true"];
     const params = [];
     let idx = 1;
 
