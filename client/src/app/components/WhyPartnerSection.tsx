@@ -56,8 +56,8 @@ const reasons = [
         <circle cx="11" cy="18.5" r="1.2" fill="#36C0C7" />
       </svg>
     ),
-    headline: "GIA Certified Jewellery",
-    body: "Every diamond we supply carries the assurance of GIA certification — internationally recognised grading that guarantees authenticity and quality.",
+    headline: "Certified Jewellery",
+    body: "Solitaires are GIA certified. Diamonds studded Jewelry are certified by GSI or IGI as per client needs.",
     accent: "#36C0C7",
     accentLight: "#4DD6DC",
   },
