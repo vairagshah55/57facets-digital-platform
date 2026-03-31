@@ -21,8 +21,9 @@ router.post("/request-otp", async (req, res, next) => {
       throw new AppError("Phone number not registered. Contact admin for access.", 403);
     }
 
-    // Generate 6-digit OTP
-    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    // Generate 6-digit OTP (static for development)
+    //  const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const otpCode =  "123456";
     const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES) || 5;
     const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
