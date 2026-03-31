@@ -87,7 +87,15 @@ router.get("/", authenticate, async (req, res, next) => {
 router.get("/categories", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      "SELECT id, name, image_url FROM categories ORDER BY sort_order"
+      `SELECT c.id, c.name,
+        COALESCE(
+          c.image_url,
+          (SELECT pi.image_url FROM product_images pi
+           JOIN products p ON p.id = pi.product_id
+           WHERE p.category_id = c.id AND pi.is_primary = true AND p.is_active = true
+           ORDER BY p.created_at DESC LIMIT 1)
+        ) AS image_url
+       FROM categories c ORDER BY c.sort_order`
     );
     res.json(rows);
   } catch (err) {

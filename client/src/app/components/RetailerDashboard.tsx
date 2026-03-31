@@ -92,7 +92,7 @@ export function RetailerDashboard() {
           setCategories(
             (categoriesRes.value as any[]).map((c: any) => ({
               name: c.name,
-              image: c.image ? imageUrl(c.image) : null,
+              image: c.image_url ? imageUrl(c.image_url) : null,
             }))
           );
         }
