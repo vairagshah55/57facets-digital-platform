@@ -274,8 +274,9 @@ export function HeroSection() {
                     maxWidth: "340px",
                   }}
                 >
-                  A private B2B jewellery platform for the world's most discerning
-                  diamond traders, curators, and luxury maisons.
+                  A trusted B2B diamond jewellery partner for retailers across India 
+                  and international markets — built on three decades of integrity, 
+                  craftsmanship, and excellence
                 </p>
               </div>
             </div>
