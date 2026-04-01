@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
-import aboutVideo from "@/assets/Videos/about-video.mp4";
+import aboutVideo from "@/assets/Videos/about-new-video.mp4";
 
 // ── Per-word animated span — each calls its own useTransform ─────────────────
 function AnimatedWord({
@@ -189,10 +189,11 @@ export function AboutSection() {
               muted
               playsInline
               style={{
-                height: "clamp(260px, 30vw, 420px)",
-                width: "clamp(240px, 26vw, 380px)",
+                height: "clamp(220px, 26vw, 360px)",
+                width: "clamp(180px, 18vw, 260px)",
                 display: "block",
                 mixBlendMode: "screen",
+                opacity: 1,
               }}
             />
           </div>
