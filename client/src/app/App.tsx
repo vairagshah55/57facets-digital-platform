@@ -57,7 +57,7 @@ function HomePage() {
 function WhatsAppButton() {
   return (
     <a
-      href="https://wa.me/919876543210"
+      href="https://wa.me/919952222384"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat on WhatsApp"
