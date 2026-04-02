@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AmbientOrbs } from "./AmbientOrbs";
-import imgRings from "@/assets/Images/rings.jpg";
-import imgNecklace from "@/assets/Images/necklace.jpg";
-import imgEarings from "@/assets/Images/earings.jpg";
+import imgRings from "@/assets/Rings/Ring 4_1x1_enh.png";
+import imgNecklace from "@/assets/Necklace/IMG-20250924-WA0109_1x1_4K_generated.jpeg";
+import imgEarings from "@/assets/Earrings/IMG-20250924-WA0111_1x1_generated.jpeg";
 import imgBracelets from "@/assets/Images/bracelates.jpg";
 import imgBangles from "@/assets/Images/bengals.jpg";
-import imgPendants from "@/assets/Images/pendants.jpg";
+import imgPendants from "@/assets/Pendants/P1.jpg";
 
 const CATEGORIES = [
   {
@@ -353,7 +353,7 @@ export function StoneCategories() {
           className="stone-carousel"
           onScroll={handleCarouselScroll}
         >
-          {CATEGORIES.map((cat, i) => (
+          {CATEGORIES.map((cat) => (
             <div key={cat.id} className="stone-carousel-item">
               <CategoryCard category={cat} delay={0} />
             </div>
