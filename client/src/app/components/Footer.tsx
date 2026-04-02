@@ -195,9 +195,9 @@ export function Footer() {
               }}
             >
               {[
-                { label: "Mumbai, India" },
-                { label: "St. Louis, USA" },
-              ].map(({ label }) => (
+                { label: "Shop#11, Atlanta CHS, Evershine Nagar, Malad West - 400064" },
+                { label: "contact@57facets.in", isEmail: true },
+              ].map(({ label, isEmail }) => (
                 <p
                   key={label}
                   style={{
@@ -206,14 +206,21 @@ export function Footer() {
                     color: "#8A929F",
                     margin: 0,
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     gap: "8px",
                   }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7 }}>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
-                    <circle cx="12" cy="9" r="2.5" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
-                  </svg>
+                  {isEmail ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7, marginTop: "1px" }}>
+                      <rect x="2" y="4" width="20" height="16" rx="2" stroke="#3F8BC3" strokeWidth="1.5" fill="none"/>
+                      <path d="M2 8l10 6 10-6" stroke="#3F8BC3" strokeWidth="1.5"/>
+                    </svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, opacity: 0.7, marginTop: "1px" }}>
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
+                      <circle cx="12" cy="9" r="2.5" stroke="#3F8BC3" strokeWidth="1.5" fill="none" />
+                    </svg>
+                  )}
                   {label}
                 </p>
               ))}
