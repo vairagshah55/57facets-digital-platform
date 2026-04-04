@@ -5,6 +5,7 @@ import {
   Clock,
   TrendingUp,
   ShoppingCart,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   Megaphone,
@@ -90,37 +91,53 @@ export function RetailerDashboard() {
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+  const [totalCategoryProducts, setTotalCategoryProducts] = useState(0);
+  const [categoryPage, setCategoryPage] = useState(1);
   const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const CATEGORY_PAGE_SIZE = 8;
+
+  /* Reset page when category changes */
+  useEffect(() => {
+    setCategoryPage(1);
+    setCategoryProducts([]);
+  }, [selectedCategory]);
 
   /* Fetch category products */
   useEffect(() => {
     if (categories.length === 0) return;
     let cancelled = false;
     async function fetchCategoryProducts() {
-      setLoadingCategoryProducts(true);
+      const isFirstPage = categoryPage === 1;
+      if (isFirstPage) setLoadingCategoryProducts(true);
+      else setLoadingMore(true);
       try {
-        const params: Record<string, string> = { limit: "12" };
+        const params: Record<string, string> = {
+          limit: String(CATEGORY_PAGE_SIZE),
+          page: String(categoryPage),
+        };
         if (selectedCategory !== "All") params.category = selectedCategory;
         const data = await productsApi.list(params);
         if (cancelled) return;
-        setCategoryProducts(
-          ((data as any).products || []).map((p: any) => ({
-            id: p.id || p._id,
-            name: p.name,
-            price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
-            category: p.category || "",
-            image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
-          }))
-        );
+        const mapped = ((data as any).products || []).map((p: any) => ({
+          id: p.id || p._id,
+          name: p.name,
+          price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
+          category: p.category || "",
+          image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
+        }));
+        setTotalCategoryProducts((data as any).total ?? mapped.length);
+        if (isFirstPage) setCategoryProducts(mapped);
+        else setCategoryProducts((prev) => [...prev, ...mapped]);
       } catch (err) {
         console.error("Category products fetch error:", err);
       } finally {
-        if (!cancelled) setLoadingCategoryProducts(false);
+        if (!cancelled) { setLoadingCategoryProducts(false); setLoadingMore(false); }
       }
     }
     fetchCategoryProducts();
     return () => { cancelled = true; };
-  }, [selectedCategory, categories]);
+  }, [selectedCategory, categoryPage, categories]);
 
   /* Fetch dashboard data */
   useEffect(() => {
@@ -327,7 +344,10 @@ export function RetailerDashboard() {
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
           products={categoryProducts}
+          total={totalCategoryProducts}
           loading={loadingCategoryProducts}
+          loadingMore={loadingMore}
+          onLoadMore={() => setCategoryPage((p) => p + 1)}
           onViewAll={() => navigate(
             selectedCategory === "All" ? "/retailer/catalog" : `/retailer/catalog?category=${encodeURIComponent(selectedCategory)}`
           )}
@@ -569,12 +589,12 @@ function TodaysOrderCard({ summary, lastOrder }: {
 
 /* ── Category Browse Section ──────────────────────────── */
 function CategoryBrowseSection({
-  categories, selectedCategory, onCategoryChange, products, loading, onViewAll,
+  categories, selectedCategory, onCategoryChange, products, total, loading, loadingMore, onLoadMore, onViewAll,
 }: {
   categories: Category[]; selectedCategory: string; onCategoryChange: (val: string) => void;
-  products: Product[]; loading: boolean; onViewAll: () => void;
+  products: Product[]; total: number; loading: boolean; loadingMore: boolean; onLoadMore: () => void; onViewAll: () => void;
 }) {
-  const navigate = useNavigate();
+  const hasMore = products.length < total;
 
   return (
     <Card className="border-[var(--sf-divider)] overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
@@ -590,7 +610,7 @@ function CategoryBrowseSection({
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
               {selectedCategory === "All" ? "All products" : selectedCategory}
-              {!loading && ` · ${products.length} items`}
+              {!loading && ` · Showing ${products.length} of ${total}`}
             </p>
           </div>
         </div>
@@ -645,36 +665,146 @@ function CategoryBrowseSection({
             <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>No products found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map((p, i) => (
-              <motion.div
-                key={`${p.id}-${i}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.025 * i, duration: 0.3 }}
-                whileHover={{ y: -3 }}
-                className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
-                style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
-                onClick={() => navigate(`/retailer/product/${p.id}`)}
-              >
-                <div className="aspect-square overflow-hidden flex items-center justify-center" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-                  {p.image ? (
-                    <img src={p.image} alt={p.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                  ) : (
-                    <ImageOff className="w-10 h-10" style={{ color: "var(--sf-text-muted)" }} />
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-[11px] mb-0.5 truncate" style={{ color: "var(--sf-text-muted)" }}>{p.category}</p>
-                  <p className="text-sm font-medium truncate mb-1" style={{ color: "var(--sf-text-primary)" }}>{p.name}</p>
-                  <p className="text-sm font-bold" style={{ color: "var(--sf-teal)" }}>{p.price}</p>
-                </div>
-              </motion.div>
+              <GalleryProductCard key={`${p.id}-${i}`} product={p} index={i} />
             ))}
+          </div>
+        )}
+
+        {/* Load More / View All */}
+        {!loading && products.length > 0 && (
+          <div className="flex items-center justify-center gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+            {hasMore && (
+              <Button
+                variant="outline"
+                className="text-sm gap-1.5 h-9 px-5 rounded-lg"
+                style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
+                disabled={loadingMore}
+                onClick={onLoadMore}
+              >
+                {loadingMore ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</>
+                ) : (
+                  <>Load More</>
+                )}
+              </Button>
+            )}
+            <Button
+              className="text-sm gap-1.5 h-9 px-5 rounded-lg"
+              style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
+              onClick={onViewAll}
+            >
+              View All in Catalog <ChevronRight className="w-4 h-4" />
+            </Button>
+            {!hasMore && products.length > 0 && (
+              <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                All {total} items loaded
+              </span>
+            )}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* ── Gallery Product Card (with image navigation) ─────── */
+function GalleryProductCard({ product, index }: { product: Product; index: number }) {
+  const navigate = useNavigate();
+  const [images, setImages] = useState<string[]>(product.image ? [product.image] : []);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [fetched, setFetched] = useState(false);
+
+  async function loadImages() {
+    if (fetched) return;
+    setFetched(true);
+    try {
+      const detail = await productsApi.detail(String(product.id));
+      const imgs: string[] = ((detail as any).images || []).map((img: any) =>
+        typeof img === "string" ? imageUrl(img) : imageUrl(img.url || img.image_url)
+      );
+      if (imgs.length > 0) setImages(imgs);
+    } catch { /* keep primary image */ }
+  }
+
+  function prev(e: React.MouseEvent) {
+    e.stopPropagation();
+    loadImages();
+    setActiveIdx((i) => (i > 0 ? i - 1 : images.length - 1));
+  }
+
+  function next(e: React.MouseEvent) {
+    e.stopPropagation();
+    loadImages();
+    setActiveIdx((i) => (i < images.length - 1 ? i + 1 : 0));
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.025 * index, duration: 0.3 }}
+      whileHover={{ y: -3 }}
+      className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
+      style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
+      onClick={() => navigate(`/retailer/product/${product.id}`)}
+    >
+      {/* Image area */}
+      <div className="aspect-square overflow-hidden relative" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
+        {images.length > 0 ? (
+          <img
+            src={images[activeIdx] || images[0]}
+            alt={product.name}
+            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageOff className="w-10 h-10" style={{ color: "var(--sf-text-muted)" }} />
+          </div>
+        )}
+
+        {/* Nav arrows — visible on hover */}
+        <button
+          onClick={prev}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          onClick={next}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        {/* Dots — visible when multiple images loaded */}
+        {images.length > 1 && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {images.map((_, i) => (
+              <span
+                key={i}
+                className="block rounded-full transition-all"
+                style={{
+                  width: i === activeIdx ? "14px" : "5px",
+                  height: "5px",
+                  backgroundColor: i === activeIdx ? "var(--sf-teal)" : "rgba(255,255,255,0.5)",
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <p className="text-[11px] mb-0.5 truncate" style={{ color: "var(--sf-text-muted)" }}>{product.category}</p>
+        <p className="text-sm font-medium truncate mb-1" style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
+        <p className="text-sm font-bold" style={{ color: "var(--sf-teal)" }}>{product.price}</p>
+      </div>
+    </motion.div>
   );
 }
 
@@ -687,7 +817,7 @@ function ProductGrid({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
       {products.map((product, i) => (
         <motion.div
           key={`${product.id}-${i}`}

@@ -322,11 +322,10 @@ export function ProductDetail() {
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-opacity opacity-0 group-hover:opacity-100 hover:opacity-100"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
                     style={{
                       backgroundColor: "rgba(8, 10, 13, 0.6)",
                       color: "var(--sf-text-primary)",
-                      opacity: 0.7,
                     }}
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -337,7 +336,6 @@ export function ProductDetail() {
                     style={{
                       backgroundColor: "rgba(8, 10, 13, 0.6)",
                       color: "var(--sf-text-primary)",
-                      opacity: 0.7,
                     }}
                   >
                     <ChevronRight className="w-5 h-5" />
