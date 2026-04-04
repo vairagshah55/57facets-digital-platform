@@ -2,7 +2,6 @@ import { useNavigate, useLocation, Outlet } from "react-router";
 import {
   Bell,
   LogOut,
-  Search,
   Menu,
   X,
   Package,
@@ -265,21 +264,6 @@ function RetailerHeader() {
             ))}
           </div>
 
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm mx-4 hidden sm:block">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-              style={{ color: "var(--sf-text-muted)" }}
-            />
-            <Input
-              placeholder="Search..."
-              className="pl-10 h-9 border-[var(--sf-divider)]"
-              style={{
-                backgroundColor: "var(--sf-bg-surface-2)",
-                color: "var(--sf-text-primary)",
-              }}
-            />
-          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1">
