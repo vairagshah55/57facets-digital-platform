@@ -7,6 +7,7 @@ import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { AdminRetailers } from "./components/admin/AdminRetailers";
 import { AdminProducts } from "./components/admin/AdminProducts";
+import { AdminProductWizard } from "./components/admin/AdminProductWizard";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -69,6 +70,12 @@ function HomePage() {
 
 function WhatsAppButton() {
   const [hovered, setHovered] = useState(false);
+  const location = useLocation();
+
+  // Hide on admin and retailer routes
+  if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/retailer")) {
+    return null;
+  }
 
   return (
     <a
@@ -140,6 +147,8 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="retailers" element={<AdminRetailers />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="products/new" element={<AdminProductWizard />} />
+          <Route path="products/:id/edit" element={<AdminProductWizard />} />
         </Route>
       </Routes>
     </BrowserRouter>
