@@ -1,20 +1,31 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { Menu, X } from "lucide-react";
 import logoImg from "@/assets/Images/logo_png.png";
 
 const navLinks = [
-  { label: "About", href: "#about" },
+  { label: "About",       href: "#about" },
   { label: "Collections", href: "#collections" },
-  { label: "Management", href: "#management" },
+  { label: "Management",  href: "#management" },
   { label: "Why Partner", href: "#why-partner" },
-  { label: "Inquire", href: "#contact" },
+  { label: "Inquire",     href: "#contact" },
 ];
 
 export function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleNavClick = (href: string) => {
+    const section = href.replace("#", "");
+    if (isHome) {
+      document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      navigate("/", { state: { scrollTo: section } });
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -42,7 +53,11 @@ export function Navbar() {
         <div className="max-w-screen-xl mx-auto px-8 h-20 flex items-center justify-between">
 
           {/* Logo */}
-          <a href="#" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <a
+            href={isHome ? "#" : "/"}
+            onClick={isHome ? undefined : (e) => { e.preventDefault(); navigate("/"); }}
+            style={{ textDecoration: "none", display: "flex", alignItems: "center" }}
+          >
             <img
               src={logoImg}
               alt="57 Facets"
@@ -57,6 +72,7 @@ export function Navbar() {
                 <a
                   href={link.href}
                   className="nav-desktop-link"
+                  onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}
                   style={{
                     fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "12px",
@@ -66,6 +82,7 @@ export function Navbar() {
                     textDecoration: "none",
                     textTransform: "uppercase",
                     transition: "color 0.2s ease",
+                    cursor: "pointer",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
                   onMouseLeave={(e) => (e.currentTarget.style.color = "#A8B0BF")}
@@ -166,7 +183,7 @@ export function Navbar() {
               >
                 <a
                   href={link.href}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(e) => { e.preventDefault(); setMobileOpen(false); handleNavClick(link.href); }}
                   className="nav-mobile-link"
                   style={{
                     display: "inline-block",

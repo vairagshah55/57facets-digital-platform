@@ -142,41 +142,21 @@ function ReasonCard({
         }}
       />
 
-      {/* Index + Icon row */}
+      {/* Icon */}
       <div
         style={{
+          width: "44px",
+          height: "44px",
+          borderRadius: "50%",
+          border: `1px solid ${hovered ? reason.accent : "#1a2a3f"}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "center",
+          backgroundColor: hovered ? `${reason.accent}18` : "transparent",
+          transition: "border-color 0.3s ease, background-color 0.3s ease",
         }}
       >
-        <span
-          style={{
-            fontFamily: "'General Sans', 'Inter', sans-serif",
-            fontSize: "10px",
-            fontWeight: 500,
-            letterSpacing: "0.2em",
-            color: reason.accentLight,
-            opacity: 0.6,
-          }}
-        >
-          {reason.index}
-        </span>
-        <div
-          style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "50%",
-            border: `1px solid ${hovered ? reason.accent : "#1a2a3f"}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: hovered ? `${reason.accent}18` : "transparent",
-            transition: "border-color 0.3s ease, background-color 0.3s ease",
-          }}
-        >
-          {reason.icon}
-        </div>
+        {reason.icon}
       </div>
 
       {/* Headline */}
@@ -267,20 +247,13 @@ function MobileCarousel() {
                 background: `linear-gradient(to right, ${reason.accent}, ${reason.accentLight}, transparent)`,
               }} />
 
-              {/* Index + Icon */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{
-                  fontFamily: "'General Sans', 'Inter', sans-serif",
-                  fontSize: "10px", fontWeight: 500, letterSpacing: "0.2em",
-                  color: reason.accentLight, opacity: 0.6,
-                }}>{reason.index}</span>
-                <div style={{
-                  width: "44px", height: "44px", borderRadius: "50%",
-                  border: `1px solid ${reason.accent}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  backgroundColor: `${reason.accent}18`,
-                }}>{reason.icon}</div>
-              </div>
+              {/* Icon */}
+              <div style={{
+                width: "44px", height: "44px", borderRadius: "50%",
+                border: `1px solid ${reason.accent}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backgroundColor: `${reason.accent}18`,
+              }}>{reason.icon}</div>
 
               <h3 style={{
                 fontFamily: "'Melodrama', 'Georgia', serif",

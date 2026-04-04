@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router";
 import { AmbientOrbs } from "./AmbientOrbs";
 import imgRings from "@/assets/Rings/Ring 4_1x1_enh.png";
 import imgNecklace from "@/assets/Necklace/IMG-20250924-WA0109_1x1_4K_generated.jpeg";
@@ -148,7 +149,7 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
           </span>
         </div>
 
-        {/* Inquire Now CTA — bottom of image, appears on hover */}
+        {/* View More CTA — bottom of image, appears on hover */}
         <div
           style={{
             position: "absolute",
@@ -162,9 +163,9 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
             pointerEvents: hovered ? "auto" : "none",
           }}
         >
-          <a
-            href="#contact"
-            aria-label={`Inquire about ${category.name}`}
+          <Link
+            to={`/category/${category.name.toLowerCase()}`}
+            aria-label={`View more about ${category.name}`}
             onMouseEnter={() => setCtaHovered(true)}
             onMouseLeave={() => setCtaHovered(false)}
             style={{
@@ -186,8 +187,8 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
               transition: "background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease",
             }}
           >
-            Inquire Now
-          </a>
+            View More
+          </Link>
         </div>
       </div>
 
