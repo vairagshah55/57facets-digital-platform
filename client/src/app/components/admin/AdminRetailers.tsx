@@ -5,6 +5,7 @@ import {
   Plus,
   Upload,
   Eye,
+  Pencil,
   Bell,
   Power,
   PowerOff,
@@ -253,6 +254,8 @@ export function AdminRetailers() {
 
   /* ── Dialog states ──────────────────────────────── */
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editRetailer, setEditRetailer] = useState<Retailer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [bulkNotifyOpen, setBulkNotifyOpen] = useState(false);
@@ -667,6 +670,18 @@ export function AdminRetailers() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
+                              title="Edit retailer"
+                              onClick={() => { setEditRetailer(r); setEditOpen(true); }}
+                            >
+                              <Pencil
+                                className="w-3.5 h-3.5"
+                                style={{ color: "var(--sf-teal)" }}
+                              />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
                               title={
                                 r.is_active ? "Deactivate" : "Activate"
                               }
@@ -777,6 +792,14 @@ export function AdminRetailers() {
          DIALOGS
          ══════════════════════════════════════════════ */}
 
+      {/* ── Edit Retailer Dialog ─────────────────── */}
+      <EditRetailerDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        retailer={editRetailer}
+        onSaved={() => { setEditOpen(false); fetchRetailers(); }}
+      />
+
       {/* ── Create Retailer Dialog ────────────────── */}
       <CreateRetailerDialog
         open={createOpen}
@@ -831,6 +854,209 @@ export function AdminRetailers() {
         }}
       />
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   EDIT RETAILER DIALOG
+   ═══════════════════════════════════════════════════════ */
+
+function EditRetailerDialog({
+  open,
+  onOpenChange,
+  retailer,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  retailer: Retailer | null;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    business_name: "",
+    company_name: "",
+    city: "",
+    state: "",
+    tier: "standard",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (retailer) {
+      setForm({
+        name: retailer.name || "",
+        phone: retailer.phone || "",
+        email: retailer.email || "",
+        business_name: retailer.business_name || "",
+        company_name: retailer.company_name || "",
+        city: retailer.city || "",
+        state: retailer.state || "",
+        tier: retailer.tier || "standard",
+      });
+      setError("");
+    }
+  }, [retailer]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) {
+      setError("Name and phone are required.");
+      return;
+    }
+    if (!retailer) return;
+    setSaving(true);
+    setError("");
+    try {
+      await adminRetailers.update(retailer.id, form);
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message || "Failed to update retailer.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-lg"
+        style={{
+          backgroundColor: "var(--sf-bg-surface-1)",
+          borderColor: "var(--sf-divider)",
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ color: "var(--sf-text-primary)" }}>
+            Edit Retailer
+          </DialogTitle>
+          <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
+            Update details for {retailer?.name || "retailer"}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FieldInput
+              label="Name *"
+              value={form.name}
+              onChange={(v) => setForm({ ...form, name: v })}
+              placeholder="Full name"
+            />
+            <FieldInput
+              label="Phone *"
+              value={form.phone}
+              onChange={(v) => setForm({ ...form, phone: v })}
+              placeholder="+91..."
+            />
+          </div>
+          <FieldInput
+            label="Email"
+            value={form.email}
+            onChange={(v) => setForm({ ...form, email: v })}
+            placeholder="email@example.com"
+            type="email"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <FieldInput
+              label="Business Name"
+              value={form.business_name}
+              onChange={(v) => setForm({ ...form, business_name: v })}
+              placeholder="Business name"
+            />
+            <FieldInput
+              label="Company Name"
+              value={form.company_name}
+              onChange={(v) => setForm({ ...form, company_name: v })}
+              placeholder="Company name"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FieldInput
+              label="City"
+              value={form.city}
+              onChange={(v) => setForm({ ...form, city: v })}
+              placeholder="City"
+            />
+            <FieldInput
+              label="State"
+              value={form.state}
+              onChange={(v) => setForm({ ...form, state: v })}
+              placeholder="State"
+            />
+          </div>
+          <div>
+            <label
+              className="text-xs font-medium block mb-1"
+              style={{ color: "var(--sf-text-secondary)" }}
+            >
+              Tier
+            </label>
+            <Select
+              value={form.tier}
+              onValueChange={(v) => setForm({ ...form, tier: v })}
+            >
+              <SelectTrigger
+                className="h-9"
+                style={{
+                  backgroundColor: "var(--sf-bg-surface-2)",
+                  borderColor: "var(--sf-divider)",
+                  color: "var(--sf-text-primary)",
+                }}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                style={{
+                  backgroundColor: "var(--sf-bg-surface-2)",
+                  borderColor: "var(--sf-divider)",
+                }}
+              >
+                {TIERS.map((t) => (
+                  <SelectItem key={t} value={t} className="capitalize">
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {error && (
+            <p className="text-xs flex items-center gap-1" style={{ color: "var(--destructive)" }}>
+              <AlertCircle className="w-3 h-3" />
+              {error}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              style={{
+                borderColor: "var(--sf-divider)",
+                color: "var(--sf-text-secondary)",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={saving}
+              style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
+            >
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

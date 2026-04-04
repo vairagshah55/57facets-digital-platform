@@ -25,6 +25,7 @@ import { RetailerWishlist } from "./components/RetailerWishlist";
 import { RetailerOrders } from "./components/RetailerOrders";
 import { RetailerCollections } from "./components/RetailerCollections";
 import { CategoryGallery } from "./components/CategoryGallery";
+import { ThemeProvider } from "../context/ThemeContext";
 
 function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -125,7 +126,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/category/:name" element={<CategoryGallery />} />
         <Route path="/retailer/login" element={<RetailerLogin />} />
-        <Route path="/retailer" element={<RetailerLayout />}>
+        <Route path="/retailer" element={<ThemeProvider><RetailerLayout /></ThemeProvider>}>
           <Route path="dashboard" element={<RetailerDashboard />} />
           <Route path="catalog" element={<ProductCatalog />} />
           <Route path="product/:id" element={<ProductDetail />} />

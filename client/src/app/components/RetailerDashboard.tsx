@@ -213,21 +213,7 @@ export function RetailerDashboard() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Welcome */}
-      <motion.div {...fadeUp} className="mb-8">
-        <h1
-          className="text-2xl sm:text-3xl font-semibold mb-1"
-          style={{
-            fontFamily: "'Melodrama', 'Georgia', serif",
-            color: "var(--sf-text-primary)",
-          }}
-        >
-          Welcome back, {retailerName}
-        </h1>
-        <p style={{ color: "var(--sf-text-secondary)" }} className="text-sm">
-          Here's what's happening with your account today
-        </p>
-      </motion.div>
+
 
       {isFirstTime ? (
         /* ── First-time login: only product display ───── */

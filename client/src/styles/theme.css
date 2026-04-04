@@ -52,6 +52,66 @@
   --sf-text-secondary: #A8B0BF;
   --sf-text-muted: #8A929F;
   --sf-divider: #1C2535;
+  --sf-overlay-bg: rgba(8, 10, 13, 0.92);
+}
+
+/* ── Retailer Portal Light Theme ──────────────────────── */
+.retailer-light {
+  /* Brand tokens */
+  --sf-bg-base: #F5F7FA;
+  --sf-bg-surface-1: #FFFFFF;
+  --sf-bg-surface-2: #F0F2F5;
+  --sf-bg-surface-3: #E8EBF0;
+  --sf-blue-primary: #1D4E8A;
+  --sf-blue-secondary: #2A6AAF;
+  --sf-teal: #148B91;
+  --sf-text-primary: #0F172A;
+  --sf-text-secondary: #334155;
+  --sf-text-muted: #64748B;
+  --sf-divider: #D5DAE1;
+  --sf-overlay-bg: rgba(255, 255, 255, 0.96);
+
+  /* shadcn/ui core tokens — used by Tailwind classes & components */
+  --background: #F5F7FA;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #1D4E8A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0F2F5;
+  --secondary-foreground: #334155;
+  --muted: #F0F2F5;
+  --muted-foreground: #64748B;
+  --accent: #148B91;
+  --accent-foreground: #FFFFFF;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #D5DAE1;
+  --input: #F0F2F5;
+  --input-background: #FFFFFF;
+  --ring: #2A6AAF;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #1D4E8A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F0F2F5;
+  --sidebar-accent-foreground: #334155;
+  --sidebar-border: #D5DAE1;
+  --sidebar-ring: #2A6AAF;
+
+  color-scheme: light;
+}
+
+/* Light mode: sharper text rendering */
+.retailer-light,
+.retailer-light * {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
 }
 
 .dark {

@@ -4,6 +4,8 @@ import {
   LogOut,
   Menu,
   X,
+  Sun,
+  Moon,
   Package,
   Truck,
   CheckCircle2,
@@ -28,6 +30,8 @@ import {
 } from "./ui/popover";
 
 import { notifications as notificationsApi } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 /* ═══════════════════════════════════════════════════════
    NOTIFICATION TYPES
@@ -126,6 +130,8 @@ export function RetailerLayout() {
 function RetailerHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { retailer } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -205,78 +211,91 @@ function RetailerHeader() {
   return (
     <>
       <nav
-        className="sticky top-0 z-50 border-b backdrop-blur-md"
+        className="sticky top-0 z-50"
         style={{
-          backgroundColor: "rgba(8, 10, 13, 0.85)",
-          borderColor: "var(--sf-divider)",
+          backgroundColor: theme === "light" ? "rgba(255,255,255,0.98)" : "var(--sf-overlay-bg)",
+          backdropFilter: theme === "light" ? "none" : "blur(20px)",
+          WebkitBackdropFilter: theme === "light" ? "none" : "blur(20px)",
+          borderBottom: "1px solid var(--sf-divider)",
         }}
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Logo */}
+        <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+          {/* Brand — diamond + company name */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-3 cursor-pointer shrink-0"
+            className="flex items-center gap-2.5 cursor-pointer shrink-0 mr-8"
             style={{ background: "none", border: "none" }}
           >
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <path
-                d="M16 2L28 12L16 30L4 12L16 2Z"
-                stroke="var(--sf-teal)"
-                strokeWidth="1.5"
-                fill="none"
-              />
-              <path
-                d="M4 12H28M16 2L12 12L16 30L20 12L16 2Z"
-                stroke="var(--sf-teal)"
-                strokeWidth="1.5"
-                fill="none"
-                opacity="0.5"
-              />
-            </svg>
-            <span
-              className="text-lg font-semibold hidden sm:inline"
+            <div
+              className="flex items-center justify-center"
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
-                color: "var(--sf-text-primary)",
+                width: "34px",
+                height: "34px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, rgba(48,184,191,0.15) 0%, rgba(38,96,160,0.15) 100%)",
+                border: "1px solid rgba(48,184,191,0.2)",
               }}
             >
-              57Facets
-            </span>
+              <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+                <path d="M16 2L28 12L16 30L4 12L16 2Z" stroke="var(--sf-teal)" strokeWidth="1.8" fill="none" />
+                <path d="M4 12H28M16 2L12 12L16 30L20 12L16 2Z" stroke="var(--sf-teal)" strokeWidth="1.2" fill="none" opacity="0.4" />
+              </svg>
+            </div>
+            <div className="hidden sm:block">
+              <span
+                className="block text-[15px] font-semibold leading-tight"
+                style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
+              >
+                {retailer?.companyName || retailer?.name || "Retailer"}
+              </span>
+              <span
+                className="block text-[10px] font-medium tracking-widest uppercase"
+                style={{ color: "var(--sf-teal)", opacity: 0.7 }}
+              >
+                Retailer Portal
+              </span>
+            </div>
           </button>
 
+          {/* Divider */}
+          <div className="hidden md:block h-7 mr-6" style={{ width: "1px", backgroundColor: "var(--sf-divider)" }} />
+
           {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-1 ml-6">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                style={{
-                  background: pathname.startsWith(item.path) ? "var(--sf-bg-surface-2)" : "none",
-                  border: "none",
-                  color: pathname.startsWith(item.path)
-                    ? "var(--sf-text-primary)"
-                    : "var(--sf-text-muted)",
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="hidden md:flex items-center gap-0.5 flex-1">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname.startsWith(item.path);
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all cursor-pointer"
+                  style={{
+                    background: isActive
+                      ? "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(38,96,160,0.08) 100%)"
+                      : "none",
+                    border: isActive ? "1px solid rgba(48,184,191,0.18)" : "1px solid transparent",
+                    color: isActive ? "var(--sf-text-primary)" : "var(--sf-text-muted)",
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
-
-          {/* Actions */}
-          <div className="flex items-center gap-1">
-            {/* Notification bell with popover */}
+          {/* Right actions */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Notification bell */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative"
+                  className="relative h-9 w-9 rounded-lg"
                   style={{ color: "var(--sf-text-secondary)" }}
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-[18px] h-[18px]" />
                   {unreadCount > 0 && (
                     <span
                       className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
@@ -299,23 +318,15 @@ function RetailerHeader() {
                   borderColor: "var(--sf-divider)",
                 }}
               >
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <h3
-                      className="text-sm font-semibold"
-                      style={{ color: "var(--sf-text-primary)" }}
-                    >
+                    <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
                       Notifications
                     </h3>
                     {unreadCount > 0 && (
                       <Badge
                         className="text-[10px] h-5 px-1.5"
-                        style={{
-                          backgroundColor: "var(--sf-teal)",
-                          color: "var(--sf-bg-base)",
-                          border: "none",
-                        }}
+                        style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)", border: "none" }}
                       >
                         {unreadCount} new
                       </Badge>
@@ -325,22 +336,14 @@ function RetailerHeader() {
                     <button
                       onClick={markAllRead}
                       className="text-xs flex items-center gap-1"
-                      style={{
-                        color: "var(--sf-teal)",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                      }}
+                      style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}
                     >
                       <Check className="w-3 h-3" />
                       Mark all read
                     </button>
                   )}
                 </div>
-
                 <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
-
-                {/* Notification list */}
                 <ScrollArea className="max-h-[400px]">
                   <div className="py-1">
                     {loadingNotifications ? (
@@ -350,13 +353,8 @@ function RetailerHeader() {
                       </div>
                     ) : notifications.length === 0 ? (
                       <div className="flex flex-col items-center py-10">
-                        <Bell
-                          className="w-8 h-8 mb-2"
-                          style={{ color: "var(--sf-text-muted)" }}
-                        />
-                        <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
-                          No notifications
-                        </p>
+                        <Bell className="w-8 h-8 mb-2" style={{ color: "var(--sf-text-muted)" }} />
+                        <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>No notifications</p>
                       </div>
                     ) : (
                       notifications.map((notification) => (
@@ -372,13 +370,65 @@ function RetailerHeader() {
               </PopoverContent>
             </Popover>
 
+            {/* Theme toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="h-9 w-9 rounded-lg"
+              style={{ color: "var(--sf-text-secondary)" }}
+            >
+              {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+            </Button>
+
+            {/* Divider */}
+            <div className="hidden sm:block h-7" style={{ width: "1px", backgroundColor: "var(--sf-divider)" }} />
+
+            {/* User area */}
+            <div className="hidden sm:flex items-center gap-3 ml-1">
+              {/* Avatar circle */}
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--sf-teal), var(--sf-blue-primary))",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: "#FFFFFF",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {(retailer?.name || "R").charAt(0).toUpperCase()}
+              </div>
+              <div className="leading-none">
+                <span
+                  className="block text-[13px] font-medium"
+                  style={{ color: "var(--sf-text-primary)" }}
+                >
+                  {retailer?.name || "Retailer"}
+                </span>
+                <span
+                  className="block text-[11px] mt-0.5"
+                  style={{ color: "var(--sf-text-muted)" }}
+                >
+                  {retailer?.companyName || ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Logout */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate("/retailer/login")}
-              style={{ color: "var(--sf-text-secondary)" }}
+              title="Logout"
+              className="h-9 w-9 rounded-lg"
+              style={{ color: "var(--sf-text-muted)" }}
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-[18px] h-[18px]" />
             </Button>
 
             {/* Mobile hamburger */}
@@ -397,7 +447,7 @@ function RetailerHeader() {
           <div
             className="md:hidden border-t px-4 pb-3 pt-2"
             style={{
-              backgroundColor: "rgba(8, 10, 13, 0.95)",
+              backgroundColor: "var(--sf-overlay-bg)",
               borderColor: "var(--sf-divider)",
             }}
           >
