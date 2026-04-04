@@ -54,7 +54,7 @@ export function RetailerLogin() {
     try {
       const data = await authApi.verifyOtp(phone, otp);
       login(data.token, data.retailer);
-      navigate("/retailer/dashboard");
+      navigate("/retailer/catalog");
     } catch (err: any) {
       setError(err.message || "Invalid OTP");
     } finally {
