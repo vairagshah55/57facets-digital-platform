@@ -14,9 +14,9 @@ import {
   Filter,
   Loader2,
   Package,
-  ArrowUpRight,
+
   Layers,
-  Heart,
+
   CreditCard,
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -85,8 +85,8 @@ export function RetailerDashboard() {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
-  const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
-  const [recentOrders, setRecentOrders] = useState<{ id: string; number: string; status: string; total: string; date: string; items: number }[]>([]);
+  const [, setLastOrder] = useState<LastOrder | null>(null);
+  const [, setRecentOrders] = useState<{ id: string; number: string; status: string; total: string; date: string; items: number }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -328,7 +328,7 @@ export function RetailerDashboard() {
           {/* ═══ Last Order + Announcements + Recent Orders ═══ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
-              <TodaysOrderCard summary={orderSummary} lastOrder={lastOrder} />
+              <TodaysOrderCard summary={orderSummary} />
             </motion.div>
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
               <AnnouncementsCard announcements={ANNOUNCEMENTS} />
@@ -447,51 +447,6 @@ function SectionBar({ icon, title, subtitle, actionLabel, onAction }: {
   );
 }
 
-/* ── Last Order Card ──────────────────────────────────── */
-function LastOrderCard({ order }: { order: LastOrder }) {
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    pending: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
-    processing: { bg: "rgba(59,130,246,0.15)", text: "#3b82f6" },
-    completed: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
-    cancelled: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
-  };
-  const sc = statusColors[order.status] || statusColors.pending;
-
-  return (
-    <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(48,184,191,0.12)" }}>
-              <Clock className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-            </div>
-            <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Last Order</h3>
-          </div>
-          <Badge className="text-[11px] capitalize" style={{ backgroundColor: sc.bg, color: sc.text, border: "none" }}>
-            {order.status}
-          </Badge>
-        </div>
-
-        <div className="rounded-xl p-4" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>{order.id}</span>
-            <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{order.date}</span>
-          </div>
-          <Separator className="mb-3" style={{ backgroundColor: "var(--sf-divider)" }} />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{order.items} items</p>
-              <p className="text-base font-bold mt-0.5" style={{ color: "var(--sf-teal)" }}>{order.total}</p>
-            </div>
-            <Button variant="ghost" className="text-xs gap-1 h-8 px-3 rounded-lg" style={{ color: "var(--sf-teal)" }}>
-              Details <ArrowUpRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 /* ── Announcements Card ───────────────────────────────── */
 function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
@@ -543,9 +498,8 @@ function AnnouncementsCard({ announcements }: { announcements: Announcement[] })
 }
 
 /* ── Today's Order Card ───────────────────────────────── */
-function TodaysOrderCard({ summary, lastOrder }: {
+function TodaysOrderCard({ summary }: {
   summary: OrderSummary | null;
-  lastOrder: LastOrder | null;
 }) {
   const stats = [
     { label: "Orders", value: String(summary?.totalOrders ?? 0), icon: <ShoppingCart />, accent: "var(--sf-teal)" },
@@ -749,6 +703,7 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
       className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
       style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
       onClick={() => navigate(`/retailer/product/${product.id}`)}
+      onMouseEnter={loadImages}
     >
       {/* Image area */}
       <div className="aspect-square overflow-hidden relative" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
@@ -764,36 +719,31 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
           </div>
         )}
 
-        {/* Nav arrows — visible on hover */}
+        {/* Left arrow — appears on hover */}
         <button
           onClick={prev}
-          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
+
+        {/* Right arrow — appears on hover */}
         <button
           onClick={next}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
 
-        {/* Dots — visible when multiple images loaded */}
+        {/* Image counter — appears on hover */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-            {images.map((_, i) => (
-              <span
-                key={i}
-                className="block rounded-full transition-all"
-                style={{
-                  width: i === activeIdx ? "14px" : "5px",
-                  height: "5px",
-                  backgroundColor: i === activeIdx ? "var(--sf-teal)" : "rgba(255,255,255,0.5)",
-                }}
-              />
-            ))}
+          <div
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-secondary)" }}
+          >
+            {activeIdx + 1} / {images.length}
           </div>
         )}
       </div>
