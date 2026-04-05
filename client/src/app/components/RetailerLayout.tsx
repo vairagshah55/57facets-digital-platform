@@ -21,8 +21,6 @@ import { useState, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { Separator } from "./ui/separator";
-import { ScrollArea } from "./ui/scroll-area";
 import {
   Popover,
   PopoverTrigger,
@@ -136,6 +134,7 @@ function RetailerHeader() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [notifPopoverOpen, setNotifPopoverOpen] = useState(false);
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -202,7 +201,8 @@ function RetailerHeader() {
         markAsRead(notification.id);
       }
       if (notification.action_path) {
-        navigate(notification.action_path);
+        setNotifPopoverOpen(false);
+        setTimeout(() => navigate(notification.action_path!), 100);
       }
     },
     [markAsRead, navigate]
@@ -287,86 +287,131 @@ function RetailerHeader() {
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto">
             {/* Notification bell */}
-            <Popover>
+            <Popover open={notifPopoverOpen} onOpenChange={setNotifPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative h-9 w-9 rounded-lg"
+                  className="relative h-9 w-9 rounded-xl"
                   style={{ color: "var(--sf-text-secondary)" }}
                 >
                   <Bell className="w-[18px] h-[18px]" />
                   {unreadCount > 0 && (
-                    <span
-                      className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      style={{
-                        backgroundColor: "var(--sf-teal)",
-                        color: "var(--sf-bg-base)",
-                      }}
-                    >
-                      {unreadCount}
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[9px] font-bold animate-pulse"
+                      style={{ backgroundColor: "#ef4444", color: "#fff", boxShadow: "0 0 8px rgba(239,68,68,0.4)" }}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent
                 align="end"
-                sideOffset={8}
-                className="w-[380px] p-0 border"
+                sideOffset={10}
+                className="w-[380px] p-0 border-0 flex flex-col rounded-2xl overflow-hidden shadow-2xl"
                 style={{
                   backgroundColor: "var(--sf-bg-surface-1)",
-                  borderColor: "var(--sf-divider)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  maxHeight: "min(70vh, 500px)",
+                  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
                 }}
               >
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                      Notifications
-                    </h3>
+                {/* Header */}
+                <div className="px-5 py-4 shrink-0"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(135deg, rgba(48,184,191,0.06) 0%, transparent 60%)" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                          style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
                     {unreadCount > 0 && (
-                      <Badge
-                        className="text-[10px] h-5 px-1.5"
-                        style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)", border: "none" }}
-                      >
-                        {unreadCount} new
-                      </Badge>
+                      <button onClick={markAllRead}
+                        className="text-[11px] font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all hover:bg-[rgba(48,184,191,0.08)]"
+                        style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}>
+                        <Check className="w-3 h-3" /> Mark all read
+                      </button>
                     )}
                   </div>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-xs flex items-center gap-1"
-                      style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}
-                    >
-                      <Check className="w-3 h-3" />
-                      Mark all read
-                    </button>
+                </div>
+
+                {/* Scrollable list */}
+                <div className="flex-1 overflow-y-auto min-h-0"
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}>
+                  {loadingNotifications ? (
+                    <div className="flex flex-col items-center py-14">
+                      <Loader2 className="w-5 h-5 animate-spin mb-2" style={{ color: "var(--sf-teal)" }} />
+                      <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Loading...</p>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="flex flex-col items-center py-14">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
+                        <Bell className="w-6 h-6" style={{ color: "var(--sf-text-muted)" }} />
+                      </div>
+                      <p className="text-sm font-medium" style={{ color: "var(--sf-text-muted)" }}>All caught up!</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: "var(--sf-text-muted)", opacity: 0.6 }}>No new notifications</p>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      {notifications.map((notification, idx) => {
+                        const cfg = NOTIFICATION_ICON[notification.type] || NOTIFICATION_ICON.system;
+                        const isUnread = !notification.is_read;
+                        return (
+                          <button key={notification.id}
+                            onClick={() => handleNotificationClick(notification)}
+                            className="w-full text-left px-4 py-3 flex gap-3 transition-all duration-150 relative group"
+                            style={{
+                              background: isUnread ? "rgba(48,184,191,0.03)" : "transparent",
+                              borderBottom: idx < notifications.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                              cursor: "pointer", border: "none",
+                              borderLeft: isUnread ? "2px solid var(--sf-teal)" : "2px solid transparent",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = isUnread ? "rgba(48,184,191,0.03)" : "transparent"; }}>
+                            {/* Icon */}
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-200 group-hover:scale-105"
+                              style={{ backgroundColor: cfg.bg }}>
+                              <span style={{ color: cfg.color }}>{cfg.icon}</span>
+                            </div>
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-[13px] truncate leading-tight"
+                                  style={{ color: "var(--sf-text-primary)", fontWeight: isUnread ? 600 : 400 }}>
+                                  {notification.title}
+                                </p>
+                                {isUnread && (
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "var(--sf-teal)" }} />
+                                )}
+                              </div>
+                              <p className="text-[11px] mt-0.5 line-clamp-2 leading-relaxed"
+                                style={{ color: "var(--sf-text-muted)" }}>
+                                {notification.message}
+                              </p>
+                              <p className="text-[10px] mt-1.5" style={{ color: "var(--sf-text-muted)", opacity: 0.6 }}>
+                                {formatRelativeTime(notification.created_at)}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
-                <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
-                <ScrollArea className="max-h-[400px]">
-                  <div className="py-1">
-                    {loadingNotifications ? (
-                      <div className="flex flex-col items-center py-10">
-                        <Loader2 className="w-6 h-6 animate-spin mb-2" style={{ color: "var(--sf-teal)" }} />
-                        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Loading...</p>
-                      </div>
-                    ) : notifications.length === 0 ? (
-                      <div className="flex flex-col items-center py-10">
-                        <Bell className="w-8 h-8 mb-2" style={{ color: "var(--sf-text-muted)" }} />
-                        <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>No notifications</p>
-                      </div>
-                    ) : (
-                      notifications.map((notification) => (
-                        <NotificationItem
-                          key={notification.id}
-                          notification={notification}
-                          onClick={() => handleNotificationClick(notification)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+
+                {/* Footer */}
+                <div className="shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button
+                    onClick={() => { setNotifPopoverOpen(false); setTimeout(() => navigate("/retailer/notifications"), 100); }}
+                    className="w-full py-3 text-xs font-semibold text-center transition-all hover:bg-[rgba(48,184,191,0.04)]"
+                    style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}>
+                    View All Notifications
+                  </button>
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -475,69 +520,3 @@ function RetailerHeader() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════
-   NOTIFICATION ITEM
-   ═══════════════════════════════════════════════════════ */
-
-function NotificationItem({
-  notification,
-  onClick,
-}: {
-  notification: Notification;
-  onClick: () => void;
-}) {
-  const cfg = NOTIFICATION_ICON[notification.type] || NOTIFICATION_ICON.system;
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-4 py-3 flex gap-3 transition-colors hover:bg-[var(--sf-bg-surface-2)]"
-      style={{
-        background: notification.is_read ? "none" : "rgba(48, 184, 191, 0.04)",
-        border: "none",
-        cursor: "pointer",
-      }}
-    >
-      {/* Icon */}
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-        style={{ backgroundColor: cfg.bg, color: cfg.color }}
-      >
-        {cfg.icon}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className="text-sm truncate"
-            style={{
-              color: "var(--sf-text-primary)",
-              fontWeight: notification.is_read ? 400 : 600,
-            }}
-          >
-            {notification.title}
-          </p>
-          {!notification.is_read && (
-            <div
-              className="w-2 h-2 rounded-full shrink-0 mt-1.5"
-              style={{ backgroundColor: "var(--sf-teal)" }}
-            />
-          )}
-        </div>
-        <p
-          className="text-xs mt-0.5 line-clamp-2"
-          style={{ color: "var(--sf-text-secondary)" }}
-        >
-          {notification.message}
-        </p>
-        <p
-          className="text-[10px] mt-1"
-          style={{ color: "var(--sf-text-muted)" }}
-        >
-          {formatRelativeTime(notification.created_at)}
-        </p>
-      </div>
-    </button>
-  );
-}

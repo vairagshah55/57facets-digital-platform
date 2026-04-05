@@ -25,6 +25,18 @@ UPDATE orders SET status = 'processing' WHERE status = 'confirmed';
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
 ALTER TABLE orders ADD CONSTRAINT orders_status_check
   CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled'));
+
+-- Admin notifications table
+CREATE TABLE IF NOT EXISTS admin_notifications (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type          VARCHAR(30) NOT NULL DEFAULT 'order',
+  title         VARCHAR(255) NOT NULL,
+  message       TEXT,
+  is_read       BOOLEAN DEFAULT false,
+  action_path   VARCHAR(255),
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_admin_notifications_unread ON admin_notifications(is_read) WHERE is_read = false;
 `;
 
 async function run() {

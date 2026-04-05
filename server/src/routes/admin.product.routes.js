@@ -187,6 +187,17 @@ router.post("/", async (req, res, next) => {
       [req.admin.id, rows[0].id, JSON.stringify({ name, sku })]
     );
 
+    // Notify all active retailers about new product
+    const { rows: retailers } = await query("SELECT id FROM retailers WHERE is_active = true");
+    if (retailers.length > 0) {
+      await query(
+        `INSERT INTO notifications (retailer_id, type, title, message, action_path) VALUES ${
+          retailers.map((_, i) => `($${i * 4 + 1},'new-collection',$${i * 4 + 2},$${i * 4 + 3},$${i * 4 + 4})`).join(",")
+        }`,
+        retailers.flatMap((r) => [r.id, "New Product Added", `${name} has been added to the catalog. Check it out!`, `/retailer/product/${rows[0].id}`])
+      );
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) {
     next(err);

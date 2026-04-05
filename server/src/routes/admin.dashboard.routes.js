@@ -169,4 +169,39 @@ router.get("/charts/top-retailers", async (req, res, next) => {
   }
 });
 
+// ── GET /api/admin/dashboard/notifications ────────
+router.get("/notifications", async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      "SELECT * FROM admin_notifications ORDER BY created_at DESC LIMIT 50"
+    );
+    const { rows: countRows } = await query(
+      "SELECT COUNT(*) FROM admin_notifications WHERE is_read = false"
+    );
+    res.json({ notifications: rows, unreadCount: parseInt(countRows[0].count) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /api/admin/dashboard/notifications/:id/read
+router.put("/notifications/:id/read", async (req, res, next) => {
+  try {
+    await query("UPDATE admin_notifications SET is_read = true WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /api/admin/dashboard/notifications/read-all
+router.put("/notifications/read-all", async (req, res, next) => {
+  try {
+    await query("UPDATE admin_notifications SET is_read = true WHERE is_read = false");
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

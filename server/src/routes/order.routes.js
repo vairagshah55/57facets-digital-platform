@@ -149,11 +149,18 @@ router.post("/", async (req, res, next) => {
       [order.id]
     );
 
-    // Create notification
+    // Notify retailer
     await client.query(
       `INSERT INTO notifications (retailer_id, type, title, message, action_path)
        VALUES ($1, 'order-update', 'Order Placed', $2, '/retailer/orders')`,
       [req.retailer.id, `${orderNumber} has been submitted for review`]
+    );
+
+    // Notify admin
+    await client.query(
+      `INSERT INTO admin_notifications (type, title, message, action_path)
+       VALUES ('order', $1, $2, '/admin/orders')`,
+      [`New Order: ${orderNumber}`, `${req.retailer.name || "A retailer"} placed order ${orderNumber} — ${items.length} item(s), total ₹${total.toLocaleString("en-IN")}`]
     );
 
     await client.query("COMMIT");

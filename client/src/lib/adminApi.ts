@@ -59,6 +59,9 @@ export const adminDashboard = {
   ordersChart: () => request("/dashboard/charts/orders"),
   topProducts: () => request("/dashboard/charts/top-products"),
   topRetailers: () => request("/dashboard/charts/top-retailers"),
+  notifications: () => request("/dashboard/notifications"),
+  markNotificationRead: (id: string) => request(`/dashboard/notifications/${id}/read`, { method: "PUT" }),
+  markAllNotificationsRead: () => request("/dashboard/notifications/read-all", { method: "PUT" }),
 };
 
 // ── Retailers ─────────────────────────────────────

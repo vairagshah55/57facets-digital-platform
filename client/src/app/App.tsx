@@ -9,6 +9,8 @@ import { AdminRetailers } from "./components/admin/AdminRetailers";
 import { AdminProducts } from "./components/admin/AdminProducts";
 import { AdminProductWizard } from "./components/admin/AdminProductWizard";
 import { AdminOrders } from "./components/admin/AdminOrders";
+import { AdminNotifications } from "./components/admin/AdminNotifications";
+import { RetailerNotifications } from "./components/RetailerNotifications";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -141,6 +143,7 @@ export default function App() {
           <Route path="collections" element={<RetailerCollections />} />
           <Route path="wishlist" element={<RetailerWishlist />} />
           <Route path="orders" element={<RetailerOrders />} />
+          <Route path="notifications" element={<RetailerNotifications />} />
         </Route>
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminAuthProvider><AdminLogin /></AdminAuthProvider>} />
@@ -151,6 +154,7 @@ export default function App() {
           <Route path="products/new" element={<AdminProductWizard />} />
           <Route path="products/:id/edit" element={<AdminProductWizard />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="notifications" element={<AdminNotifications />} />
         </Route>
       </Routes>
     </BrowserRouter>
