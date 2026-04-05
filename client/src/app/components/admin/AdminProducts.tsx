@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Plus,
+  Download,
   Pencil,
   Trash2,
   ChevronLeft,
@@ -122,6 +123,54 @@ const fadeUp = {
 
 const PAGE_SIZE = 15;
 
+function downloadSampleFile() {
+  const headers = [
+    "product_code", "name", "sku", "description", "category",
+    "base_price", "metal_type", "gold_colour", "metal_weight",
+    "diamond_type", "diamond_shape", "diamond_color", "diamond_clarity",
+    "diamond_certification", "carat", "setting_type", "hallmark",
+    "width_mm", "height_mm", "color_stone_name", "color_stone_quality",
+    "availability", "lead_time_days", "min_order_qty", "max_order_qty",
+    "is_new", "occasion_tags", "finish_options",
+  ];
+
+  // Hint row showing allowed values
+  const hints = [
+    "e.g. 100891", "Product Name", "RNG-18K-001", "Description text", "Ring / Necklace / Bracelet",
+    "45000", "14KT | 18KT | 22KT", "YELLOW | ROSE | WHITE | TWO TONE", "4.5 (grams)",
+    "Natural | Lab-grown", "Round | Princess | Pan | Baguette | Marquise | Oval | Solitaire | Emerald | Cushion | Radiant",
+    "EF | FG | GH | HI | IJ", "VVS | VVS-VS | VS | VS-SI | SI",
+    "GIA | IGI", "1.5", "Prong | Bezel | Pave", "BIS 916",
+    "2.5 (mm)", "8.0 (mm)",
+    "Precious Stones | Semi Precious Stones | Synthetic Stones | Pearl | Beads | Kundan",
+    "EMERALD | Ruby | BLUE SAPPHIRE | CORAL | etc.",
+    "in-stock | made-to-order | out-of-stock", "7 (days)", "1", "100",
+    "true | false", "wedding, anniversary", "Polished, Matte",
+  ];
+
+  // Sample data row
+  const sample = [
+    "100891", "Radiant Diamond Solitaire Ring", "RNG-18K-001", "Elegant 18K gold ring with natural diamond", "Ring",
+    "45000", "18KT", "YELLOW", "4.5",
+    "Natural", "Round", "EF", "VVS",
+    "GIA", "1.5", "Prong", "BIS 916",
+    "2.5", "8.0", "Precious Stones", "EMERALD",
+    "in-stock", "7", "1", "100",
+    "true", "wedding, anniversary", "Polished",
+  ];
+
+  const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+  const csv = [headers, hints, sample].map((row) => row.map(escape).join(",")).join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "product_sample_template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function AdminProducts() {
   const navigate = useNavigate();
 
@@ -230,15 +279,27 @@ export function AdminProducts() {
             {total} total product{total !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
-          onClick={() => navigate("/admin/products/new")}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}
+            onClick={downloadSampleFile}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Sample File
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
+            onClick={() => navigate("/admin/products/new")}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Product
+          </Button>
+        </div>
       </motion.div>
 
       {/* ── Filters ─────────────────────────────────── */}
