@@ -572,69 +572,86 @@ export function ProductDetail() {
                 };
                 const sw = swatchMap[selectedGoldColour || product.customization.goldColours[0]] || swatchMap.YELLOW;
                 const purity = selectedGoldType || product.customization.goldTypes[0] || "";
-                const multiPurity = product.customization.goldTypes.length > 1;
-                const multiColour = product.customization.goldColours.length > 1;
                 return (
-                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Palette className="w-3.5 h-3.5" style={{ color: "#D4A843" }} />
-                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Metal</span>
-                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                        style={{ backgroundColor: "rgba(212,168,67,0.1)", color: "#D4A843" }}>
-                        {[purity, sw.label].filter(Boolean).join(" · ")}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {product.customization.goldTypes.length > 0 && (
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: "linear-gradient(135deg, rgba(212,168,67,0.25), rgba(212,168,67,0.07))", border: "1px solid rgba(212,168,67,0.28)" }}>
+                          <Palette className="w-4 h-4" style={{ color: "#D4A843" }} />
+                        </div>
                         <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>Purity</p>
-                          {multiPurity ? (
-                            <div className="flex gap-1.5">
-                              {product.customization.goldTypes.map((opt) => {
-                                const active = selectedGoldType === opt;
-                                return (
-                                  <button key={opt} onClick={() => setSelectedGoldType(opt)}
-                                    className="flex-1 py-2 rounded-lg text-[11px] font-bold text-center transition-all duration-200"
-                                    style={{
-                                      backgroundColor: active ? "rgba(212,168,67,0.12)" : "rgba(255,255,255,0.03)",
-                                      border: active ? "1.5px solid #D4A843" : "1px solid rgba(255,255,255,0.06)",
-                                      color: active ? "#D4A843" : "var(--sf-text-muted)",
-                                    }}>{opt}</button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{purity}</p>
-                          )}
+                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
+                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select purity & colour</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
+                        style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.26)" }}>
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sw.bg }} />
+                        <span className="text-[11px] font-bold" style={{ color: "#D4A843" }}>
+                          {[purity, sw.label].filter(Boolean).join(" · ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Single row: Purity | Colour */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {product.customization.goldTypes.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>Purity</span>
+                          <div className="flex gap-1.5">
+                            {product.customization.goldTypes.map((opt) => {
+                              const active = selectedGoldType === opt;
+                              return (
+                                <button key={opt} onClick={() => setSelectedGoldType(opt)}
+                                  className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
+                                  style={{
+                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.22), rgba(212,168,67,0.07))" : "rgba(255,255,255,0.03)",
+                                    border: active ? "1.5px solid rgba(212,168,67,0.58)" : "1px solid rgba(255,255,255,0.08)",
+                                    color: active ? "#D4A843" : "var(--sf-text-secondary)",
+                                    boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.1), 0 4px 12px rgba(212,168,67,0.2)" : "none",
+                                    transform: active ? "translateY(-1px)" : "none",
+                                  }}>{opt}</button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
+
+                      {product.customization.goldTypes.length > 0 && product.customization.goldColours.length > 0 && (
+                        <div className="w-px self-stretch rounded-full" style={{ background: "rgba(255,255,255,0.08)", minHeight: 28 }} />
+                      )}
+
                       {product.customization.goldColours.length > 0 && (
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>Colour</p>
-                          {multiColour ? (
-                            <div className="flex gap-2">
-                              {product.customization.goldColours.map((opt) => {
-                                const active = selectedGoldColour === opt;
-                                const s = swatchMap[opt] || swatchMap.YELLOW;
-                                return (
-                                  <button key={opt} onClick={() => setSelectedGoldColour(opt)}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-200"
-                                    style={{
-                                      backgroundColor: active ? "rgba(212,168,67,0.1)" : "rgba(255,255,255,0.03)",
-                                      border: active ? "1.5px solid #D4A843" : "1px solid rgba(255,255,255,0.06)",
-                                    }}>
-                                    <span className="w-4 h-4 rounded-full shrink-0" style={{ background: s.bg }} />
-                                    <span className="text-[11px] font-semibold" style={{ color: active ? "#D4A843" : "var(--sf-text-muted)" }}>{s.label}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="w-4 h-4 rounded-full" style={{ background: sw.bg }} />
-                              <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{sw.label}</span>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>Colour</span>
+                          <div className="flex gap-1.5">
+                            {product.customization.goldColours.map((opt) => {
+                              const active = selectedGoldColour === opt;
+                              const s = swatchMap[opt] || swatchMap.YELLOW;
+                              return (
+                                <button key={opt} onClick={() => setSelectedGoldColour(opt)}
+                                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                                  style={{
+                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.18), rgba(212,168,67,0.05))" : "rgba(255,255,255,0.03)",
+                                    border: active ? "1.5px solid rgba(212,168,67,0.52)" : "1px solid rgba(255,255,255,0.08)",
+                                    boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.08), 0 4px 12px rgba(212,168,67,0.18)" : "none",
+                                    transform: active ? "translateY(-1px)" : "none",
+                                  }}>
+                                  <span className="w-4 h-4 rounded-full shrink-0" style={{ background: s.bg }} />
+                                  <span className="text-[11px] font-bold" style={{ color: active ? "#D4A843" : "var(--sf-text-secondary)" }}>{s.label}</span>
+                                  {active && (
+                                    <span className="absolute flex items-center justify-center rounded-full"
+                                      style={{ top: -6, right: -6, width: 16, height: 16, background: "#D4A843", boxShadow: "0 2px 6px rgba(212,168,67,0.55)" }}>
+                                      <Check className="w-2 h-2 text-white" strokeWidth={3} />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -653,64 +670,110 @@ export function ProductDetail() {
                   { label: "Clarity", options: product.customization.diamondQualities, selected: selectedDiamondQuality, set: setSelectedDiamondQuality },
                 ].filter((f) => f.options.length > 0);
                 return (
-                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Diamond className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
-                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Diamond</span>
-                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                        style={{ backgroundColor: "rgba(48,184,191,0.08)", color: "var(--sf-teal)" }}>
-                        {[shape, shade, clarity].filter(Boolean).join(" · ")}
-                      </span>
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: "linear-gradient(135deg, rgba(48,184,191,0.25), rgba(48,184,191,0.07))", border: "1px solid rgba(48,184,191,0.28)" }}>
+                          <Diamond className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                        </div>
+                        <div>
+                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
+                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select cut, shade & clarity</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
+                        style={{ background: "rgba(48,184,191,0.08)", border: "1px solid rgba(48,184,191,0.22)" }}>
+                        <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
+                          {[shape, shade, clarity].filter(Boolean).join(" · ")}
+                        </span>
+                      </div>
                     </div>
-                    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${fields.length}, 1fr)` }}>
-                      {fields.map((field) => {
-                        const single = field.options.length === 1;
-                        return (
-                          <div key={field.label}>
-                            <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{field.label}</p>
-                            {single ? (
-                              <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{field.options[0]}</p>
-                            ) : (
-                              <div className="flex flex-wrap gap-1.5">
-                                {field.options.map((opt) => {
-                                  const active = field.selected === opt;
-                                  return (
-                                    <button key={opt} onClick={() => field.set(opt)}
-                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200"
-                                      style={{
-                                        backgroundColor: active ? "var(--sf-teal)" : "rgba(255,255,255,0.03)",
-                                        border: active ? "1.5px solid var(--sf-teal)" : "1px solid rgba(255,255,255,0.06)",
-                                        color: active ? "#fff" : "var(--sf-text-muted)",
-                                        boxShadow: active ? "0 2px 10px rgba(48,184,191,0.3)" : "none",
-                                      }}>{opt}</button>
-                                  );
-                                })}
-                              </div>
-                            )}
+
+                    {/* Single row: Shape | Shade | Clarity */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {fields.map((field, fi) => (
+                        <>
+                          {fi > 0 && (
+                            <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "rgba(255,255,255,0.08)", minHeight: 28 }} />
+                          )}
+                          <div key={field.label} className="flex items-center gap-2">
+                            <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {field.options.map((opt) => {
+                                const active = field.selected === opt;
+                                return (
+                                  <button key={opt} onClick={() => field.set(opt)}
+                                    className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
+                                    style={{
+                                      background: active
+                                        ? "linear-gradient(135deg, rgba(48,184,191,0.22), rgba(48,184,191,0.07))"
+                                        : "rgba(255,255,255,0.03)",
+                                      border: active ? "1.5px solid rgba(48,184,191,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                                      color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
+                                      boxShadow: active ? "0 0 0 3px rgba(48,184,191,0.1), 0 4px 12px rgba(48,184,191,0.2)" : "none",
+                                      transform: active ? "translateY(-1px)" : "none",
+                                    }}>{opt}</button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        );
-                      })}
+                        </>
+                      ))}
                     </div>
                     {/* Carat */}
-                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>Carat</p>
-                        <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>{selectedCarat} ct</span>
+                    <div className="mt-5 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: "linear-gradient(135deg, rgba(48,184,191,0.25), rgba(48,184,191,0.07))", border: "1px solid rgba(48,184,191,0.28)" }}>
+                            <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                          </div>
+                          <div>
+                            <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Carat Weight</p>
+                            <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select diamond weight</p>
+                          </div>
+                        </div>
+                        <div className="flex items-baseline gap-1 px-4 py-2 rounded-full"
+                          style={{ background: "rgba(48,184,191,0.1)", border: "1px solid rgba(48,184,191,0.24)" }}>
+                          <span className="text-[18px] font-black leading-none" style={{ color: "var(--sf-teal)" }}>{selectedCarat}</span>
+                          <span className="text-[11px] font-bold" style={{ color: "rgba(48,184,191,0.6)" }}>ct</span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-8 gap-1">
-                        {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS).map((ct) => {
-                          const active = selectedCarat === ct;
-                          return (
-                            <button key={ct} onClick={() => setSelectedCarat(ct)}
-                              className="py-2 rounded-lg text-[11px] font-bold text-center transition-all duration-200"
-                              style={{
-                                backgroundColor: active ? "var(--sf-teal)" : "rgba(255,255,255,0.03)",
-                                border: active ? "1.5px solid var(--sf-teal)" : "1px solid rgba(255,255,255,0.05)",
-                                color: active ? "#fff" : "var(--sf-text-muted)",
-                                boxShadow: active ? "0 2px 10px rgba(48,184,191,0.3)" : "none",
-                              }}>{ct}</button>
-                          );
-                        })}
+                      <div className="flex flex-wrap gap-3">
+                        {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS)
+                          .sort((a, b) => a - b)
+                          .map((ct) => {
+                            const active = selectedCarat === ct;
+                            return (
+                              <button key={ct} onClick={() => setSelectedCarat(ct)}
+                                className="relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200"
+                                style={{
+                                  width: 68, height: 68,
+                                  background: active
+                                    ? "linear-gradient(145deg, rgba(48,184,191,0.26), rgba(48,184,191,0.08))"
+                                    : "rgba(255,255,255,0.025)",
+                                  border: active ? "1.5px solid rgba(48,184,191,0.65)" : "1px solid rgba(255,255,255,0.07)",
+                                  boxShadow: active
+                                    ? "0 0 0 4px rgba(48,184,191,0.1), 0 8px 28px rgba(48,184,191,0.28), inset 0 1px 0 rgba(255,255,255,0.12)"
+                                    : "inset 0 1px 0 rgba(255,255,255,0.04)",
+                                  transform: active ? "translateY(-2px)" : "translateY(0)",
+                                }}>
+                                <span className="text-[16px] font-black leading-none"
+                                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
+                                <span className="text-[9px] font-semibold tracking-widest mt-1.5 leading-none uppercase"
+                                  style={{ color: active ? "rgba(48,184,191,0.65)" : "var(--sf-text-muted)" }}>ct</span>
+                                {active && (
+                                  <span className="absolute flex items-center justify-center rounded-full"
+                                    style={{ top: -8, right: -8, width: 20, height: 20, background: "var(--sf-teal)", boxShadow: "0 2px 10px rgba(48,184,191,0.6)" }}>
+                                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>
@@ -723,24 +786,114 @@ export function ProductDetail() {
                   name,
                   quality: product.customization.colorStoneQualities[i] || "",
                 }));
+                const gemPalette: Record<string, { dot: string; glow: string; bg: string; activeBg: string; border: string; text: string; tag: string }> = {
+                  "Precious Stones":      { dot: "#27AE60", glow: "rgba(39,174,96,0.45)",   bg: "rgba(39,174,96,0.06)",   activeBg: "rgba(39,174,96,0.13)",   border: "rgba(39,174,96,0.38)",   text: "#2ECC71", tag: "rgba(39,174,96,0.15)"   },
+                  "Semi Precious Stones": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)",  bg: "rgba(41,128,185,0.06)",  activeBg: "rgba(41,128,185,0.13)",  border: "rgba(41,128,185,0.38)",  text: "#5DADE2", tag: "rgba(41,128,185,0.15)"  },
+                  "Synthetic Stones":     { dot: "#C0392B", glow: "rgba(192,57,43,0.45)",   bg: "rgba(192,57,43,0.06)",   activeBg: "rgba(192,57,43,0.13)",   border: "rgba(192,57,43,0.38)",   text: "#E74C3C", tag: "rgba(192,57,43,0.15)"   },
+                  "Pearl":                { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
+                  "Beads":                { dot: "#D68910", glow: "rgba(214,137,16,0.45)",  bg: "rgba(214,137,16,0.06)",  activeBg: "rgba(214,137,16,0.13)",  border: "rgba(214,137,16,0.38)",  text: "#F39C12", tag: "rgba(214,137,16,0.15)"  },
+                  "Kundan":               { dot: "#B7950B", glow: "rgba(183,149,11,0.45)",  bg: "rgba(183,149,11,0.06)",  activeBg: "rgba(183,149,11,0.13)",  border: "rgba(183,149,11,0.38)",  text: "#D4A843", tag: "rgba(183,149,11,0.15)"  },
+                };
+                const fallback = { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" };
+                const selectedPair = pairs.find(p => p.name === selectedColorStone && p.quality === selectedColorStoneQuality);
+                const selC = selectedPair ? (gemPalette[selectedPair.name] || fallback) : fallback;
+
+                // Short label for category tag
+                const categoryShort: Record<string, string> = {
+                  "Precious Stones": "Precious",
+                  "Semi Precious Stones": "Semi Precious",
+                  "Synthetic Stones": "Synthetic",
+                  "Pearl": "Pearl",
+                  "Beads": "Beads",
+                  "Kundan": "Kundan",
+                };
+
                 return (
-                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Gem className="w-3.5 h-3.5" style={{ color: "#9B59B6" }} />
-                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Color Stones</span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {pairs.map((pair, i) => (
-                        <div key={i} className="flex items-center gap-2 text-sm">
-                          <span className="font-semibold" style={{ color: "var(--sf-text-primary)" }}>{pair.name}</span>
-                          {pair.quality && (
-                            <>
-                              <span style={{ color: "var(--sf-text-muted)" }}>—</span>
-                              <span style={{ color: "#9B59B6" }}>{pair.quality}</span>
-                            </>
-                          )}
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+
+                    {/* Section header */}
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
+                          style={{
+                            background: `linear-gradient(135deg, ${selC.activeBg}, ${selC.bg})`,
+                            border: `1px solid ${selC.border}`,
+                            boxShadow: selectedColorStone ? `0 2px 10px ${selC.glow.replace("0.45", "0.3")}` : "none",
+                          }}>
+                          <Gem className="w-4 h-4 transition-colors duration-300" style={{ color: selC.dot }} />
                         </div>
-                      ))}
+                        <div>
+                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Color Stones</p>
+                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select stone & quality</p>
+                        </div>
+                      </div>
+                      {selectedColorStone && (
+                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
+                          style={{ background: selC.activeBg, border: `1px solid ${selC.border}` }}>
+                          <span className="w-2 h-2 rounded-full shrink-0 animate-pulse"
+                            style={{ background: selC.dot, boxShadow: `0 0 6px ${selC.glow}` }} />
+                          <span className="text-[11px] font-bold truncate max-w-[110px]" style={{ color: selC.text }}>
+                            {selectedColorStoneQuality || selectedColorStone}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stone cards — 2-column grid */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {pairs.map((pair, i) => {
+                        const active = selectedColorStone === pair.name && selectedColorStoneQuality === pair.quality;
+                        const c = gemPalette[pair.name] || fallback;
+                        const shortCat = categoryShort[pair.name] || pair.name;
+                        return (
+                          <button key={i}
+                            onClick={() => { setSelectedColorStone(pair.name); setSelectedColorStoneQuality(pair.quality); }}
+                            className="relative flex items-start gap-3 px-3.5 py-3.5 rounded-2xl text-left transition-all duration-200"
+                            style={{
+                              background: active
+                                ? `linear-gradient(135deg, ${c.activeBg}, ${c.bg})`
+                                : "rgba(255,255,255,0.025)",
+                              border: active ? `1.5px solid ${c.border}` : "1px solid rgba(255,255,255,0.07)",
+                              boxShadow: active ? `0 0 0 3px ${c.bg}, 0 8px 24px ${c.glow.replace("0.45", "0.2")}` : "none",
+                              transform: active ? "translateY(-1px)" : "none",
+                            }}>
+
+                            {/* Gem orb */}
+                            <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5 transition-all duration-200"
+                              style={{
+                                background: active
+                                  ? `radial-gradient(circle at 32% 32%, ${c.dot}DD, ${c.dot}77)`
+                                  : "rgba(255,255,255,0.05)",
+                                boxShadow: active ? `0 4px 14px ${c.glow}` : "none",
+                                border: active ? `1px solid ${c.dot}55` : "1px solid rgba(255,255,255,0.08)",
+                              }}>
+                              <Gem className="w-4.5 h-4.5" style={{ color: active ? "#fff" : "var(--sf-text-muted)", opacity: active ? 1 : 0.45, width: 18, height: 18 }} />
+                            </div>
+
+                            {/* Labels */}
+                            <div className="flex flex-col min-w-0 flex-1 gap-1">
+                              {/* Category tag */}
+                              <span className="inline-flex self-start text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                                style={{ background: active ? c.tag : "rgba(255,255,255,0.05)", color: active ? c.text : "var(--sf-text-muted)" }}>
+                                {shortCat}
+                              </span>
+                              {/* Quality — primary */}
+                              <span className="text-[12px] font-bold leading-snug truncate"
+                                style={{ color: active ? c.text : "var(--sf-text-primary)" }}>
+                                {pair.quality || "—"}
+                              </span>
+                            </div>
+
+                            {/* Active check badge */}
+                            {active && (
+                              <span className="absolute flex items-center justify-center rounded-full"
+                                style={{ top: -8, right: -8, width: 20, height: 20, background: c.dot, boxShadow: `0 2px 10px ${c.glow}` }}>
+                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
