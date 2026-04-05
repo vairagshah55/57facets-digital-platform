@@ -32,6 +32,7 @@ import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
+import { useCart } from "../../context/CartContext";
 
 import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
@@ -185,10 +186,13 @@ export function ProductDetail() {
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
 
-  // Order submission
-  const [ordering, setOrdering] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  // Cart
+  const { addItem, items: cartItems } = useCart();
+  const [addedToCart, setAddedToCart] = useState(false);
   const [existingOrder, setExistingOrder] = useState<{ order_number: string; status: string } | null>(null);
+
+  // Is this product already in the current (not yet placed) cart?
+  const alreadyInCart = cartItems.some((i) => i.productId === id);
 
   // ── Fetch product on mount ─────────────────────────
   useEffect(() => {
@@ -217,7 +221,8 @@ export function ProductDetail() {
         if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
         if (mapped.customization.colorStoneNames.length) setSelectedColorStone(mapped.customization.colorStoneNames[0]);
         if (mapped.customization.colorStoneQualities.length) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
-        // Check if retailer already has an active order for this product
+
+        // Check if retailer has an active (non-final) order for this product
         try {
           const check = await ordersApi.checkProduct(id!);
           if (!cancelled && check.hasActiveOrder && check.order) {
@@ -267,34 +272,28 @@ export function ProductDetail() {
     );
   }, [product, selectedCarat, quantity]);
 
-  const handleRequestOrder = useCallback(async () => {
-    if (!product || ordering) return;
-    setOrdering(true);
-    setOrderSuccess(null);
-    try {
-      const order = await ordersApi.create([{
-        productId: product.id,
-        quantity,
-        unitPrice: Math.round(totalPrice / quantity),
-        carat: selectedCarat,
-        metalType: selectedGoldType || null,
-        goldColour: selectedGoldColour || null,
-        diamondShape: selectedDiamondShape || null,
-        diamondShade: selectedDiamondShade || null,
-        diamondQuality: selectedDiamondQuality || null,
-        colorStoneName: selectedColorStone || null,
-        colorStoneQuality: selectedColorStoneQuality || null,
-        note: note || null,
-      }], note || undefined);
-      setOrderSuccess(order.order_number || "Order placed");
-      setTimeout(() => navigate("/retailer/orders"), 1500);
-    } catch (err: any) {
-      setOrderSuccess(null);
-      alert(err.message || "Failed to place order");
-    } finally {
-      setOrdering(false);
-    }
-  }, [product, ordering, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, note]);
+  const handleAddToCart = useCallback(() => {
+    if (!product) return;
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      productSku: product.sku,
+      productImage: product.images[0] || "",
+      quantity,
+      unitPrice: Math.round(totalPrice / quantity),
+      carat: selectedCarat,
+      metalType: selectedGoldType || null,
+      goldColour: selectedGoldColour || null,
+      diamondShape: selectedDiamondShape || null,
+      diamondShade: selectedDiamondShade || null,
+      diamondQuality: selectedDiamondQuality || null,
+      colorStoneName: selectedColorStone || null,
+      colorStoneQuality: selectedColorStoneQuality || null,
+      note: note || null,
+    });
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, note]);
 
   const formatPrice = (p: number) =>
     "₹" + p.toLocaleString("en-IN");
@@ -551,16 +550,48 @@ export function ProductDetail() {
 
             {/* ── Customization ────────────────────────── */}
             <div className="rounded-2xl border mb-5 overflow-hidden"
-              style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+              style={{
+                backgroundColor: "var(--sf-bg-surface-1)",
+                borderColor: existingOrder ? "rgba(245,158,11,0.3)" : "var(--sf-divider)",
+              }}>
 
               {/* Header */}
               <div className="px-5 py-3.5 flex items-center gap-2.5"
                 style={{ borderBottom: "1px solid var(--sf-divider)" }}>
-                <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
-                  Customize Your Piece
-                </span>
+                {existingOrder ? (
+                  <>
+                    <Shield className="w-4 h-4" style={{ color: "#f59e0b" }} />
+                    <span className="text-[13px] font-semibold" style={{ color: "#f59e0b", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                      Order Locked
+                    </span>
+                    <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
+                      {existingOrder.order_number} · {existingOrder.status}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                    <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                      Customize Your Piece
+                    </span>
+                  </>
+                )}
               </div>
+
+              {/* Locked overlay notice */}
+              {existingOrder && (
+                <div className="px-5 py-3 flex items-center gap-2.5"
+                  style={{ background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.12)" }}>
+                  <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "#f59e0b" }} />
+                  <p className="text-[11px]" style={{ color: "#f59e0b" }}>
+                    Customization is locked because this product has an active order. Cancel the order to make changes.
+                  </p>
+                </div>
+              )}
+
+              {/* Lock wrapper — disables all interaction when order exists */}
+              <div style={{ pointerEvents: existingOrder ? "none" : "auto", opacity: existingOrder ? 0.55 : 1, transition: "opacity 0.2s" }}>
 
               {/* ─── Metal ──────────────────────────────── */}
               {(product.customization.goldTypes.length > 0 || product.customization.goldColours.length > 0) && (() => {
@@ -917,6 +948,8 @@ export function ProductDetail() {
                   </button>
                 </div>
               </div>
+
+              </div>{/* end lock wrapper */}
             </div>
 
             {/* ── Note Section ─────────────────────────── */}
@@ -955,26 +988,54 @@ export function ProductDetail() {
 
             {/* ── Action Buttons ───────────────────────── */}
             <div className="flex gap-3 mb-8">
-              <Button
-                className="flex-1 h-12 text-base font-medium gap-2"
-                style={{
-                  backgroundColor: existingOrder ? "rgba(245,158,11,0.12)" : orderSuccess ? "#22c55e" : "var(--sf-teal)",
-                  color: existingOrder ? "#f59e0b" : orderSuccess ? "#fff" : "var(--sf-bg-base)",
-                  border: existingOrder ? "1px solid rgba(245,158,11,0.3)" : "none",
-                }}
-                onClick={existingOrder ? () => navigate("/retailer/orders") : handleRequestOrder}
-                disabled={ordering || !!orderSuccess}
-              >
-                {ordering ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Placing Order…</>
-                ) : orderSuccess ? (
-                  <><Check className="w-5 h-5" /> {orderSuccess}</>
-                ) : existingOrder ? (
-                  <><Check className="w-5 h-5" /> {existingOrder.order_number} — {existingOrder.status}</>
-                ) : (
-                  <><ShoppingCart className="w-5 h-5" /> Request Order</>
-                )}
-              </Button>
+              {existingOrder ? (
+                /* Active order exists → block re-ordering */
+                <Button
+                  className="flex-1 h-12 text-base font-semibold gap-2"
+                  style={{
+                    backgroundColor: "rgba(245,158,11,0.12)",
+                    color: "#f59e0b",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                  }}
+                  onClick={() => navigate("/retailer/orders")}
+                >
+                  <Check className="w-5 h-5" />
+                  {existingOrder.order_number} — {existingOrder.status}
+                </Button>
+              ) : alreadyInCart ? (
+                /* Already in the current unsent cart */
+                <Button
+                  className="flex-1 h-12 text-base font-semibold gap-2"
+                  style={{
+                    backgroundColor: "rgba(48,184,191,0.1)",
+                    color: "var(--sf-teal)",
+                    border: "1.5px solid rgba(48,184,191,0.4)",
+                  }}
+                  onClick={() => navigate("/retailer/catalog")}
+                >
+                  <Check className="w-5 h-5" /> In Cart · Keep Shopping
+                </Button>
+              ) : (
+                /* Normal add to cart */
+                <Button
+                  className="flex-1 h-12 text-base font-semibold gap-2 transition-all duration-200"
+                  style={{
+                    backgroundColor: addedToCart ? "#22c55e" : "var(--sf-teal)",
+                    color: "var(--sf-bg-base)",
+                    border: "none",
+                    boxShadow: addedToCart
+                      ? "0 4px 20px rgba(34,197,94,0.4)"
+                      : "0 4px 20px rgba(48,184,191,0.3)",
+                  }}
+                  onClick={handleAddToCart}
+                >
+                  {addedToCart ? (
+                    <><Check className="w-5 h-5" /> Added to Cart!</>
+                  ) : (
+                    <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="h-12 px-5 gap-2 border-[var(--sf-divider)]"

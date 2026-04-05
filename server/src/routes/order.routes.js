@@ -109,15 +109,18 @@ router.post("/", async (req, res, next) => {
     // Generate order number
     const orderNumber = `ORD-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
-    // Calculate total
+    // Validate all products exist and calculate total from unitPrice sent by client
+    // unitPrice is the dynamically calculated price (gold rate + carat + making charges)
     let total = 0;
     for (const item of items) {
       const { rows: products } = await client.query(
-        "SELECT base_price FROM products WHERE id = $1",
+        "SELECT id FROM products WHERE id = $1",
         [item.productId]
       );
       if (products.length === 0) throw new AppError(`Product ${item.productId} not found`);
-      total += parseFloat(products[0].base_price) * (item.quantity || 1);
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const qty = parseInt(item.quantity) || 1;
+      total += unitPrice * qty;
     }
 
     // Create order

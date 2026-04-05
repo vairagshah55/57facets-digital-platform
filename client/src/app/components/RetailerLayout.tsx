@@ -1,4 +1,6 @@
 import { useNavigate, useLocation, Outlet } from "react-router";
+import { CartProvider } from "../../context/CartContext";
+import { CartBar } from "./CartBar";
 import {
   Bell,
   LogOut,
@@ -108,16 +110,19 @@ const NAV_ITEMS = [
 
 export function RetailerLayout() {
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "var(--sf-bg-base)",
-        fontFamily: "'General Sans', 'Inter', sans-serif",
-      }}
-    >
-      <RetailerHeader />
-      <Outlet />
-    </div>
+    <CartProvider>
+      <div
+        className="min-h-screen"
+        style={{
+          backgroundColor: "var(--sf-bg-base)",
+          fontFamily: "'General Sans', 'Inter', sans-serif",
+        }}
+      >
+        <RetailerHeader />
+        <Outlet />
+        <CartBar />
+      </div>
+    </CartProvider>
   );
 }
 
