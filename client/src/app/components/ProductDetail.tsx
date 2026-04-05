@@ -1064,120 +1064,462 @@ export function ProductDetail() {
 
             {/* ── Specifications Tabs ──────────────────── */}
             <Tabs defaultValue="specs">
+
+              {/* Tab switcher — glassmorphism pill bar */}
               <TabsList
-                className="w-full"
-                style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
+                className="w-full gap-1 rounded-2xl"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  padding: "5px",
+                  backdropFilter: "blur(10px)",
+                }}
               >
-                <TabsTrigger value="specs" className="flex-1 text-xs sm:text-sm">
-                  Specifications
-                </TabsTrigger>
-                <TabsTrigger value="diamond" className="flex-1 text-xs sm:text-sm">
-                  Diamond Details
-                </TabsTrigger>
-                <TabsTrigger value="pricing" className="flex-1 text-xs sm:text-sm">
-                  Price Breakdown
-                </TabsTrigger>
+                {([
+                  { value: "specs",   icon: <Ruler className="w-3.5 h-3.5" />,    label: "Specs" },
+                  { value: "diamond", icon: <Diamond className="w-3.5 h-3.5" />,  label: "Diamond" },
+                  { value: "pricing", icon: <Sparkles className="w-3.5 h-3.5" />, label: "Pricing" },
+                ] as const).map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className={[
+                      "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[12px] font-semibold",
+                      "transition-all duration-200",
+                      "data-[state=inactive]:text-[var(--sf-text-muted)] data-[state=inactive]:hover:text-[var(--sf-text-secondary)]",
+                      "data-[state=active]:text-[var(--sf-teal)]",
+                    ].join(" ")}
+                    style={{ fontFamily: "inherit" }}
+                  >
+                    {tab.icon}{tab.label}
+                  </TabsTrigger>
+                ))}
               </TabsList>
 
-              <TabsContent value="specs" className="mt-4">
-                <div
-                  className="rounded-xl border p-4"
-                  style={{
-                    backgroundColor: "var(--sf-bg-surface-1)",
-                    borderColor: "var(--sf-divider)",
-                  }}
+              {/* Inject active-tab pill glow via CSS */}
+              <style>{`
+                [data-slot="tabs-trigger"][data-state="active"] {
+                  background: linear-gradient(135deg, rgba(48,184,191,0.15), rgba(48,184,191,0.06)) !important;
+                  border: 1px solid rgba(48,184,191,0.25);
+                  box-shadow: 0 0 12px rgba(48,184,191,0.1), inset 0 1px 0 rgba(255,255,255,0.04);
+                }
+                [data-slot="tabs-trigger"][data-state="inactive"] {
+                  background: transparent;
+                  border: 1px solid transparent;
+                }
+                [data-slot="tabs-trigger"][data-state="inactive"]:hover {
+                  background: rgba(255,255,255,0.04);
+                  border: 1px solid rgba(255,255,255,0.06);
+                }
+              `}</style>
+
+              {/* ── Specs tab ───────────────────────────── */}
+              <TabsContent value="specs" className="mt-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="space-y-2"
                 >
-                  <SpecRow icon={<Palette />} label="Metal Type" value={[selectedGoldType, selectedGoldColour].filter(Boolean).join(" ") || product.specs.metalType} />
-                  <SpecRow icon={<Weight />} label="Metal Weight" value={product.specs.metalWeight} />
-                  <SpecRow icon={<Ruler />} label="Width" value={product.specs.width} />
-                  <SpecRow icon={<Ruler />} label="Height" value={product.specs.height} />
-                  <SpecRow icon={<Diamond />} label="Setting Type" value={product.specs.settingType} />
-                  <SpecRow icon={<Shield />} label="Hallmark" value={product.specs.hallmark} last />
-                </div>
+                  {([
+                    { icon: <Palette />, accent: "#D4A843",        gradient: "212,168,67",  label: "Metal",      value: [selectedGoldType, selectedGoldColour].filter(Boolean).join(" · ") || product.specs.metalType },
+                    { icon: <Weight />,  accent: "#A569BD",        gradient: "165,105,189", label: "Weight",     value: product.specs.metalWeight },
+                    { icon: <Ruler />,   accent: "var(--sf-teal)", gradient: "48,184,191",  label: "Dimensions", value: [product.specs.width, product.specs.height].filter(s => s !== "-").join(" × ") || "-" },
+                    { icon: <Diamond />, accent: "#5DADE2",        gradient: "93,173,226",  label: "Setting",    value: product.specs.settingType },
+                    { icon: <Shield />,  accent: "#27AE60",        gradient: "39,174,96",   label: "Hallmark",   value: product.specs.hallmark },
+                  ] as const).map((row, i) => (
+                    <motion.div
+                      key={row.label}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
+                      className="group relative flex items-center justify-between px-4 py-3.5 rounded-xl overflow-hidden cursor-default"
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = `rgba(${row.gradient},0.2)`;
+                        e.currentTarget.style.boxShadow = `0 2px 12px rgba(${row.gradient},0.06)`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {/* Subtle hover glow */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                        style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.05) 0%, transparent 60%)` }} />
+
+                      <div className="relative flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 transition-transform duration-200 group-hover:scale-110"
+                          style={{ background: `${row.accent}1A`, border: `1px solid ${row.accent}30`, color: row.accent }}>
+                          {row.icon}
+                        </div>
+                        <span className="text-[13px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                      </div>
+                      <span className="relative text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{row.value}</span>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </TabsContent>
 
-              <TabsContent value="diamond" className="mt-4">
-                <div
-                  className="rounded-xl border p-4"
-                  style={{
-                    backgroundColor: "var(--sf-bg-surface-1)",
-                    borderColor: "var(--sf-divider)",
-                  }}
+              {/* ── Diamond tab ─────────────────────────── */}
+              <TabsContent value="diamond" className="mt-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="space-y-3"
                 >
-                  <SpecRow icon={<Gem />} label="Diamond Type" value={product.specs.diamondType} />
-                  <SpecRow icon={<Diamond />} label="Shape" value={product.specs.diamondShape} />
-                  <SpecRow icon={<Sparkles />} label="Carat" value={`${selectedCarat} ct`} />
-                  {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS).length > 0 && (
-                    <div className="flex items-start justify-between py-2.5 border-b" style={{ borderColor: "var(--sf-divider)" }}>
-                      <div className="flex items-center gap-2">
-                        <span className="[&>svg]:w-4 [&>svg]:h-4" style={{ color: "var(--sf-text-muted)" }}><Sparkles /></span>
-                        <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>Carat Options</span>
+                  {/* GIA-style certificate card with glassmorphism */}
+                  <div className="relative rounded-2xl overflow-hidden"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(93,173,226,0.1) 0%, rgba(48,184,191,0.07) 40%, rgba(165,105,189,0.05) 100%)",
+                      border: "1px solid rgba(93,173,226,0.2)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 8px 32px rgba(93,173,226,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+                    }}>
+                    {/* Decorative glow orb */}
+                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full pointer-events-none"
+                      style={{ background: "radial-gradient(circle, rgba(93,173,226,0.12) 0%, transparent 70%)" }} />
+                    <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
+                      style={{ background: "radial-gradient(circle, rgba(165,105,189,0.1) 0%, transparent 70%)" }} />
+
+                    {/* Header strip */}
+                    <div className="relative px-4 py-3.5 flex items-center justify-between"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}>
+                      <div className="flex items-center gap-2.5">
+                        <motion.div
+                          animate={{ rotate: [0, 5, -5, 0] }}
+                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center"
+                          style={{
+                            background: "linear-gradient(135deg, rgba(93,173,226,0.2), rgba(48,184,191,0.15))",
+                            border: "1px solid rgba(93,173,226,0.3)",
+                            boxShadow: "0 0 12px rgba(93,173,226,0.15)",
+                          }}>
+                          <Diamond className="w-4 h-4" style={{ color: "#5DADE2" }} />
+                        </motion.div>
+                        <div>
+                          <p className="text-[12px] font-bold tracking-wide" style={{ color: "var(--sf-text-primary)" }}>Diamond Certificate</p>
+                          <p className="text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>{product.specs.diamondType}</p>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 justify-end max-w-[55%]">
-                        {[...(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS)]
-                          .sort((a, b) => a - b)
-                          .map((ct) => (
-                            <span key={ct} className="text-[11px] font-semibold px-2 py-0.5 rounded"
-                              style={{
-                                backgroundColor: ct === selectedCarat ? "var(--sf-teal)" : "rgba(255,255,255,0.06)",
-                                color: ct === selectedCarat ? "#fff" : "var(--sf-text-muted)",
-                              }}>
-                              {ct} ct
-                            </span>
-                          ))}
-                      </div>
+                      {product.specs.diamondCertification !== "-" && (
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                          style={{
+                            background: "linear-gradient(135deg, rgba(212,168,67,0.15), rgba(212,168,67,0.08))",
+                            border: "1px solid rgba(212,168,67,0.3)",
+                            boxShadow: "0 0 16px rgba(212,168,67,0.1)",
+                          }}>
+                          <Award className="w-3 h-3" style={{ color: "#D4A843" }} />
+                          <span className="text-[10px] font-bold" style={{ color: "#D4A843" }}>{product.specs.diamondCertification}</span>
+                        </motion.div>
+                      )}
                     </div>
+
+                    {/* 4C stats with staggered animation */}
+                    <div className="relative grid grid-cols-4">
+                      {([
+                        { label: "Carat", value: `${selectedCarat}`, unit: "ct", accent: "var(--sf-teal)", gradient: "48,184,191" },
+                        { label: "Cut", value: product.specs.diamondShape.split(" ")[0], unit: "", accent: "#5DADE2", gradient: "93,173,226" },
+                        { label: "Colour", value: product.specs.diamondColor, unit: "", accent: "#D4A843", gradient: "212,168,67" },
+                        { label: "Clarity", value: product.specs.diamondClarity, unit: "", accent: "#A569BD", gradient: "165,105,189" },
+                      ] as const).map((stat, i) => (
+                        <motion.div
+                          key={stat.label}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: "easeOut" }}
+                          className="group relative flex flex-col items-center justify-center py-6 px-2 cursor-default"
+                          style={{
+                            borderRight: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                            transition: "background 0.3s ease",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(${stat.gradient},0.06)`; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                        >
+                          {/* Subtle glow dot behind value */}
+                          <div className="absolute w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{ background: `radial-gradient(circle, rgba(${stat.gradient},0.2) 0%, transparent 70%)`, top: "20%" }} />
+                          <div className="relative flex items-baseline gap-0.5">
+                            <motion.span
+                              key={stat.value}
+                              initial={{ scale: 0.9 }}
+                              animate={{ scale: 1 }}
+                              className="text-[22px] font-black leading-none"
+                              style={{ color: stat.accent, textShadow: `0 0 20px rgba(${stat.gradient},0.3)` }}>
+                              {stat.value}
+                            </motion.span>
+                            {stat.unit && (
+                              <span className="text-[10px] font-bold" style={{ color: `${stat.accent}88` }}>{stat.unit}</span>
+                            )}
+                          </div>
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.15em] mt-2" style={{ color: "var(--sf-text-muted)" }}>
+                            {stat.label}
+                          </span>
+                          {/* Bottom accent line */}
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 group-hover:w-8 rounded-full transition-all duration-300"
+                            style={{ background: stat.accent, opacity: 0.6 }} />
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Carat options with enhanced interaction */}
+                  {product.customization.caratOptions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35, duration: 0.45 }}
+                      className="rounded-2xl px-4 py-4"
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        backdropFilter: "blur(8px)",
+                      }}>
+                      <div className="flex items-center gap-2 mb-3.5">
+                        <motion.div
+                          animate={{ rotate: [0, 180, 360] }}
+                          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}>
+                          <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
+                        </motion.div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+                          Available Weights
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {[...product.customization.caratOptions].sort((a, b) => a - b).map((ct, i) => {
+                          const active = ct === selectedCarat;
+                          return (
+                            <motion.button
+                              key={ct}
+                              initial={{ opacity: 0, scale: 0.85 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.4 + i * 0.04, type: "spring", stiffness: 300, damping: 20 }}
+                              whileHover={{ scale: 1.06, y: -2 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setSelectedCarat(ct)}
+                              className="relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors duration-200"
+                              style={{
+                                background: active
+                                  ? "linear-gradient(135deg, rgba(48,184,191,0.22), rgba(48,184,191,0.08))"
+                                  : "rgba(255,255,255,0.04)",
+                                border: active ? "1.5px solid rgba(48,184,191,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                                boxShadow: active
+                                  ? "0 0 0 3px rgba(48,184,191,0.1), 0 4px 16px rgba(48,184,191,0.2), inset 0 1px 0 rgba(255,255,255,0.05)"
+                                  : "0 2px 8px rgba(0,0,0,0.1)",
+                              }}>
+                              <span className="text-[13px] font-black" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
+                              <span className="text-[9px] font-semibold" style={{ color: active ? "rgba(48,184,191,0.7)" : "var(--sf-text-muted)" }}>ct</span>
+                              <AnimatePresence>
+                                {active && (
+                                  <motion.div
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0, opacity: 0 }}
+                                    transition={{ type: "spring", stiffness: 400 }}>
+                                    <Check className="w-3 h-3 ml-0.5" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
                   )}
-                  <SpecRow icon={<Palette />} label="Color Grade" value={product.specs.diamondColor} />
-                  <SpecRow icon={<Award />} label="Clarity Grade" value={product.specs.diamondClarity} />
-                  <SpecRow icon={<Shield />} label="Certification" value={product.specs.diamondCertification} last />
-                </div>
+                </motion.div>
               </TabsContent>
 
-              <TabsContent value="pricing" className="mt-4">
-                <div
-                  className="rounded-xl border p-4"
-                  style={{
-                    backgroundColor: "var(--sf-bg-surface-1)",
-                    borderColor: "var(--sf-divider)",
-                  }}
-                >
-                  <PriceRow
-                    label="Diamond Value"
-                    value={formatPrice(
-                      Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat))
-                    )}
-                    sub={`${selectedCarat} ct ${product.specs.diamondShape}`}
-                  />
-                  <PriceRow
-                    label="Metal Value"
-                    value={formatPrice(
-                      Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram)
-                    )}
-                    sub={`${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`}
-                  />
-                  <PriceRow
-                    label="Making Charges"
-                    value={formatPrice(Math.round(product.basePrice * 0.12))}
-                    sub="12% of base price"
-                  />
-                  {quantity > 1 && (
-                    <PriceRow
-                      label="Quantity"
-                      value={`× ${quantity}`}
-                      sub=""
-                    />
-                  )}
-                  <Separator className="my-3" style={{ backgroundColor: "var(--sf-divider)" }} />
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                      Total
-                    </span>
-                    <span className="text-lg font-semibold" style={{ color: "var(--sf-teal)" }}>
-                      {formatPrice(totalPrice)}
-                    </span>
-                  </div>
-                </div>
+              {/* ── Pricing tab ─────────────────────────── */}
+              <TabsContent value="pricing" className="mt-5">
+                {(() => {
+                  const diamondVal = Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
+                  const metalVal   = Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
+                  const makingVal  = Math.round(product.basePrice * 0.12);
+                  const subtotal   = diamondVal + metalVal + makingVal;
+                  const rows = [
+                    { icon: <Diamond />,  accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${selectedCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
+                    { icon: <Palette />,  accent: "#D4A843", gradient: "212,168,67", label: "Metal",   sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
+                    { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship · 12%", val: makingVal },
+                  ];
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="space-y-2.5"
+                    >
+                      {/* Breakdown cards with staggered entrance */}
+                      {rows.map((row, i) => {
+                        const pct = Math.round((row.val / subtotal) * 100);
+                        return (
+                          <motion.div
+                            key={row.label}
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                            className="group relative rounded-2xl px-4 pt-4 pb-3 overflow-hidden cursor-default"
+                            style={{
+                              background: "rgba(255,255,255,0.02)",
+                              border: "1px solid rgba(255,255,255,0.07)",
+                              backdropFilter: "blur(8px)",
+                              transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = `rgba(${row.gradient},0.25)`;
+                              e.currentTarget.style.boxShadow = `0 4px 20px rgba(${row.gradient},0.08), inset 0 1px 0 rgba(255,255,255,0.04)`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          >
+                            {/* Hover glow bg */}
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                              style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.06) 0%, transparent 70%)` }} />
+
+                            <div className="relative flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <motion.div
+                                  whileHover={{ scale: 1.1, rotate: 5 }}
+                                  className="w-9 h-9 rounded-xl flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${row.accent}22, ${row.accent}0D)`,
+                                    border: `1px solid ${row.accent}33`,
+                                    color: row.accent,
+                                    boxShadow: `0 0 12px ${row.accent}15`,
+                                  }}>
+                                  {row.icon}
+                                </motion.div>
+                                <div>
+                                  <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>{row.label}</p>
+                                  <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{row.sub}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <motion.p
+                                  key={row.val}
+                                  initial={{ opacity: 0.6, y: -4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="text-[15px] font-black tabular-nums"
+                                  style={{ color: "var(--sf-text-primary)" }}>
+                                  {formatPrice(row.val)}
+                                </motion.p>
+                                <p className="text-[10px] font-semibold" style={{ color: `${row.accent}88` }}>{pct}%</p>
+                              </div>
+                            </div>
+                            {/* Animated progress bar */}
+                            <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ delay: 0.2 + i * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                                className="h-full rounded-full"
+                                style={{
+                                  background: `linear-gradient(90deg, ${row.accent}, ${row.accent}88)`,
+                                  boxShadow: `0 0 8px ${row.accent}40`,
+                                }}
+                              />
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+
+                      {/* Total card with premium glassmorphism */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        className="relative rounded-2xl overflow-hidden"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(48,184,191,0.04) 50%, rgba(93,173,226,0.04) 100%)",
+                          border: "1.5px solid rgba(48,184,191,0.28)",
+                          backdropFilter: "blur(12px)",
+                          boxShadow: "0 8px 32px rgba(48,184,191,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        {/* Shimmer overlay */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                          <div
+                            className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
+                            style={{
+                              background: "conic-gradient(from 0deg, transparent 0%, rgba(48,184,191,0.04) 10%, transparent 20%)",
+                              animation: "spin 8s linear infinite",
+                            }}
+                          />
+                        </div>
+                        {/* Glow orbs */}
+                        <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none"
+                          style={{ background: "radial-gradient(circle, rgba(48,184,191,0.1) 0%, transparent 70%)" }} />
+
+                        <div className="relative px-4 py-5 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "rgba(48,184,191,0.6)" }}>Estimated Total</p>
+                            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                              {quantity > 1 ? `${quantity} pcs · ` : ""}{formatPrice(product.goldPricePerGram)}/g gold rate
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <motion.p
+                              key={totalPrice}
+                              initial={{ scale: 0.95, opacity: 0.7 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                              className="text-[28px] font-black leading-none"
+                              style={{
+                                color: "var(--sf-teal)",
+                                letterSpacing: "-0.03em",
+                                textShadow: "0 0 30px rgba(48,184,191,0.25)",
+                              }}>
+                              {formatPrice(totalPrice)}
+                            </motion.p>
+                            {quantity > 1 && (
+                              <p className="text-[11px] mt-1" style={{ color: "rgba(48,184,191,0.55)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
+                            )}
+                          </div>
+                        </div>
+                        {/* Animated stacked composition bar */}
+                        <div className="flex h-1.5 relative" style={{ opacity: 0.8 }}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.round((diamondVal / subtotal) * 100)}%` }}
+                            transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
+                            style={{ background: "linear-gradient(90deg, #5DADE2, #5DADE2cc)" }}
+                          />
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.round((metalVal / subtotal) * 100)}%` }}
+                            transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
+                            style={{ background: "linear-gradient(90deg, #D4A843, #D4A843cc)" }}
+                          />
+                          <motion.div
+                            initial={{ flex: 0 }}
+                            animate={{ flex: 1 }}
+                            transition={{ delay: 0.7, duration: 0.7, ease: "easeOut" }}
+                            style={{ background: "linear-gradient(90deg, #A569BD, #A569BDcc)" }}
+                          />
+                        </div>
+                        {/* Composition legend */}
+                        <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "rgba(0,0,0,0.15)" }}>
+                          {rows.map((row) => (
+                            <div key={row.label} className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full" style={{ background: row.accent, boxShadow: `0 0 6px ${row.accent}50` }} />
+                              <span className="text-[9px] font-semibold" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
           </motion.div>
@@ -1207,61 +1549,3 @@ function AvailabilityBadge({ status }: { status: string }) {
   );
 }
 
-function SpecRow({
-  icon,
-  label,
-  value,
-  last,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between py-2.5 ${last ? "" : "border-b"}`}
-      style={{ borderColor: "var(--sf-divider)" }}
-    >
-      <div className="flex items-center gap-2">
-        <span className="[&>svg]:w-4 [&>svg]:h-4" style={{ color: "var(--sf-text-muted)" }}>
-          {icon}
-        </span>
-        <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>
-          {label}
-        </span>
-      </div>
-      <span className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PriceRow({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <div>
-        <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>
-          {label}
-        </p>
-        {sub && (
-          <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-            {sub}
-          </p>
-        )}
-      </div>
-      <span className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>
-        {value}
-      </span>
-    </div>
-  );
-}
