@@ -1,7 +1,12 @@
 const router = require("express").Router();
+const path = require("path");
+const fs = require("fs");
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
+const multer = require("multer");
+const AdmZip = require("adm-zip");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 router.use(adminAuth);
 
@@ -127,12 +132,12 @@ router.post("/", async (req, res, next) => {
 
     if (!name || !sku || !product_code) throw new AppError("Name, SKU, and Product Code are required");
 
-    // Check SKU uniqueness
-    const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1", [sku]);
+    // Check SKU uniqueness (only active products)
+    const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
     if (existing.length > 0) throw new AppError("SKU already exists");
 
-    // Check product_code uniqueness
-    const { rows: existingCode } = await query("SELECT id FROM products WHERE product_code = $1", [product_code]);
+    // Check product_code uniqueness (only active products)
+    const { rows: existingCode } = await query("SELECT id FROM products WHERE product_code = $1 AND is_active = true", [product_code]);
     if (existingCode.length > 0) throw new AppError("Product Code already exists");
 
     const { rows } = await query(
@@ -279,7 +284,10 @@ router.put("/:id", async (req, res, next) => {
 // Soft delete (set is_active = false)
 router.delete("/:id", async (req, res, next) => {
   try {
-    await query("UPDATE products SET is_active = false, updated_at = NOW() WHERE id = $1", [req.params.id]);
+    await query(
+      `UPDATE products SET is_active = false, sku = sku || '_deleted_' || id, product_code = product_code || '_deleted_' || id, updated_at = NOW() WHERE id = $1`,
+      [req.params.id]
+    );
 
     await query(
       `INSERT INTO activity_log (actor_type, actor_id, action, entity_type, entity_id)
@@ -310,6 +318,214 @@ router.get("/meta/collections", async (req, res, next) => {
     res.json(rows);
   } catch (err) {
     next(err);
+  }
+});
+
+// ── POST /api/admin/products/import-csv ────────────
+// Bulk import products from CSV or ZIP (CSV + images)
+router.post("/import-csv", upload.single("file"), async (req, res, next) => {
+  const client = await getClient();
+  try {
+    if (!req.file) throw new AppError("A CSV or ZIP file is required");
+
+    let csvText = "";
+    const imageFiles = new Map(); // filename -> Buffer
+
+    const isZip = req.file.originalname.endsWith(".zip") || req.file.mimetype === "application/zip" || req.file.mimetype === "application/x-zip-compressed";
+
+    if (isZip) {
+      const zip = new AdmZip(req.file.buffer);
+      const entries = zip.getEntries();
+      let csvEntry = null;
+      for (const entry of entries) {
+        if (entry.isDirectory) continue;
+        const name = entry.entryName.split("/").pop().toLowerCase();
+        if (name.endsWith(".csv") && !csvEntry) {
+          csvEntry = entry;
+        } else if (/\.(jpg|jpeg|png|webp|avif)$/i.test(name)) {
+          imageFiles.set(name, entry.getData());
+        }
+      }
+      if (!csvEntry) throw new AppError("ZIP must contain a CSV file");
+      csvText = csvEntry.getData().toString("utf-8");
+    } else {
+      csvText = req.file.buffer.toString("utf-8");
+    }
+
+    csvText = csvText.replace(/^\uFEFF/, "").replace(/^\ufeff/, "").replace(/^\xEF\xBB\xBF/, "").trim();
+    const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) throw new AppError("CSV must have a header row and at least one data row");
+
+    // Parse header — strip BOM, quotes, whitespace aggressively
+    const headers = lines[0].split(",").map((h) => h.replace(/[\uFEFF\xEF\xBB\xBF]/g, "").replace(/^"|"$/g, "").trim().toLowerCase());
+    const col = (name) => headers.indexOf(name);
+
+    const reqCols = ["product_code", "name", "sku"];
+    for (const r of reqCols) {
+      if (col(r) === -1) throw new AppError(`CSV must have a '${r}' column`);
+    }
+
+    // Helpers
+    const getVal = (cols, idx) => {
+      if (idx < 0 || idx >= cols.length) return null;
+      const v = cols[idx].replace(/^"|"$/g, "").trim();
+      return v || null;
+    };
+    const getNum = (cols, idx) => {
+      const v = getVal(cols, idx);
+      if (!v) return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
+    const parseCsvRow = (line) => {
+      const cols = [];
+      let cur = "";
+      let inQuote = false;
+      for (const ch of line) {
+        if (ch === '"') { inQuote = !inQuote; continue; }
+        if (ch === "," && !inQuote) { cols.push(cur); cur = ""; continue; }
+        cur += ch;
+      }
+      cols.push(cur);
+      return cols;
+    };
+
+    const uploadsDir = path.join(__dirname, "../../uploads/products");
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+    await client.query("BEGIN");
+    let imported = 0;
+    let skipped = 0;
+    let imagesImported = 0;
+    const errors = [];
+
+    // Skip hint row if it starts with "e.g."
+    const startRow = lines.length > 2 && lines[1].toLowerCase().includes("e.g.") ? 2 : 1;
+
+    for (let i = startRow; i < lines.length; i++) {
+      const cols = parseCsvRow(lines[i]);
+
+      const product_code = getVal(cols, col("product_code"));
+      const name = getVal(cols, col("name"));
+      const sku = getVal(cols, col("sku"));
+
+      if (!product_code || !name || !sku) {
+        skipped++;
+        errors.push({ row: i + 1, reason: "Missing product_code, name, or sku" });
+        continue;
+      }
+
+      // Check duplicates (only active products)
+      const { rows: existSku } = await client.query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
+      const { rows: existCode } = await client.query("SELECT id FROM products WHERE product_code = $1 AND is_active = true", [product_code]);
+      if (existSku.length > 0 || existCode.length > 0) {
+        skipped++;
+        errors.push({ row: i + 1, reason: `Duplicate SKU (${sku}) or code (${product_code})` });
+        continue;
+      }
+
+      // Resolve category name to id — create if not exists
+      let category_id = null;
+      const catName = getVal(cols, col("category"));
+      if (catName) {
+        const { rows: cats } = await client.query("SELECT id FROM categories WHERE name ILIKE $1 LIMIT 1", [catName]);
+        if (cats.length > 0) {
+          category_id = cats[0].id;
+        } else {
+          const { rows: maxSort } = await client.query("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM categories");
+          const { rows: newCat } = await client.query(
+            "INSERT INTO categories (name, sort_order) VALUES ($1, $2) RETURNING id",
+            [catName, maxSort[0].next]
+          );
+          category_id = newCat[0].id;
+        }
+      }
+
+      const { rows: inserted } = await client.query(
+        `INSERT INTO products (
+          product_code, name, sku, description, category_id, base_price,
+          metal_type, gold_colour, metal_weight, diamond_type, diamond_shape,
+          diamond_color, diamond_clarity, diamond_certification, carat,
+          setting_type, hallmark, width_mm, height_mm,
+          color_stone_name, color_stone_quality,
+          availability, lead_time_days, min_order_qty, max_order_qty,
+          is_new, occasion_tags, finish_options
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+          $20,$21,$22,$23,$24,$25,$26,$27,$28
+        ) RETURNING id`,
+        [
+          product_code, name, sku,
+          getVal(cols, col("description")),
+          category_id,
+          getNum(cols, col("base_price")) || 0,
+          getVal(cols, col("metal_type")),
+          getVal(cols, col("gold_colour")),
+          getNum(cols, col("metal_weight")),
+          getVal(cols, col("diamond_type")),
+          getVal(cols, col("diamond_shape")),
+          getVal(cols, col("diamond_color")),
+          getVal(cols, col("diamond_clarity")),
+          getVal(cols, col("diamond_certification")),
+          getNum(cols, col("carat")),
+          getVal(cols, col("setting_type")),
+          getVal(cols, col("hallmark")),
+          getNum(cols, col("width_mm")),
+          getNum(cols, col("height_mm")),
+          getVal(cols, col("color_stone_name")),
+          getVal(cols, col("color_stone_quality")),
+          getVal(cols, col("availability")) || "in-stock",
+          getNum(cols, col("lead_time_days")),
+          getNum(cols, col("min_order_qty")) || 1,
+          getNum(cols, col("max_order_qty")) || 100,
+          getVal(cols, col("is_new")) === "true",
+          getVal(cols, col("occasion_tags")) ? `{${getVal(cols, col("occasion_tags")).split(",").map((t) => `"${t.trim()}"`).join(",")}}` : "{}",
+          getVal(cols, col("finish_options")) ? `{${getVal(cols, col("finish_options")).split(",").map((t) => `"${t.trim()}"`).join(",")}}` : "{}",
+        ]
+      );
+
+      const productId = inserted[0].id;
+
+      // Handle images from ZIP — CSV column "images" has comma-separated filenames
+      const imagesVal = getVal(cols, col("images"));
+      if (imagesVal && imageFiles.size > 0) {
+        const fileNames = imagesVal.split(",").map((f) => f.trim()).filter(Boolean);
+        let sortOrder = 0;
+        for (const fn of fileNames) {
+          const fnLower = fn.toLowerCase();
+          const buf = imageFiles.get(fnLower);
+          if (!buf) continue;
+          const ext = path.extname(fnLower);
+          const diskName = `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+          fs.writeFileSync(path.join(uploadsDir, diskName), buf);
+          const imageUrl = `/uploads/products/${diskName}`;
+          await client.query(
+            `INSERT INTO product_images (product_id, image_url, is_primary, sort_order, media_type)
+             VALUES ($1, $2, $3, $4, 'image')`,
+            [productId, imageUrl, sortOrder === 0, sortOrder]
+          );
+          sortOrder++;
+          imagesImported++;
+        }
+      }
+
+      imported++;
+    }
+
+    await client.query("COMMIT");
+
+    await query(
+      `INSERT INTO activity_log (actor_type, actor_id, action, details)
+       VALUES ('admin', $1, 'products_csv_import', $2)`,
+      [req.admin.id, JSON.stringify({ imported, skipped, imagesImported })]
+    );
+
+    res.json({ imported, skipped, imagesImported, errors: errors.slice(0, 20), total: lines.length - startRow });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
   }
 });
 

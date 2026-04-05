@@ -22,6 +22,14 @@ ALTER TABLE products ALTER COLUMN metal_type TYPE TEXT;
 ALTER TABLE products ALTER COLUMN diamond_shape TYPE TEXT;
 ALTER TABLE products ALTER COLUMN diamond_color TYPE TEXT;
 ALTER TABLE products ALTER COLUMN diamond_clarity TYPE TEXT;
+
+-- Widen sku/product_code to TEXT before appending deleted suffix
+ALTER TABLE products ALTER COLUMN sku TYPE TEXT;
+ALTER TABLE products ALTER COLUMN product_code TYPE TEXT;
+
+-- Free up SKU/product_code on already soft-deleted rows
+UPDATE products SET sku = sku || '_deleted_' || id, product_code = product_code || '_deleted_' || id
+WHERE is_active = false AND sku NOT LIKE '%_deleted_%';
 `;
 
 async function run() {

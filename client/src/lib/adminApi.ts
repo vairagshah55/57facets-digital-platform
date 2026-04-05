@@ -129,4 +129,17 @@ export const adminProducts = {
     request(`/upload/product-images/${imageId}/primary`, { method: "PUT" }),
   deleteImage: (imageId: string) =>
     request(`/upload/product-images/${imageId}`, { method: "DELETE" }),
+  importCsv: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = getAdminToken();
+    const res = await fetch(`${API_BASE}/products/import-csv`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Import failed");
+    return data;
+  },
 };

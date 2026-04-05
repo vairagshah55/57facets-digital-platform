@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Plus,
   Download,
+  Upload,
   Pencil,
   Trash2,
   ChevronLeft,
@@ -13,6 +14,9 @@ import {
   Package,
   Eye,
   Image as ImageIcon,
+  CheckCircle2,
+  AlertTriangle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -123,7 +127,10 @@ const fadeUp = {
 
 const PAGE_SIZE = 15;
 
-function downloadSampleFile() {
+async function downloadSampleFile() {
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+
   const headers = [
     "product_code", "name", "sku", "description", "category",
     "base_price", "metal_type", "gold_colour", "metal_weight",
@@ -131,10 +138,9 @@ function downloadSampleFile() {
     "diamond_certification", "carat", "setting_type", "hallmark",
     "width_mm", "height_mm", "color_stone_name", "color_stone_quality",
     "availability", "lead_time_days", "min_order_qty", "max_order_qty",
-    "is_new", "occasion_tags", "finish_options",
+    "is_new", "occasion_tags", "finish_options", "images",
   ];
 
-  // Hint row showing allowed values
   const hints = [
     "e.g. 100891", "Product Name", "RNG-18K-001", "Description text", "Ring / Necklace / Bracelet",
     "45000", "14KT | 18KT | 22KT", "YELLOW | ROSE | WHITE | TWO TONE", "4.5 (grams)",
@@ -146,27 +152,91 @@ function downloadSampleFile() {
     "EMERALD | Ruby | BLUE SAPPHIRE | CORAL | etc.",
     "in-stock | made-to-order | out-of-stock", "7 (days)", "1", "100",
     "true | false", "wedding, anniversary", "Polished, Matte",
+    "filenames (e.g. ring1.jpg, ring2.png)",
   ];
 
-  // Sample data row
   const sample = [
-    "100891", "Radiant Diamond Solitaire Ring", "RNG-18K-001", "Elegant 18K gold ring with natural diamond", "Ring",
+    "100891", "Radiant Diamond Solitaire Ring", "RNG-18K-001", "Elegant 18K gold ring", "Ring",
     "45000", "18KT", "YELLOW", "4.5",
     "Natural", "Round", "EF", "VVS",
     "GIA", "1.5", "Prong", "BIS 916",
     "2.5", "8.0", "Precious Stones", "EMERALD",
     "in-stock", "7", "1", "100",
     "true", "wedding, anniversary", "Polished",
+    "ring-front.jpg, ring-side.jpg",
   ];
 
   const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
   const csv = [headers, hints, sample].map((row) => row.map(escape).join(",")).join("\n");
 
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  // Add CSV to ZIP
+  zip.file("products.csv", csv);
+
+  // Add sample placeholder images using canvas → JPEG blob
+  const canvas = document.createElement("canvas");
+  canvas.width = 100;
+  canvas.height = 100;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#e0e0e0";
+  ctx.fillRect(0, 0, 100, 100);
+  ctx.fillStyle = "#999";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("Sample", 50, 55);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+  const imgBase64 = dataUrl.split(",")[1];
+  const imgBytes = Uint8Array.from(atob(imgBase64), c => c.charCodeAt(0));
+
+  zip.file("ring-front.jpg", imgBytes);
+  zip.file("ring-side.jpg", imgBytes);
+
+  // Add README
+  zip.file("README.txt",
+`PRODUCT IMPORT TEMPLATE
+=======================
+
+HOW TO USE:
+1. Open products.csv and fill in your product data
+2. Row 2 (hints) will be auto-skipped during import — delete or keep it
+3. Required columns: product_code, name, sku
+4. All other columns are optional
+
+IMAGES:
+- Place your product images (JPG, PNG, WEBP) in this ZIP alongside the CSV
+- In the "images" column, list filenames separated by commas
+  Example: ring-front.jpg, ring-side.jpg
+- First image listed becomes the primary/thumbnail image
+- Image filenames are matched case-insensitively
+
+ALLOWED VALUES:
+- metal_type:       14KT, 18KT, 22KT
+- gold_colour:      YELLOW, ROSE, WHITE, TWO TONE
+- diamond_shape:    Round, Princess, Pan, Baguette, Marquise, Oval, Solitaire, Emerald, Cushion, Radiant
+- diamond_color:    EF, FG, GH, HI, IJ
+- diamond_clarity:  VVS, VVS-VS, VS, VS-SI, SI
+- color_stone_name: Precious Stones, Semi Precious Stones, Synthetic Stones, Pearl, Beads, Kundan
+- availability:     in-stock, made-to-order, out-of-stock
+- is_new:           true, false
+
+SAMPLE ZIP STRUCTURE:
+  products.zip
+  ├── products.csv
+  ├── ring-front.jpg
+  ├── ring-side.jpg
+  ├── necklace-1.png
+  └── README.txt (this file)
+
+NOTES:
+- Duplicate SKU or product_code will be skipped
+- New categories will be auto-created if they don't exist
+- Max file size: 100MB
+`);
+
+  const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "product_sample_template.csv";
+  a.download = "product_import_template.zip";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -194,6 +264,28 @@ export function AdminProducts() {
   /* ── Delete confirm ────────────────────────────── */
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+
+  /* ── CSV Import ────────────────────────────────── */
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number; imagesImported?: number; errors?: { row: number; reason: string }[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleImport() {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await adminProducts.importCsv(importFile);
+      setImportResult(result);
+      fetchProducts();
+    } catch (e: any) {
+      setImportResult({ imported: 0, skipped: 0, total: 0, errors: [{ row: 0, reason: e.message || "Import failed" }] });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   /* ── Fetch products ─────────────────────────────── */
   const fetchProducts = useCallback(async () => {
@@ -289,6 +381,16 @@ export function AdminProducts() {
           >
             <Download className="w-3.5 h-3.5" />
             Sample File
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}
+            onClick={() => { setImportFile(null); setImportResult(null); setImportOpen(true); }}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import CSV
           </Button>
           <Button
             size="sm"
@@ -806,6 +908,110 @@ export function AdminProducts() {
               <Trash2 className="w-3.5 h-3.5 mr-1.5" />
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import CSV Dialog ──────────────────────── */}
+      <Dialog open={importOpen} onOpenChange={(open) => { if (!open) setImportOpen(false); }}>
+        <DialogContent className="sm:max-w-lg" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: "var(--sf-text-primary)" }}>
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5" style={{ color: "var(--sf-teal)" }} />
+                Import Products from CSV
+              </div>
+            </DialogTitle>
+            <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
+              Upload a CSV file or a ZIP containing CSV + product images. Add an "images" column with filenames (e.g. ring1.jpg, ring2.png).
+            </DialogDescription>
+          </DialogHeader>
+
+          {!importResult ? (
+            <div className="space-y-4 py-2">
+              {/* Drop zone */}
+              <div
+                onClick={() => importFileRef.current?.click()}
+                className="rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all hover:border-[var(--sf-teal)]"
+                style={{ borderColor: importFile ? "var(--sf-teal)" : "var(--sf-divider)", backgroundColor: importFile ? "rgba(48,184,191,0.04)" : "transparent" }}
+              >
+                {importFile ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <FileSpreadsheet className="w-8 h-8" style={{ color: "var(--sf-teal)" }} />
+                    <div className="text-left">
+                      <p className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>{importFile.name}</p>
+                      <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{(importFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--sf-text-muted)" }} />
+                    <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>Click to select a CSV or ZIP file</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>ZIP: include CSV + product images</p>
+                  </>
+                )}
+                <input ref={importFileRef} type="file" accept=".csv,.zip" className="hidden"
+                  onChange={(e) => { if (e.target.files?.[0]) setImportFile(e.target.files[0]); e.target.value = ""; }} />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                Duplicate SKU or product codes will be skipped automatically.
+              </div>
+            </div>
+          ) : (
+            /* Result */
+            <div className="space-y-4 py-2">
+              <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
+                <div className="flex items-center gap-3">
+                  {importResult.imported > 0 ? (
+                    <CheckCircle2 className="w-8 h-8 shrink-0" style={{ color: "#22c55e" }} />
+                  ) : (
+                    <AlertTriangle className="w-8 h-8 shrink-0" style={{ color: "#f59e0b" }} />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                      {importResult.imported > 0 ? "Import Complete" : "No Products Imported"}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                      {importResult.imported} imported · {importResult.skipped} skipped · {importResult.total} total rows
+                      {importResult.imagesImported ? ` · ${importResult.imagesImported} images` : ""}
+                    </p>
+                  </div>
+                </div>
+
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                    {importResult.errors.map((err, i) => (
+                      <p key={i} className="text-[11px] flex items-start gap-1.5" style={{ color: "var(--sf-text-muted)" }}>
+                        <span className="shrink-0 font-mono" style={{ color: "#f59e0b" }}>Row {err.row}:</span>
+                        {err.reason}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {!importResult ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(false)}
+                  style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}>
+                  Cancel
+                </Button>
+                <Button size="sm" disabled={!importFile || importing} onClick={handleImport}
+                  className="gap-1.5" style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>
+                  {importing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Importing…</> : <><Upload className="w-3.5 h-3.5" /> Import</>}
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" onClick={() => setImportOpen(false)}
+                style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>
+                Done
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
