@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Check, Save, Loader2, ImagePlus,
   Trash2, Star, X, AlertCircle, Package, Image as ImageIcon,
-  Layers, DollarSign, ShieldCheck,
+  Layers, DollarSign, ShieldCheck, Plus,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -50,7 +50,7 @@ type FormData = {
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
   gold_purity_options: string; carat: string; carat_range_min: string; carat_range_max: string;
-  color_stone_name: string; color_stone_quality: string;
+  color_stones: { name: string; quality: string }[];
   base_price: string; price_modifiers: string;
   availability: string; lead_time_days: string; min_order_qty: string; max_order_qty: string;
   is_new: boolean; is_active: boolean;
@@ -98,7 +98,7 @@ const EMPTY: FormData = {
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "",
   carat: "", carat_range_min: "", carat_range_max: "",
-  color_stone_name: "", color_stone_quality: "",
+  color_stones: [],
   base_price: "", price_modifiers: "", availability: "in-stock",
   lead_time_days: "", min_order_qty: "", max_order_qty: "",
   is_new: false, is_active: true,
@@ -129,8 +129,11 @@ function detailToForm(d: ProductDetail): FormData {
     carat: d.carat != null ? String(d.carat) : "",
     carat_range_min: d.carat_range_min != null ? String(d.carat_range_min) : "",
     carat_range_max: d.carat_range_max != null ? String(d.carat_range_max) : "",
-    color_stone_name: d.color_stone_name || "",
-    color_stone_quality: d.color_stone_quality || "",
+    color_stones: (() => {
+      const names = (d.color_stone_name || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+      const quals = (d.color_stone_quality || "").split(",").map((s: string) => s.trim());
+      return names.map((name: string, i: number) => ({ name, quality: quals[i] || "" }));
+    })(),
     base_price: d.base_price != null ? String(d.base_price) : "",
     price_modifiers: d.price_modifiers ? (typeof d.price_modifiers === "object" ? JSON.stringify(d.price_modifiers) : d.price_modifiers) : "",
     availability: d.availability || "in-stock",
@@ -162,8 +165,8 @@ function formToPayload(f: FormData) {
     carat: f.carat ? parseFloat(f.carat) : null,
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
-    color_stone_name: f.color_stone_name || null,
-    color_stone_quality: f.color_stone_quality || null,
+    color_stone_name: f.color_stones.length ? f.color_stones.map(s => s.name).join(",") : null,
+    color_stone_quality: f.color_stones.length ? f.color_stones.map(s => s.quality).join(",") : null,
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
     price_modifiers: f.price_modifiers.trim() || null,
     availability: f.availability,
@@ -375,7 +378,11 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
   );
 }
 
-function StepSpecs({ form, setForm }: { form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>> }) {
+function StepSpecs({ form, setForm, pendingStone, setPendingStone }: {
+  form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
+  pendingStone: { name: string; quality: string };
+  setPendingStone: React.Dispatch<React.SetStateAction<{ name: string; quality: string }>>;
+}) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
   return (
@@ -420,18 +427,37 @@ function StepSpecs({ form, setForm }: { form: FormData; setForm: React.Dispatch<
 
       <div>
         <GroupLabel>Color Stones</GroupLabel>
+        {form.color_stones.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {form.color_stones.map((s, i) => (
+              <div key={i} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                style={{ backgroundColor: "var(--sf-bg-surface-3)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)" }}>
+                <span>{s.name} — {s.quality}</span>
+                <button type="button" onClick={() => setForm((p) => ({ ...p, color_stones: p.color_stones.filter((_, idx) => idx !== i) }))}>
+                  <X className="h-3 w-3" style={{ color: "var(--sf-text-muted)" }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
-          <FSelect label="Color Stone Name" placeholder="Select stone" value={form.color_stone_name}
-            onValueChange={(v) => setForm((p) => ({ ...p, color_stone_name: v, color_stone_quality: "" }))}>
+          <FSelect label="Stone Name" placeholder="Select stone" value={pendingStone.name}
+            onValueChange={(v) => setPendingStone({ name: v, quality: "" })}>
             {COLOR_STONE_NAMES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Color Stone Quality" placeholder={form.color_stone_name ? "Select quality" : "Select stone first"}
-            value={form.color_stone_quality} onValueChange={(v) => setForm((p) => ({ ...p, color_stone_quality: v }))}>
-            {(COLOR_STONE_QUALITY_MAP[form.color_stone_name] || []).map((v) => (
-              <SelectItem key={v} value={v}>{v}</SelectItem>
-            ))}
+          <FSelect label="Stone Quality" placeholder={pendingStone.name ? "Select quality" : "Select stone first"}
+            value={pendingStone.quality} onValueChange={(v) => setPendingStone((p) => ({ ...p, quality: v }))}>
+            {(COLOR_STONE_QUALITY_MAP[pendingStone.name] || [])
+              .filter(q => !form.color_stones.filter(s => s.name === pendingStone.name).map(s => s.quality).includes(q))
+              .map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
         </div>
+        <button type="button" disabled={!pendingStone.name || !pendingStone.quality}
+          onClick={() => { setForm((p) => ({ ...p, color_stones: [...p.color_stones, pendingStone] })); setPendingStone({ name: "", quality: "" }); }}
+          className="mt-2 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded"
+          style={{ backgroundColor: "var(--sf-accent)", color: "var(--sf-bg-base)", opacity: (!pendingStone.name || !pendingStone.quality) ? 0.4 : 1 }}>
+          <Plus className="h-3 w-3" /> Add Stone
+        </button>
       </div>
 
       <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
@@ -539,6 +565,7 @@ export function AdminProductWizard() {
   const [step, setStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [form, setForm] = useState<FormData>({ ...EMPTY });
+  const [pendingStone, setPendingStone] = useState({ name: "", quality: "" });
   const [categories, setCategories] = useState<Category[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
@@ -856,7 +883,7 @@ export function AdminProductWizard() {
                   removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary}
                 />
               )}
-              {step === 3 && <StepSpecs form={form} setForm={setForm} />}
+              {step === 3 && <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone} setPendingStone={setPendingStone} />}
               {step === 4 && <StepPricing form={form} setForm={setForm} />}
               {step === 5 && <StepStatus form={form} setForm={setForm} />}
             </motion.div>

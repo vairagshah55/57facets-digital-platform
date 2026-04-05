@@ -716,50 +716,29 @@ export function ProductDetail() {
               })()}
 
               {/* ─── Color Stones ─────────────────────────── */}
-              {(product.customization.colorStoneNames.length > 0 || product.customization.colorStoneQualities.length > 0) && (() => {
-                const stoneType = selectedColorStone || product.customization.colorStoneNames[0] || "";
-                const stoneQuality = selectedColorStoneQuality || product.customization.colorStoneQualities[0] || "";
-                const fields = [
-                  { label: "Type", options: product.customization.colorStoneNames, selected: selectedColorStone, set: setSelectedColorStone },
-                  { label: "Quality", options: product.customization.colorStoneQualities, selected: selectedColorStoneQuality, set: setSelectedColorStoneQuality },
-                ].filter((f) => f.options.length > 0);
+              {product.customization.colorStoneNames.length > 0 && (() => {
+                const pairs = product.customization.colorStoneNames.map((name, i) => ({
+                  name,
+                  quality: product.customization.colorStoneQualities[i] || "",
+                }));
                 return (
                   <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                     <div className="flex items-center gap-2 mb-3">
                       <Gem className="w-3.5 h-3.5" style={{ color: "#9B59B6" }} />
                       <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Color Stones</span>
-                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                        style={{ backgroundColor: "rgba(155,89,182,0.08)", color: "#9B59B6" }}>
-                        {[stoneType, stoneQuality].filter(Boolean).join(" · ")}
-                      </span>
                     </div>
-                    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${fields.length}, 1fr)` }}>
-                      {fields.map((field) => {
-                        const single = field.options.length === 1;
-                        return (
-                          <div key={field.label}>
-                            <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{field.label}</p>
-                            {single ? (
-                              <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{field.options[0]}</p>
-                            ) : (
-                              <div className="flex flex-wrap gap-1.5">
-                                {field.options.map((opt) => {
-                                  const active = field.selected === opt;
-                                  return (
-                                    <button key={opt} onClick={() => field.set(opt)}
-                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200"
-                                      style={{
-                                        backgroundColor: active ? "rgba(155,89,182,0.12)" : "rgba(255,255,255,0.03)",
-                                        border: active ? "1.5px solid rgba(155,89,182,0.5)" : "1px solid rgba(255,255,255,0.06)",
-                                        color: active ? "#9B59B6" : "var(--sf-text-muted)",
-                                      }}>{opt}</button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                    <div className="flex flex-col gap-2">
+                      {pairs.map((pair, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm">
+                          <span className="font-semibold" style={{ color: "var(--sf-text-primary)" }}>{pair.name}</span>
+                          {pair.quality && (
+                            <>
+                              <span style={{ color: "var(--sf-text-muted)" }}>—</span>
+                              <span style={{ color: "#9B59B6" }}>{pair.quality}</span>
+                            </>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
