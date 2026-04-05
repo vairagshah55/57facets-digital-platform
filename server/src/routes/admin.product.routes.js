@@ -15,7 +15,7 @@ router.get("/", async (req, res, next) => {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx})`);
+      conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.product_code ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -35,7 +35,7 @@ router.get("/", async (req, res, next) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type,
+      `SELECT p.id, p.name, p.sku, p.product_code, p.base_price, p.carat, p.metal_type,
               p.availability, p.is_new, p.is_active, p.min_order_qty, p.max_order_qty,
               p.lead_time_days, p.occasion_tags, p.created_at,
               c.name AS category,
@@ -112,8 +112,8 @@ router.get("/:id", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const {
-      name, sku, description, category_id,
-      base_price, carat, metal_type, metal_weight,
+      name, sku, product_code, description, category_id,
+      base_price, carat, metal_type, gold_colour, metal_weight,
       diamond_type, diamond_shape, diamond_color, diamond_clarity,
       diamond_certification, setting_type, hallmark,
       width_mm, height_mm, availability,
@@ -121,31 +121,38 @@ router.post("/", async (req, res, next) => {
       carat_range_min, carat_range_max, finish_options,
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
+      color_stone_name, color_stone_quality,
       collection_ids,
     } = req.body;
 
-    if (!name || !sku) throw new AppError("Name and SKU are required");
+    if (!name || !sku || !product_code) throw new AppError("Name, SKU, and Product Code are required");
 
     // Check SKU uniqueness
     const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1", [sku]);
     if (existing.length > 0) throw new AppError("SKU already exists");
 
+    // Check product_code uniqueness
+    const { rows: existingCode } = await query("SELECT id FROM products WHERE product_code = $1", [product_code]);
+    if (existingCode.length > 0) throw new AppError("Product Code already exists");
+
     const { rows } = await query(
       `INSERT INTO products (
-        name, sku, description, category_id, base_price, carat,
-        metal_type, metal_weight, diamond_type, diamond_shape,
+        name, sku, product_code, description, category_id, base_price, carat,
+        metal_type, gold_colour, metal_weight, diamond_type, diamond_shape,
         diamond_color, diamond_clarity, diamond_certification,
         setting_type, hallmark, width_mm, height_mm, availability,
         is_new, occasion_tags, gold_purity_options,
         carat_range_min, carat_range_max, finish_options,
-        price_modifiers, lead_time_days, min_order_qty, max_order_qty
+        price_modifiers, lead_time_days, min_order_qty, max_order_qty,
+        color_stone_name, color_stone_quality
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28
+        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
       ) RETURNING *`,
       [
-        name, sku, description || null, category_id || null,
-        base_price || 0, carat || 0, metal_type || null, metal_weight || null,
+        name, sku, product_code || null, description || null, category_id || null,
+        base_price || 0, carat || 0, metal_type || null, gold_colour || null,
+        metal_weight || null,
         diamond_type || null, diamond_shape || null, diamond_color || null,
         diamond_clarity || null, diamond_certification || null,
         setting_type || null, hallmark || null, width_mm || null, height_mm || null,
@@ -154,6 +161,7 @@ router.post("/", async (req, res, next) => {
         carat_range_min || null, carat_range_max || null, finish_options || [],
         price_modifiers ? JSON.stringify(price_modifiers) : "{}",
         lead_time_days || null, min_order_qty || 1, max_order_qty || 100,
+        color_stone_name || null, color_stone_quality || null,
       ]
     );
 
@@ -185,8 +193,8 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const {
-      name, description, category_id,
-      base_price, carat, metal_type, metal_weight,
+      name, product_code, description, category_id,
+      base_price, carat, metal_type, gold_colour, metal_weight,
       diamond_type, diamond_shape, diamond_color, diamond_clarity,
       diamond_certification, setting_type, hallmark,
       width_mm, height_mm, availability, is_new, is_active,
@@ -194,44 +202,49 @@ router.put("/:id", async (req, res, next) => {
       carat_range_min, carat_range_max, finish_options,
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
+      color_stone_name, color_stone_quality,
       collection_ids,
     } = req.body;
 
     const { rows } = await query(
       `UPDATE products SET
         name = COALESCE($1, name),
-        description = COALESCE($2, description),
-        category_id = COALESCE($3, category_id),
-        base_price = COALESCE($4, base_price),
-        carat = COALESCE($5, carat),
-        metal_type = COALESCE($6, metal_type),
-        metal_weight = COALESCE($7, metal_weight),
-        diamond_type = COALESCE($8, diamond_type),
-        diamond_shape = COALESCE($9, diamond_shape),
-        diamond_color = COALESCE($10, diamond_color),
-        diamond_clarity = COALESCE($11, diamond_clarity),
-        diamond_certification = COALESCE($12, diamond_certification),
-        setting_type = COALESCE($13, setting_type),
-        hallmark = COALESCE($14, hallmark),
-        width_mm = COALESCE($15, width_mm),
-        height_mm = COALESCE($16, height_mm),
-        availability = COALESCE($17, availability),
-        is_new = COALESCE($18, is_new),
-        is_active = COALESCE($19, is_active),
-        occasion_tags = COALESCE($20, occasion_tags),
-        gold_purity_options = COALESCE($21, gold_purity_options),
-        carat_range_min = COALESCE($22, carat_range_min),
-        carat_range_max = COALESCE($23, carat_range_max),
-        finish_options = COALESCE($24, finish_options),
-        price_modifiers = COALESCE($25, price_modifiers),
-        lead_time_days = COALESCE($26, lead_time_days),
-        min_order_qty = COALESCE($27, min_order_qty),
-        max_order_qty = COALESCE($28, max_order_qty),
+        product_code = COALESCE($2, product_code),
+        description = COALESCE($3, description),
+        category_id = COALESCE($4, category_id),
+        base_price = COALESCE($5, base_price),
+        carat = COALESCE($6, carat),
+        metal_type = COALESCE($7, metal_type),
+        gold_colour = COALESCE($8, gold_colour),
+        metal_weight = COALESCE($9, metal_weight),
+        diamond_type = COALESCE($10, diamond_type),
+        diamond_shape = COALESCE($11, diamond_shape),
+        diamond_color = COALESCE($12, diamond_color),
+        diamond_clarity = COALESCE($13, diamond_clarity),
+        diamond_certification = COALESCE($14, diamond_certification),
+        setting_type = COALESCE($15, setting_type),
+        hallmark = COALESCE($16, hallmark),
+        width_mm = COALESCE($17, width_mm),
+        height_mm = COALESCE($18, height_mm),
+        availability = COALESCE($19, availability),
+        is_new = COALESCE($20, is_new),
+        is_active = COALESCE($21, is_active),
+        occasion_tags = COALESCE($22, occasion_tags),
+        gold_purity_options = COALESCE($23, gold_purity_options),
+        carat_range_min = COALESCE($24, carat_range_min),
+        carat_range_max = COALESCE($25, carat_range_max),
+        finish_options = COALESCE($26, finish_options),
+        price_modifiers = COALESCE($27, price_modifiers),
+        lead_time_days = COALESCE($28, lead_time_days),
+        min_order_qty = COALESCE($29, min_order_qty),
+        max_order_qty = COALESCE($30, max_order_qty),
+        color_stone_name = COALESCE($31, color_stone_name),
+        color_stone_quality = COALESCE($32, color_stone_quality),
         updated_at = NOW()
-       WHERE id = $29 RETURNING *`,
+       WHERE id = $33 RETURNING *`,
       [
-        name, description, category_id,
-        base_price, carat, metal_type, metal_weight,
+        name, product_code, description, category_id,
+        base_price, carat, metal_type, gold_colour, metal_weight,
         diamond_type, diamond_shape, diamond_color, diamond_clarity,
         diamond_certification, setting_type, hallmark,
         width_mm, height_mm, availability, is_new, is_active,
@@ -239,6 +252,7 @@ router.put("/:id", async (req, res, next) => {
         carat_range_min, carat_range_max, finish_options,
         price_modifiers ? JSON.stringify(price_modifiers) : null,
         lead_time_days, min_order_qty, max_order_qty,
+        color_stone_name, color_stone_quality,
         req.params.id,
       ]
     );

@@ -23,7 +23,7 @@ import { imageUrl } from "../../../lib/api";
    ═══════════════════════════════════════════════════════ */
 
 type ProductDetail = {
-  id: string; name: string; sku: string; description: string | null;
+  id: string; name: string; sku: string; product_code: string | null; description: string | null;
   base_price: number; carat: number | null; carat_range_min: number | null;
   carat_range_max: number | null; metal_type: string | null; metal_weight: number | null;
   diamond_type: string | null; diamond_shape: string | null; diamond_color: string | null;
@@ -43,7 +43,7 @@ type Category = { id: string; name: string };
 type Collection = { id: string; name: string };
 
 type FormData = {
-  name: string; sku: string; description: string; category_id: string;
+  name: string; sku: string; product_code: string; description: string; category_id: string;
   collection_ids: string[]; occasion_tags: string;
   metal_type: string; gold_colour: string; metal_weight: string;
   finish_options: string; diamond_type: string; diamond_shape: string;
@@ -92,7 +92,7 @@ const COLOR_STONE_QUALITY_MAP: Record<string, string[]> = {
 const MAX_IMAGES = 10;
 
 const EMPTY: FormData = {
-  name: "", sku: "", description: "", category_id: "", collection_ids: [],
+  name: "", sku: "", product_code: "", description: "", category_id: "", collection_ids: [],
   occasion_tags: "", metal_type: "", gold_colour: "", metal_weight: "",
   finish_options: "", diamond_type: "", diamond_shape: "", diamond_color: "",
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
@@ -110,15 +110,17 @@ const EMPTY: FormData = {
 
 function detailToForm(d: ProductDetail): FormData {
   return {
-    name: d.name || "", sku: d.sku || "", description: d.description || "",
+    name: d.name || "", sku: d.sku || "", product_code: d.product_code || "", description: d.description || "",
     category_id: d.category_id || "",
     collection_ids: d.collections?.map((c) => c.id) || [],
     occasion_tags: Array.isArray(d.occasion_tags) ? d.occasion_tags.join(", ") : (d.occasion_tags || ""),
     metal_type: d.metal_type || "", gold_colour: d.gold_colour || "",
     metal_weight: d.metal_weight != null ? String(d.metal_weight) : "",
     finish_options: Array.isArray(d.finish_options) ? d.finish_options.join(", ") : (d.finish_options || ""),
-    diamond_type: d.diamond_type || "", diamond_shape: d.diamond_shape || "",
-    diamond_color: d.diamond_color || "", diamond_clarity: d.diamond_clarity || "",
+    diamond_type: d.diamond_type || "",
+    diamond_shape: d.diamond_shape || "",
+    diamond_color: d.diamond_color || "",
+    diamond_clarity: d.diamond_clarity || "",
     diamond_certification: d.diamond_certification || "", setting_type: d.setting_type || "",
     hallmark: d.hallmark || "",
     width_mm: d.width_mm != null ? String(d.width_mm) : "",
@@ -127,7 +129,8 @@ function detailToForm(d: ProductDetail): FormData {
     carat: d.carat != null ? String(d.carat) : "",
     carat_range_min: d.carat_range_min != null ? String(d.carat_range_min) : "",
     carat_range_max: d.carat_range_max != null ? String(d.carat_range_max) : "",
-    color_stone_name: d.color_stone_name || "", color_stone_quality: d.color_stone_quality || "",
+    color_stone_name: d.color_stone_name || "",
+    color_stone_quality: d.color_stone_quality || "",
     base_price: d.base_price != null ? String(d.base_price) : "",
     price_modifiers: d.price_modifiers ? (typeof d.price_modifiers === "object" ? JSON.stringify(d.price_modifiers) : d.price_modifiers) : "",
     availability: d.availability || "in-stock",
@@ -140,14 +143,17 @@ function detailToForm(d: ProductDetail): FormData {
 
 function formToPayload(f: FormData) {
   return {
-    name: f.name.trim(), sku: f.sku.trim(), description: f.description.trim() || null,
+    name: f.name.trim(), sku: f.sku.trim(), product_code: f.product_code.trim() || null, description: f.description.trim() || null,
     category_id: f.category_id || null, collection_ids: f.collection_ids,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
+    metal_type: f.metal_type || null,
+    gold_colour: f.gold_colour || null,
     metal_weight: f.metal_weight ? parseFloat(f.metal_weight) : null,
     finish_options: f.finish_options ? f.finish_options.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    diamond_type: f.diamond_type.trim() || null, diamond_shape: f.diamond_shape || null,
-    diamond_color: f.diamond_color || null, diamond_clarity: f.diamond_clarity || null,
+    diamond_type: f.diamond_type.trim() || null,
+    diamond_shape: f.diamond_shape || null,
+    diamond_color: f.diamond_color || null,
+    diamond_clarity: f.diamond_clarity || null,
     diamond_certification: f.diamond_certification.trim() || null,
     setting_type: f.setting_type.trim() || null, hallmark: f.hallmark.trim() || null,
     width_mm: f.width_mm ? parseFloat(f.width_mm) : null,
@@ -156,7 +162,8 @@ function formToPayload(f: FormData) {
     carat: f.carat ? parseFloat(f.carat) : null,
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
-    color_stone_name: f.color_stone_name || null, color_stone_quality: f.color_stone_quality || null,
+    color_stone_name: f.color_stone_name || null,
+    color_stone_quality: f.color_stone_quality || null,
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
     price_modifiers: f.price_modifiers.trim() || null,
     availability: f.availability,
@@ -244,7 +251,8 @@ function StepBasic({ form, setForm, categories, collections }: {
     setForm((p) => ({ ...p, [key]: e.target.value }));
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <FInput label="Product Code" required placeholder="e.g. 100891" value={form.product_code} onChange={f("product_code")} />
         <FInput label="Product Name" required placeholder="e.g. Radiant Diamond Solitaire Ring" value={form.name} onChange={f("name")} />
         <FInput label="SKU" required placeholder="e.g. RNG-18K-001" value={form.sku} onChange={f("sku")} />
       </div>
@@ -371,16 +379,15 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
 function StepSpecs({ form, setForm }: { form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>> }) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
-  const s = (key: keyof FormData) => (v: string) => setForm((p) => ({ ...p, [key]: v }));
   return (
     <div className="space-y-6">
       <div>
         <GroupLabel>Gold</GroupLabel>
         <div className="grid grid-cols-2 gap-4">
-          <FSelect label="Gold Type" placeholder="Select gold type" value={form.metal_type} onValueChange={s("metal_type")}>
+          <FSelect label="Gold Type" placeholder="Select gold type" value={form.metal_type} onValueChange={(v) => setForm((p) => ({ ...p, metal_type: v }))}>
             {GOLD_TYPES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Gold Colour" placeholder="Select colour" value={form.gold_colour} onValueChange={s("gold_colour")}>
+          <FSelect label="Gold Colour" placeholder="Select colour" value={form.gold_colour} onValueChange={(v) => setForm((p) => ({ ...p, gold_colour: v }))}>
             {GOLD_COLOURS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
           <FInput label="Metal Weight (g)" type="number" placeholder="4.5" value={form.metal_weight} onChange={f("metal_weight")} />
@@ -394,13 +401,13 @@ function StepSpecs({ form, setForm }: { form: FormData; setForm: React.Dispatch<
         <GroupLabel>Diamond</GroupLabel>
         <div className="grid grid-cols-2 gap-4">
           <FInput label="Diamond Type" placeholder="Natural, Lab-grown" value={form.diamond_type} onChange={f("diamond_type")} />
-          <FSelect label="Diamond Shape" placeholder="Select shape" value={form.diamond_shape} onValueChange={s("diamond_shape")}>
+          <FSelect label="Diamond Shape" placeholder="Select shape" value={form.diamond_shape} onValueChange={(v) => setForm((p) => ({ ...p, diamond_shape: v }))}>
             {DIAMOND_SHAPES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Diamond Shade" placeholder="Select shade" value={form.diamond_color} onValueChange={s("diamond_color")}>
+          <FSelect label="Diamond Shade" placeholder="Select shade" value={form.diamond_color} onValueChange={(v) => setForm((p) => ({ ...p, diamond_color: v }))}>
             {DIAMOND_SHADES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity} onValueChange={s("diamond_clarity")}>
+          <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity} onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
             {DIAMOND_QUALITIES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
           <FInput label="Certification" placeholder="GIA, IGI" value={form.diamond_certification} onChange={f("diamond_certification")} />
@@ -418,7 +425,7 @@ function StepSpecs({ form, setForm }: { form: FormData; setForm: React.Dispatch<
             {COLOR_STONE_NAMES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
           <FSelect label="Color Stone Quality" placeholder={form.color_stone_name ? "Select quality" : "Select stone first"}
-            value={form.color_stone_quality} onValueChange={s("color_stone_quality")}>
+            value={form.color_stone_quality} onValueChange={(v) => setForm((p) => ({ ...p, color_stone_quality: v }))}>
             {(COLOR_STONE_QUALITY_MAP[form.color_stone_name] || []).map((v) => (
               <SelectItem key={v} value={v}>{v}</SelectItem>
             ))}
@@ -598,6 +605,7 @@ export function AdminProductWizard() {
   /* ── Step navigation ───────────────────────────────── */
   function validateStep(s: number): string | null {
     if (s === 1) {
+      if (!form.product_code.trim()) return "Product code is required.";
       if (!form.name.trim()) return "Product name is required.";
       if (!form.sku.trim()) return "SKU is required.";
     }

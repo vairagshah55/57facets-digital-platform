@@ -53,6 +53,7 @@ type ProductListItem = {
   id: string;
   name: string;
   sku: string;
+  product_code: string | null;
   base_price: number;
   carat: number | null;
   metal_type: string | null;
@@ -469,6 +470,11 @@ export function AdminProducts() {
                               style={{ color: "var(--sf-text-primary)" }}
                             >
                               {p.name}
+                              {p.product_code && (
+                                <span className="ml-1 text-xs font-normal" style={{ color: "var(--sf-text-muted)" }}>
+                                  ({p.product_code})
+                                </span>
+                              )}
                             </span>
                             {p.is_new && (
                               <Badge

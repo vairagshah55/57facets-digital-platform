@@ -46,7 +46,6 @@ import productVideo from "../../assets/Videos/5327599-hd_1280_720_30fps.mp4";
 const FALLBACK_IMAGES = [img1, img3, img5, img7];
 
 const CARAT_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
-const METAL_OPTIONS = ["18K White Gold", "18K Yellow Gold", "18K Rose Gold", "Platinum"];
 
 interface ProductData {
   id: string;
@@ -73,6 +72,15 @@ interface ProductData {
     hallmark: string;
     width: string;
     height: string;
+  };
+  customization: {
+    goldTypes: string[];
+    goldColours: string[];
+    diamondShapes: string[];
+    diamondShades: string[];
+    diamondQualities: string[];
+    colorStoneNames: string[];
+    colorStoneQualities: string[];
   };
 }
 
@@ -112,6 +120,15 @@ function mapApiProduct(raw: any): ProductData {
       hallmark: raw.hallmark || "-",
       width: raw.width_mm ? `${raw.width_mm} mm` : "-",
       height: raw.height_mm ? `${raw.height_mm} mm` : "-",
+    },
+    customization: {
+      goldTypes: raw.metal_type ? String(raw.metal_type).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      goldColours: raw.gold_colour ? String(raw.gold_colour).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      diamondShapes: raw.diamond_shape ? String(raw.diamond_shape).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      diamondShades: raw.diamond_color ? String(raw.diamond_color).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      diamondQualities: raw.diamond_clarity ? String(raw.diamond_clarity).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      colorStoneNames: raw.color_stone_name ? String(raw.color_stone_name).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      colorStoneQualities: raw.color_stone_quality ? String(raw.color_stone_quality).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
     },
   };
 }
@@ -154,7 +171,13 @@ export function ProductDetail() {
 
   // Customization
   const [selectedCarat, setSelectedCarat] = useState(1.0);
-  const [selectedMetal, setSelectedMetal] = useState("18K White Gold");
+  const [selectedGoldType, setSelectedGoldType] = useState("");
+  const [selectedGoldColour, setSelectedGoldColour] = useState("");
+  const [selectedDiamondShape, setSelectedDiamondShape] = useState("");
+  const [selectedDiamondShade, setSelectedDiamondShade] = useState("");
+  const [selectedDiamondQuality, setSelectedDiamondQuality] = useState("");
+  const [selectedColorStone, setSelectedColorStone] = useState("");
+  const [selectedColorStoneQuality, setSelectedColorStoneQuality] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
@@ -179,7 +202,13 @@ export function ProductDetail() {
         const mapped = mapApiProduct(raw);
         setProduct(mapped);
         setSelectedCarat(mapped.specs.diamondCarat);
-        setSelectedMetal(mapped.specs.metalType);
+        if (mapped.customization.goldTypes.length) setSelectedGoldType(mapped.customization.goldTypes[0]);
+        if (mapped.customization.goldColours.length) setSelectedGoldColour(mapped.customization.goldColours[0]);
+        if (mapped.customization.diamondShapes.length) setSelectedDiamondShape(mapped.customization.diamondShapes[0]);
+        if (mapped.customization.diamondShades.length) setSelectedDiamondShade(mapped.customization.diamondShades[0]);
+        if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
+        if (mapped.customization.colorStoneNames.length) setSelectedColorStone(mapped.customization.colorStoneNames[0]);
+        if (mapped.customization.colorStoneQualities.length) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
       } catch (err: any) {
         if (cancelled) return;
         setError(err.message || "Failed to load product");
@@ -477,112 +506,244 @@ export function ProductDetail() {
             </div>
 
             {/* ── Customization ────────────────────────── */}
-            <div
-              className="rounded-xl border p-4 mb-5 space-y-5"
-              style={{
-                backgroundColor: "var(--sf-bg-surface-1)",
-                borderColor: "var(--sf-divider)",
-              }}
-            >
-              <p
-                className="text-sm font-semibold flex items-center gap-2"
-                style={{ color: "var(--sf-text-primary)" }}
-              >
+            <div className="rounded-2xl border mb-5 overflow-hidden"
+              style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+
+              {/* Header */}
+              <div className="px-5 py-3.5 flex items-center gap-2.5"
+                style={{ borderBottom: "1px solid var(--sf-divider)" }}>
                 <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                Customize Your Piece
-              </p>
-
-              {/* Diamond Carat */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium" style={{ color: "var(--sf-text-secondary)" }}>
-                    Diamond Carat
-                  </label>
-                  <span className="text-xs font-semibold" style={{ color: "var(--sf-teal)" }}>
-                    {selectedCarat} ct
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {CARAT_OPTIONS.map((ct) => (
-                    <button
-                      key={ct}
-                      onClick={() => setSelectedCarat(ct)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
-                      style={{
-                        backgroundColor:
-                          selectedCarat === ct ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
-                        borderColor:
-                          selectedCarat === ct ? "var(--sf-teal)" : "var(--sf-divider)",
-                        color:
-                          selectedCarat === ct ? "var(--sf-bg-base)" : "var(--sf-text-secondary)",
-                      }}
-                    >
-                      {ct} ct
-                    </button>
-                  ))}
-                </div>
+                <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                  Customize Your Piece
+                </span>
               </div>
 
-              {/* Metal Type */}
-              <div>
-                <label className="text-xs font-medium block mb-2" style={{ color: "var(--sf-text-secondary)" }}>
-                  Metal Type
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {METAL_OPTIONS.map((metal) => (
-                    <button
-                      key={metal}
-                      onClick={() => setSelectedMetal(metal)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
-                      style={{
-                        backgroundColor:
-                          selectedMetal === metal ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
-                        borderColor:
-                          selectedMetal === metal ? "var(--sf-teal)" : "var(--sf-divider)",
-                        color:
-                          selectedMetal === metal ? "var(--sf-bg-base)" : "var(--sf-text-secondary)",
-                      }}
-                    >
-                      {metal}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* ─── Metal ──────────────────────────────── */}
+              {(product.customization.goldTypes.length > 0 || product.customization.goldColours.length > 0) && (() => {
+                const swatchMap: Record<string, { bg: string; label: string }> = {
+                  YELLOW: { bg: "linear-gradient(145deg, #F5D66B, #B8860B)", label: "Yellow" },
+                  ROSE: { bg: "linear-gradient(145deg, #EDAFB8, #8B4557)", label: "Rose" },
+                  WHITE: { bg: "linear-gradient(145deg, #F0F0F0, #9E9E9E)", label: "White" },
+                  "TWO TONE": { bg: "linear-gradient(145deg, #F5D66B 42%, #D0D0D0 58%)", label: "Two Tone" },
+                };
+                const sw = swatchMap[selectedGoldColour || product.customization.goldColours[0]] || swatchMap.YELLOW;
+                const purity = selectedGoldType || product.customization.goldTypes[0] || "";
+                const multiPurity = product.customization.goldTypes.length > 1;
+                const multiColour = product.customization.goldColours.length > 1;
+                return (
+                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Palette className="w-3.5 h-3.5" style={{ color: "#D4A843" }} />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Metal</span>
+                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                        style={{ backgroundColor: "rgba(212,168,67,0.1)", color: "#D4A843" }}>
+                        {[purity, sw.label].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {product.customization.goldTypes.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>Purity</p>
+                          {multiPurity ? (
+                            <div className="flex gap-1.5">
+                              {product.customization.goldTypes.map((opt) => {
+                                const active = selectedGoldType === opt;
+                                return (
+                                  <button key={opt} onClick={() => setSelectedGoldType(opt)}
+                                    className="flex-1 py-2 rounded-lg text-[11px] font-bold text-center transition-all duration-200"
+                                    style={{
+                                      backgroundColor: active ? "rgba(212,168,67,0.12)" : "rgba(255,255,255,0.03)",
+                                      border: active ? "1.5px solid #D4A843" : "1px solid rgba(255,255,255,0.06)",
+                                      color: active ? "#D4A843" : "var(--sf-text-muted)",
+                                    }}>{opt}</button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{purity}</p>
+                          )}
+                        </div>
+                      )}
+                      {product.customization.goldColours.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>Colour</p>
+                          {multiColour ? (
+                            <div className="flex gap-2">
+                              {product.customization.goldColours.map((opt) => {
+                                const active = selectedGoldColour === opt;
+                                const s = swatchMap[opt] || swatchMap.YELLOW;
+                                return (
+                                  <button key={opt} onClick={() => setSelectedGoldColour(opt)}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-200"
+                                    style={{
+                                      backgroundColor: active ? "rgba(212,168,67,0.1)" : "rgba(255,255,255,0.03)",
+                                      border: active ? "1.5px solid #D4A843" : "1px solid rgba(255,255,255,0.06)",
+                                    }}>
+                                    <span className="w-4 h-4 rounded-full shrink-0" style={{ background: s.bg }} />
+                                    <span className="text-[11px] font-semibold" style={{ color: active ? "#D4A843" : "var(--sf-text-muted)" }}>{s.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="w-4 h-4 rounded-full" style={{ background: sw.bg }} />
+                              <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{sw.label}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {/* Quantity */}
-              <div>
-                <label className="text-xs font-medium block mb-2" style={{ color: "var(--sf-text-secondary)" }}>
-                  Quantity
-                </label>
-                <div
-                  className="inline-flex items-center gap-0 rounded-lg border overflow-hidden"
-                  style={{
-                    borderColor: "var(--sf-divider)",
-                    backgroundColor: "var(--sf-bg-surface-2)",
-                  }}
-                >
-                  <button
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-10 h-10 flex items-center justify-center transition-colors hover:bg-[var(--sf-bg-surface-3)]"
-                    style={{ color: "var(--sf-text-secondary)" }}
-                  >
-                    <Minus className="w-4 h-4" />
+              {/* ─── Diamond ─────────────────────────────── */}
+              {(product.customization.diamondShapes.length > 0 || product.customization.diamondShades.length > 0 || product.customization.diamondQualities.length > 0) && (() => {
+                const shape = selectedDiamondShape || product.customization.diamondShapes[0] || "";
+                const shade = selectedDiamondShade || product.customization.diamondShades[0] || "";
+                const clarity = selectedDiamondQuality || product.customization.diamondQualities[0] || "";
+                const fields = [
+                  { label: "Shape", options: product.customization.diamondShapes, selected: selectedDiamondShape, set: setSelectedDiamondShape },
+                  { label: "Shade", options: product.customization.diamondShades, selected: selectedDiamondShade, set: setSelectedDiamondShade },
+                  { label: "Clarity", options: product.customization.diamondQualities, selected: selectedDiamondQuality, set: setSelectedDiamondQuality },
+                ].filter((f) => f.options.length > 0);
+                return (
+                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Diamond className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Diamond</span>
+                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                        style={{ backgroundColor: "rgba(48,184,191,0.08)", color: "var(--sf-teal)" }}>
+                        {[shape, shade, clarity].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${fields.length}, 1fr)` }}>
+                      {fields.map((field) => {
+                        const single = field.options.length === 1;
+                        return (
+                          <div key={field.label}>
+                            <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{field.label}</p>
+                            {single ? (
+                              <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{field.options[0]}</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {field.options.map((opt) => {
+                                  const active = field.selected === opt;
+                                  return (
+                                    <button key={opt} onClick={() => field.set(opt)}
+                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200"
+                                      style={{
+                                        backgroundColor: active ? "var(--sf-teal)" : "rgba(255,255,255,0.03)",
+                                        border: active ? "1.5px solid var(--sf-teal)" : "1px solid rgba(255,255,255,0.06)",
+                                        color: active ? "#fff" : "var(--sf-text-muted)",
+                                        boxShadow: active ? "0 2px 10px rgba(48,184,191,0.3)" : "none",
+                                      }}>{opt}</button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Carat */}
+                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>Carat</p>
+                        <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>{selectedCarat} ct</span>
+                      </div>
+                      <div className="grid grid-cols-8 gap-1">
+                        {CARAT_OPTIONS.map((ct) => {
+                          const active = selectedCarat === ct;
+                          return (
+                            <button key={ct} onClick={() => setSelectedCarat(ct)}
+                              className="py-2 rounded-lg text-[11px] font-bold text-center transition-all duration-200"
+                              style={{
+                                backgroundColor: active ? "var(--sf-teal)" : "rgba(255,255,255,0.03)",
+                                border: active ? "1.5px solid var(--sf-teal)" : "1px solid rgba(255,255,255,0.05)",
+                                color: active ? "#fff" : "var(--sf-text-muted)",
+                                boxShadow: active ? "0 2px 10px rgba(48,184,191,0.3)" : "none",
+                              }}>{ct}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ─── Color Stones ─────────────────────────── */}
+              {(product.customization.colorStoneNames.length > 0 || product.customization.colorStoneQualities.length > 0) && (() => {
+                const stoneType = selectedColorStone || product.customization.colorStoneNames[0] || "";
+                const stoneQuality = selectedColorStoneQuality || product.customization.colorStoneQualities[0] || "";
+                const fields = [
+                  { label: "Type", options: product.customization.colorStoneNames, selected: selectedColorStone, set: setSelectedColorStone },
+                  { label: "Quality", options: product.customization.colorStoneQualities, selected: selectedColorStoneQuality, set: setSelectedColorStoneQuality },
+                ].filter((f) => f.options.length > 0);
+                return (
+                  <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Gem className="w-3.5 h-3.5" style={{ color: "#9B59B6" }} />
+                      <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>Color Stones</span>
+                      <span className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                        style={{ backgroundColor: "rgba(155,89,182,0.08)", color: "#9B59B6" }}>
+                        {[stoneType, stoneQuality].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${fields.length}, 1fr)` }}>
+                      {fields.map((field) => {
+                        const single = field.options.length === 1;
+                        return (
+                          <div key={field.label}>
+                            <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{field.label}</p>
+                            {single ? (
+                              <p className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{field.options[0]}</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {field.options.map((opt) => {
+                                  const active = field.selected === opt;
+                                  return (
+                                    <button key={opt} onClick={() => field.set(opt)}
+                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200"
+                                      style={{
+                                        backgroundColor: active ? "rgba(155,89,182,0.12)" : "rgba(255,255,255,0.03)",
+                                        border: active ? "1.5px solid rgba(155,89,182,0.5)" : "1px solid rgba(255,255,255,0.06)",
+                                        color: active ? "#9B59B6" : "var(--sf-text-muted)",
+                                      }}>{opt}</button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ─── Quantity ─────────────────────────────── */}
+              <div className="px-5 py-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <ShoppingCart className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
+                  <span className="text-xs font-medium" style={{ color: "var(--sf-text-secondary)" }}>Quantity</span>
+                </div>
+                <div className="flex items-center rounded-lg overflow-hidden"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.08)]"
+                    style={{ color: "var(--sf-text-muted)" }}>
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span
-                    className="w-12 h-10 flex items-center justify-center text-sm font-semibold border-x"
-                    style={{
-                      color: "var(--sf-text-primary)",
-                      borderColor: "var(--sf-divider)",
-                    }}
-                  >
+                  <span className="w-11 h-9 flex items-center justify-center text-xs font-bold border-x"
+                    style={{ color: "var(--sf-text-primary)", borderColor: "rgba(255,255,255,0.08)" }}>
                     {quantity}
                   </span>
-                  <button
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="w-10 h-10 flex items-center justify-center transition-colors hover:bg-[var(--sf-bg-surface-3)]"
-                    style={{ color: "var(--sf-text-secondary)" }}
-                  >
-                    <Plus className="w-4 h-4" />
+                  <button onClick={() => setQuantity((q) => q + 1)}
+                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.08)]"
+                    style={{ color: "var(--sf-text-muted)" }}>
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -682,7 +843,7 @@ export function ProductDetail() {
                     borderColor: "var(--sf-divider)",
                   }}
                 >
-                  <SpecRow icon={<Palette />} label="Metal Type" value={selectedMetal} />
+                  <SpecRow icon={<Palette />} label="Metal Type" value={[selectedGoldType, selectedGoldColour].filter(Boolean).join(" ") || product.specs.metalType} />
                   <SpecRow icon={<Weight />} label="Metal Weight" value={product.specs.metalWeight} />
                   <SpecRow icon={<Ruler />} label="Width" value={product.specs.width} />
                   <SpecRow icon={<Ruler />} label="Height" value={product.specs.height} />
