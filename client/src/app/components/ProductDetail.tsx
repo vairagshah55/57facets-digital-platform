@@ -642,12 +642,6 @@ export function ProductDetail() {
                                   }}>
                                   <span className="w-4 h-4 rounded-full shrink-0" style={{ background: s.bg }} />
                                   <span className="text-[11px] font-bold" style={{ color: active ? "#D4A843" : "var(--sf-text-secondary)" }}>{s.label}</span>
-                                  {active && (
-                                    <span className="absolute flex items-center justify-center rounded-full"
-                                      style={{ top: -6, right: -6, width: 16, height: 16, background: "#D4A843", boxShadow: "0 2px 6px rgba(212,168,67,0.55)" }}>
-                                      <Check className="w-2 h-2 text-white" strokeWidth={3} />
-                                    </span>
-                                  )}
                                 </button>
                               );
                             })}
