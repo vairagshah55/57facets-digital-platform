@@ -49,7 +49,7 @@ type FormData = {
   finish_options: string; diamond_type: string; diamond_shape: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
-  gold_purity_options: string; carat: string; carat_range_min: string; carat_range_max: string;
+  gold_purity_options: string; carat: string; carat_range_min: string; carat_range_max: string; carat_options: number[];
   color_stones: { name: string; quality: string }[];
   base_price: string; price_modifiers: string;
   availability: string; lead_time_days: string; min_order_qty: string; max_order_qty: string;
@@ -97,7 +97,7 @@ const EMPTY: FormData = {
   finish_options: "", diamond_type: "", diamond_shape: "", diamond_color: "",
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "",
-  carat: "", carat_range_min: "", carat_range_max: "",
+  carat: "", carat_range_min: "", carat_range_max: "", carat_options: [],
   color_stones: [],
   base_price: "", price_modifiers: "", availability: "in-stock",
   lead_time_days: "", min_order_qty: "", max_order_qty: "",
@@ -129,6 +129,7 @@ function detailToForm(d: ProductDetail): FormData {
     carat: d.carat != null ? String(d.carat) : "",
     carat_range_min: d.carat_range_min != null ? String(d.carat_range_min) : "",
     carat_range_max: d.carat_range_max != null ? String(d.carat_range_max) : "",
+    carat_options: Array.isArray(d.carat_options) ? d.carat_options.map(Number) : [],
     color_stones: (() => {
       const names = (d.color_stone_name || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const quals = (d.color_stone_quality || "").split(",").map((s: string) => s.trim());
@@ -165,6 +166,7 @@ function formToPayload(f: FormData) {
     carat: f.carat ? parseFloat(f.carat) : null,
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
+    carat_options: f.carat_options.length ? f.carat_options : null,
     color_stone_name: f.color_stones.length ? f.color_stones.map(s => s.name).join(",") : null,
     color_stone_quality: f.color_stones.length ? f.color_stones.map(s => s.quality).join(",") : null,
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
@@ -378,10 +380,12 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
   );
 }
 
-function StepSpecs({ form, setForm, pendingStone, setPendingStone }: {
+function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat, setPendingCarat }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
   pendingStone: { name: string; quality: string };
   setPendingStone: React.Dispatch<React.SetStateAction<{ name: string; quality: string }>>;
+  pendingCarat: string;
+  setPendingCarat: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
@@ -471,6 +475,42 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone }: {
           <FInput label="Hallmark" placeholder="BIS 916" value={form.hallmark} onChange={f("hallmark")} />
           <FInput label="Width (mm)" type="number" placeholder="2.5" value={form.width_mm} onChange={f("width_mm")} />
           <FInput label="Height (mm)" type="number" placeholder="8.0" value={form.height_mm} onChange={f("height_mm")} />
+        </div>
+
+        <div className="mt-4">
+          <GroupLabel>Carat Options</GroupLabel>
+          {form.carat_options.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[...form.carat_options].sort((a, b) => a - b).map((ct) => (
+                <div key={ct} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                  style={{ backgroundColor: "var(--sf-bg-surface-3)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)" }}>
+                  <span>{ct} ct</span>
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, carat_options: p.carat_options.filter(v => v !== ct) }))}>
+                    <X className="h-3 w-3" style={{ color: "var(--sf-text-muted)" }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 items-end">
+            <div className="w-32">
+              <FInput label="Add Carat" type="number" placeholder="e.g. 1.5" step="0.25" value={pendingCarat}
+                onChange={(e) => setPendingCarat(e.target.value)} />
+            </div>
+            <button type="button"
+              disabled={!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))}
+              onClick={() => {
+                const val = parseFloat(pendingCarat);
+                if (!isNaN(val) && !form.carat_options.includes(val)) {
+                  setForm((p) => ({ ...p, carat_options: [...p.carat_options, val] }));
+                  setPendingCarat("");
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded mb-0.5"
+              style={{ backgroundColor: "var(--sf-accent)", color: "var(--sf-bg-base)", opacity: (!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))) ? 0.4 : 1 }}>
+              <Plus className="h-3 w-3" /> Add
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -566,6 +606,7 @@ export function AdminProductWizard() {
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [form, setForm] = useState<FormData>({ ...EMPTY });
   const [pendingStone, setPendingStone] = useState({ name: "", quality: "" });
+  const [pendingCarat, setPendingCarat] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
@@ -883,7 +924,7 @@ export function AdminProductWizard() {
                   removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary}
                 />
               )}
-              {step === 3 && <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone} setPendingStone={setPendingStone} />}
+              {step === 3 && <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone} setPendingStone={setPendingStone} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />}
               {step === 4 && <StepPricing form={form} setForm={setForm} />}
               {step === 5 && <StepStatus form={form} setForm={setForm} />}
             </motion.div>

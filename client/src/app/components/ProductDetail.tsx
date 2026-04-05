@@ -81,6 +81,7 @@ interface ProductData {
     diamondQualities: string[];
     colorStoneNames: string[];
     colorStoneQualities: string[];
+    caratOptions: number[];
   };
 }
 
@@ -129,6 +130,7 @@ function mapApiProduct(raw: any): ProductData {
       diamondQualities: raw.diamond_clarity ? String(raw.diamond_clarity).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
       colorStoneNames: raw.color_stone_name ? String(raw.color_stone_name).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
       colorStoneQualities: raw.color_stone_quality ? String(raw.color_stone_quality).split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      caratOptions: Array.isArray(raw.carat_options) ? raw.carat_options.map(Number) : [],
     },
   };
 }
@@ -696,7 +698,7 @@ export function ProductDetail() {
                         <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>{selectedCarat} ct</span>
                       </div>
                       <div className="grid grid-cols-8 gap-1">
-                        {CARAT_OPTIONS.map((ct) => {
+                        {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS).map((ct) => {
                           const active = selectedCarat === ct;
                           return (
                             <button key={ct} onClick={() => setSelectedCarat(ct)}
@@ -897,6 +899,27 @@ export function ProductDetail() {
                   <SpecRow icon={<Gem />} label="Diamond Type" value={product.specs.diamondType} />
                   <SpecRow icon={<Diamond />} label="Shape" value={product.specs.diamondShape} />
                   <SpecRow icon={<Sparkles />} label="Carat" value={`${selectedCarat} ct`} />
+                  {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS).length > 0 && (
+                    <div className="flex items-start justify-between py-2.5 border-b" style={{ borderColor: "var(--sf-divider)" }}>
+                      <div className="flex items-center gap-2">
+                        <span className="[&>svg]:w-4 [&>svg]:h-4" style={{ color: "var(--sf-text-muted)" }}><Sparkles /></span>
+                        <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>Carat Options</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end max-w-[55%]">
+                        {[...(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS)]
+                          .sort((a, b) => a - b)
+                          .map((ct) => (
+                            <span key={ct} className="text-[11px] font-semibold px-2 py-0.5 rounded"
+                              style={{
+                                backgroundColor: ct === selectedCarat ? "var(--sf-teal)" : "rgba(255,255,255,0.06)",
+                                color: ct === selectedCarat ? "#fff" : "var(--sf-text-muted)",
+                              }}>
+                              {ct} ct
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                   <SpecRow icon={<Palette />} label="Color Grade" value={product.specs.diamondColor} />
                   <SpecRow icon={<Award />} label="Clarity Grade" value={product.specs.diamondClarity} />
                   <SpecRow icon={<Shield />} label="Certification" value={product.specs.diamondCertification} last />

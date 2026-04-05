@@ -15,6 +15,7 @@ import {
   Layers,
   DollarSign,
   ShieldCheck,
+  Plus,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -106,6 +107,7 @@ type ProductFormData = {
   carat: string;
   carat_range_min: string;
   carat_range_max: string;
+  carat_options: number[];
   base_price: string;
   price_modifiers: string;
   availability: string;
@@ -134,7 +136,7 @@ const EMPTY_FORM: ProductFormData = {
   diamond_shape: "", diamond_color: "", diamond_clarity: "",
   diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "", finish_options: "",
-  carat: "", carat_range_min: "", carat_range_max: "", base_price: "",
+  carat: "", carat_range_min: "", carat_range_max: "", carat_options: [], base_price: "",
   price_modifiers: "", availability: "in-stock", lead_time_days: "",
   min_order_qty: "", max_order_qty: "", is_new: false, is_active: true,
 };
@@ -168,6 +170,7 @@ function detailToForm(d: ProductDetail): ProductFormData {
     carat: d.carat != null ? String(d.carat) : "",
     carat_range_min: d.carat_range_min != null ? String(d.carat_range_min) : "",
     carat_range_max: d.carat_range_max != null ? String(d.carat_range_max) : "",
+    carat_options: Array.isArray(d.carat_options) ? d.carat_options.map(Number) : [],
     base_price: d.base_price != null ? String(d.base_price) : "",
     price_modifiers: d.price_modifiers ? (typeof d.price_modifiers === "object" ? JSON.stringify(d.price_modifiers) : d.price_modifiers) : "",
     availability: d.availability || "in-stock",
@@ -195,6 +198,7 @@ function formToPayload(f: ProductFormData) {
     carat: f.carat ? parseFloat(f.carat) : null,
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
+    carat_options: f.carat_options.length ? f.carat_options : null,
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
     price_modifiers: typeof f.price_modifiers === "object" ? f.price_modifiers : (f.price_modifiers.trim() || null),
     availability: f.availability,
@@ -296,6 +300,7 @@ export function AdminProductForm() {
   const isEdit = !!id;
 
   const [form, setForm] = useState<ProductFormData>({ ...EMPTY_FORM });
+  const [pendingCarat, setPendingCarat] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
@@ -698,6 +703,42 @@ export function AdminProductForm() {
               <FieldInput label="Hallmark" placeholder="BIS 916" value={form.hallmark} onChange={f("hallmark")} />
               <FieldInput label="Width (mm)" type="number" placeholder="2.5" value={form.width_mm} onChange={f("width_mm")} />
               <FieldInput label="Height (mm)" type="number" placeholder="8" value={form.height_mm} onChange={f("height_mm")} />
+            </div>
+
+            <div className="space-y-1 mb-1 mt-4">
+              <p className="text-xs font-semibold" style={{ color: "var(--sf-text-muted)" }}>CARAT OPTIONS</p>
+            </div>
+            {form.carat_options.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[...form.carat_options].sort((a, b) => a - b).map((ct) => (
+                  <div key={ct} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                    style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)" }}>
+                    <span>{ct} ct</span>
+                    <button type="button" onClick={() => setForm((p) => ({ ...p, carat_options: p.carat_options.filter(v => v !== ct) }))}>
+                      <X className="h-3 w-3" style={{ color: "var(--sf-text-muted)" }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 items-end">
+              <div className="w-36">
+                <FieldInput label="Add Carat" type="number" placeholder="e.g. 1.5" step="0.25" value={pendingCarat}
+                  onChange={(e) => setPendingCarat(e.target.value)} />
+              </div>
+              <button type="button"
+                disabled={!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))}
+                onClick={() => {
+                  const val = parseFloat(pendingCarat);
+                  if (!isNaN(val) && !form.carat_options.includes(val)) {
+                    setForm((p) => ({ ...p, carat_options: [...p.carat_options, val] }));
+                    setPendingCarat("");
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded h-9"
+                style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)", opacity: (!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))) ? 0.4 : 1 }}>
+                <Plus className="h-3 w-3" /> Add
+              </button>
             </div>
           </SectionCard>
 

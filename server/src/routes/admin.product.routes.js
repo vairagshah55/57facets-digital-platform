@@ -126,7 +126,7 @@ router.post("/", async (req, res, next) => {
       carat_range_min, carat_range_max, finish_options,
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
-      color_stone_name, color_stone_quality,
+      color_stone_name, color_stone_quality, carat_options,
       collection_ids,
     } = req.body;
 
@@ -145,10 +145,10 @@ router.post("/", async (req, res, next) => {
         is_new, occasion_tags, gold_purity_options,
         carat_range_min, carat_range_max, finish_options,
         price_modifiers, lead_time_days, min_order_qty, max_order_qty,
-        color_stone_name, color_stone_quality
+        color_stone_name, color_stone_quality, carat_options
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31
+        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
       ) RETURNING *`,
       [
         name, sku, description || null, category_id || null,
@@ -163,6 +163,7 @@ router.post("/", async (req, res, next) => {
         price_modifiers ? JSON.stringify(price_modifiers) : "{}",
         lead_time_days || null, min_order_qty || 1, max_order_qty || 100,
         color_stone_name || null, color_stone_quality || null,
+        Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
       ]
     );
 
@@ -214,7 +215,7 @@ router.put("/:id", async (req, res, next) => {
       carat_range_min, carat_range_max, finish_options,
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
-      color_stone_name, color_stone_quality,
+      color_stone_name, color_stone_quality, carat_options,
       collection_ids,
     } = req.body;
 
@@ -251,8 +252,9 @@ router.put("/:id", async (req, res, next) => {
         max_order_qty = COALESCE($29, max_order_qty),
         color_stone_name = COALESCE($30, color_stone_name),
         color_stone_quality = COALESCE($31, color_stone_quality),
+        carat_options = $32,
         updated_at = NOW()
-       WHERE id = $32 RETURNING *`,
+       WHERE id = $33 RETURNING *`,
       [
         name, description, category_id,
         base_price, carat, metal_type, gold_colour, metal_weight,
@@ -264,6 +266,7 @@ router.put("/:id", async (req, res, next) => {
         price_modifiers ? JSON.stringify(price_modifiers) : null,
         lead_time_days, min_order_qty, max_order_qty,
         color_stone_name, color_stone_quality,
+        Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         req.params.id,
       ]
     );
