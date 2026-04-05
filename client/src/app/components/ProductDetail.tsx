@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -31,7 +31,7 @@ import { Textarea } from "./ui/textarea";
 import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import { products as productsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
 
 import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
@@ -157,6 +157,7 @@ function calculatePrice(
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   // Data fetching state
   const [product, setProduct] = useState<ProductData | null>(null);
@@ -181,6 +182,11 @@ export function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
+
+  // Order submission
+  const [ordering, setOrdering] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  const [existingOrder, setExistingOrder] = useState<{ order_number: string; status: string } | null>(null);
 
   // ── Fetch product on mount ─────────────────────────
   useEffect(() => {
@@ -209,6 +215,13 @@ export function ProductDetail() {
         if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
         if (mapped.customization.colorStoneNames.length) setSelectedColorStone(mapped.customization.colorStoneNames[0]);
         if (mapped.customization.colorStoneQualities.length) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
+        // Check if retailer already has an active order for this product
+        try {
+          const check = await ordersApi.checkProduct(id!);
+          if (!cancelled && check.hasActiveOrder && check.order) {
+            setExistingOrder(check.order);
+          }
+        } catch { /* not logged in or no orders — ignore */ }
       } catch (err: any) {
         if (cancelled) return;
         setError(err.message || "Failed to load product");
@@ -251,6 +264,35 @@ export function ProductDetail() {
       ) * quantity
     );
   }, [product, selectedCarat, quantity]);
+
+  const handleRequestOrder = useCallback(async () => {
+    if (!product || ordering) return;
+    setOrdering(true);
+    setOrderSuccess(null);
+    try {
+      const order = await ordersApi.create([{
+        productId: product.id,
+        quantity,
+        unitPrice: Math.round(totalPrice / quantity),
+        carat: selectedCarat,
+        metalType: selectedGoldType || null,
+        goldColour: selectedGoldColour || null,
+        diamondShape: selectedDiamondShape || null,
+        diamondShade: selectedDiamondShade || null,
+        diamondQuality: selectedDiamondQuality || null,
+        colorStoneName: selectedColorStone || null,
+        colorStoneQuality: selectedColorStoneQuality || null,
+        note: note || null,
+      }], note || undefined);
+      setOrderSuccess(order.order_number || "Order placed");
+      setTimeout(() => navigate("/retailer/orders"), 1500);
+    } catch (err: any) {
+      setOrderSuccess(null);
+      alert(err.message || "Failed to place order");
+    } finally {
+      setOrdering(false);
+    }
+  }, [product, ordering, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, note]);
 
   const formatPrice = (p: number) =>
     "₹" + p.toLocaleString("en-IN");
@@ -787,10 +829,23 @@ export function ProductDetail() {
             <div className="flex gap-3 mb-8">
               <Button
                 className="flex-1 h-12 text-base font-medium gap-2"
-                style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
+                style={{
+                  backgroundColor: existingOrder ? "rgba(245,158,11,0.12)" : orderSuccess ? "#22c55e" : "var(--sf-teal)",
+                  color: existingOrder ? "#f59e0b" : orderSuccess ? "#fff" : "var(--sf-bg-base)",
+                  border: existingOrder ? "1px solid rgba(245,158,11,0.3)" : "none",
+                }}
+                onClick={existingOrder ? () => navigate("/retailer/orders") : handleRequestOrder}
+                disabled={ordering || !!orderSuccess}
               >
-                <ShoppingCart className="w-5 h-5" />
-                Request Order
+                {ordering ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Placing Order…</>
+                ) : orderSuccess ? (
+                  <><Check className="w-5 h-5" /> {orderSuccess}</>
+                ) : existingOrder ? (
+                  <><Check className="w-5 h-5" /> {existingOrder.order_number} — {existingOrder.status}</>
+                ) : (
+                  <><ShoppingCart className="w-5 h-5" /> Request Order</>
+                )}
               </Button>
               <Button
                 variant="outline"

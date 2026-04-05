@@ -131,10 +131,14 @@ router.post("/", async (req, res, next) => {
     // Create order items
     for (const item of items) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, unit_price, carat, metal_type, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO order_items (order_id, product_id, quantity, unit_price, carat, metal_type,
+         gold_colour, diamond_shape, diamond_shade, diamond_quality, color_stone_name, color_stone_quality, note)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
         [order.id, item.productId, item.quantity || 1, item.unitPrice || 0,
-         item.carat || null, item.metalType || null, item.note || null]
+         item.carat || null, item.metalType || null,
+         item.goldColour || null, item.diamondShape || null, item.diamondShade || null,
+         item.diamondQuality || null, item.colorStoneName || null, item.colorStoneQuality || null,
+         item.note || null]
       );
     }
 
@@ -159,6 +163,25 @@ router.post("/", async (req, res, next) => {
     next(err);
   } finally {
     client.release();
+  }
+});
+
+// ── GET /api/orders/check-product/:productId ──────
+// Check if retailer has an active order for this product
+router.get("/check-product/:productId", async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT o.id, o.order_number, o.status, o.created_at
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.retailer_id = $1 AND oi.product_id = $2
+         AND o.status NOT IN ('delivered', 'cancelled')
+       ORDER BY o.created_at DESC LIMIT 1`,
+      [req.retailer.id, req.params.productId]
+    );
+    res.json({ hasActiveOrder: rows.length > 0, order: rows[0] || null });
+  } catch (err) {
+    next(err);
   }
 });
 

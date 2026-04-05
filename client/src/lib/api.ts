@@ -139,6 +139,7 @@ export const orders = {
       body: JSON.stringify({ items, note }),
     }),
   stats: () => request("/orders/summary/stats"),
+  checkProduct: (productId: string) => request(`/orders/check-product/${productId}`),
 };
 
 // ── Notifications ─────────────────────────────────

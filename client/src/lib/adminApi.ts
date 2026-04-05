@@ -143,3 +143,17 @@ export const adminProducts = {
     return data;
   },
 };
+
+// ── Orders (Admin) ───────────────────────────────
+export const adminOrders = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/orders${qs}`);
+  },
+  detail: (id: string) => request(`/orders/${id}`),
+  updateStatus: (id: string, status: string, detail?: string) =>
+    request(`/orders/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status, detail }),
+    }),
+};

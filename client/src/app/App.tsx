@@ -8,6 +8,7 @@ import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { AdminRetailers } from "./components/admin/AdminRetailers";
 import { AdminProducts } from "./components/admin/AdminProducts";
 import { AdminProductWizard } from "./components/admin/AdminProductWizard";
+import { AdminOrders } from "./components/admin/AdminOrders";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AboutSection } from "./components/AboutSection";
@@ -149,6 +150,7 @@ export default function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/new" element={<AdminProductWizard />} />
           <Route path="products/:id/edit" element={<AdminProductWizard />} />
+          <Route path="orders" element={<AdminOrders />} />
         </Route>
       </Routes>
     </BrowserRouter>

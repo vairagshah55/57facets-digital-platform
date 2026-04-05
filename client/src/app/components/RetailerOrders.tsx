@@ -67,6 +67,12 @@ type OrderItem = {
   quantity: number;
   unitPrice: number;
   priceLabel: string;
+  goldColour?: string | null;
+  diamondShape?: string | null;
+  diamondShade?: string | null;
+  diamondQuality?: string | null;
+  colorStoneName?: string | null;
+  colorStoneQuality?: string | null;
 };
 
 type Order = {
@@ -186,7 +192,24 @@ export function RetailerOrders() {
     setDetailLoading(true);
     try {
       const data = await ordersApi.detail(order.id);
-      setDetailOrder(data);
+      const formatP = (n: number) => "\u20B9" + Number(n).toLocaleString("en-IN");
+      setDetailOrder({
+        ...data,
+        items: (data.items || []).map((it: any) => ({
+          id: it.id, name: it.name || "Unknown", image: it.image || null,
+          category: it.category || "", carat: it.carat || 0,
+          metal: it.metal_type || "", quantity: it.quantity || 1,
+          unitPrice: Number(it.unit_price) || 0,
+          priceLabel: formatP(Number(it.unit_price) || 0),
+          goldColour: it.gold_colour, diamondShape: it.diamond_shape,
+          diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
+          colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,
+        })),
+        trackingUpdates: (data.tracking || []).map((t: any) => ({
+          status: t.status, detail: t.detail || "",
+          date: new Date(t.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        })),
+      });
     } catch {
       // keep the summary-level order in the dialog
     } finally {
@@ -460,7 +483,7 @@ export function RetailerOrders() {
                                           {item.name}
                                         </p>
                                         <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                                          {item.category} · {item.carat} ct · {item.metal}
+                                          {[item.category, item.carat && `${item.carat} ct`, item.metal, item.goldColour, item.diamondShape, item.diamondShade, item.diamondQuality, item.colorStoneName, item.colorStoneQuality].filter(Boolean).join(" · ")}
                                         </p>
                                       </div>
                                     </div>

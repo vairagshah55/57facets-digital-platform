@@ -37,6 +37,7 @@ type Stats = {
 
 type QuickAccess = {
   pendingOrders: any[];
+  activeOrders: any[];
   otpQueue: any[];
   lowStock: any[];
   shortlistActivity: any[];
@@ -153,7 +154,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Quick Access Cards ─────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Pending Orders */}
         <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
           <QuickCard
@@ -171,6 +172,30 @@ export function AdminDashboard() {
                 <span className="text-xs font-semibold" style={{ color: "var(--sf-teal)" }}>
                   {formatPrice(o.total)}
                 </span>
+              </div>
+            ))}
+          </QuickCard>
+        </motion.div>
+
+        {/* Active Orders (confirmed/processing/shipped) */}
+        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.07 }}>
+          <QuickCard
+            icon={<Package />}
+            title="Active Orders"
+            count={quickAccess?.activeOrders?.length ?? 0}
+            color="#3b82f6"
+          >
+            {quickAccess?.activeOrders?.slice(0, 4).map((o: any) => (
+              <div key={o.id} className="flex justify-between py-1.5">
+                <div>
+                  <p className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{o.order_number}</p>
+                  <p className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>{o.retailer_name}</p>
+                </div>
+                <Badge className="text-[9px] h-4 capitalize" style={{
+                  backgroundColor: o.status === "confirmed" ? "rgba(59,130,246,0.12)" : o.status === "processing" ? "rgba(139,92,246,0.12)" : "rgba(6,182,212,0.12)",
+                  color: o.status === "confirmed" ? "#3b82f6" : o.status === "processing" ? "#8b5cf6" : "#06b6d4",
+                  border: "none",
+                }}>{o.status}</Badge>
               </div>
             ))}
           </QuickCard>

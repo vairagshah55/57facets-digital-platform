@@ -37,12 +37,18 @@ router.get("/stats", async (req, res, next) => {
 // Pending orders, OTP queue, low stock, shortlist activity
 router.get("/quick-access", async (req, res, next) => {
   try {
-    const [pendingOrders, otpQueue, lowStock, shortlistActivity] = await Promise.all([
+    const [pendingOrders, activeOrders, otpQueue, lowStock, shortlistActivity] = await Promise.all([
       query(
-        `SELECT o.id, o.order_number, o.total, o.created_at, r.name AS retailer_name
+        `SELECT o.id, o.order_number, o.total, o.status, o.created_at, r.name AS retailer_name
          FROM orders o JOIN retailers r ON r.id = o.retailer_id
          WHERE o.status = 'pending'
          ORDER BY o.created_at DESC LIMIT 10`
+      ),
+      query(
+        `SELECT o.id, o.order_number, o.total, o.status, o.created_at, o.updated_at, r.name AS retailer_name
+         FROM orders o JOIN retailers r ON r.id = o.retailer_id
+         WHERE o.status IN ('processing', 'shipped')
+         ORDER BY o.updated_at DESC LIMIT 10`
       ),
       query(
         `SELECT o.phone, o.otp_code, o.expires_at, o.created_at, r.name AS retailer_name
@@ -69,6 +75,7 @@ router.get("/quick-access", async (req, res, next) => {
 
     res.json({
       pendingOrders: pendingOrders.rows,
+      activeOrders: activeOrders.rows,
       otpQueue: otpQueue.rows,
       lowStock: lowStock.rows,
       shortlistActivity: shortlistActivity.rows,

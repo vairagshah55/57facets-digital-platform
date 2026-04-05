@@ -16,8 +16,11 @@ import {
   Package,
 
   Layers,
-
   CreditCard,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -86,7 +89,7 @@ export function RetailerDashboard() {
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
   const [, setLastOrder] = useState<LastOrder | null>(null);
-  const [, setRecentOrders] = useState<{ id: string; number: string; status: string; total: string; date: string; items: number }[]>([]);
+  const [recentOrders, setRecentOrders] = useState<{ id: string; number: string; status: string; total: string; date: string; items: number }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -325,10 +328,13 @@ export function RetailerDashboard() {
             </motion.div>
           )}
 
-          {/* ═══ Last Order + Announcements + Recent Orders ═══ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {/* ═══ Overview + Active Orders + Announcements ═══ */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
               <TodaysOrderCard summary={orderSummary} />
+            </motion.div>
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
+              <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} />
             </motion.div>
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
               <AnnouncementsCard announcements={ANNOUNCEMENTS} />
@@ -498,6 +504,76 @@ function AnnouncementsCard({ announcements }: { announcements: Announcement[] })
 }
 
 /* ── Today's Order Card ───────────────────────────────── */
+const ORDER_STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  pending:    { label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.12)", icon: <Clock className="w-3 h-3" /> },
+  processing: { label: "Processing", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", icon: <Package className="w-3 h-3" /> },
+  shipped:    { label: "Shipped",    color: "#06b6d4", bg: "rgba(6,182,212,0.12)",  icon: <Truck className="w-3 h-3" /> },
+  delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.12)",  icon: <CheckCircle2 className="w-3 h-3" /> },
+  cancelled:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3 h-3" /> },
+};
+
+function ActiveOrdersCard({ orders, onViewAll }: {
+  orders: { id: string; number: string; status: string; total: string; date: string; items: number }[];
+  onViewAll: () => void;
+}) {
+  const activeOrders = orders.filter((o) => !["delivered", "cancelled"].includes(o.status));
+  return (
+    <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
+      <CardContent className="p-5 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(139,92,246,0.12)" }}>
+              <Package className="w-4 h-4" style={{ color: "#8b5cf6" }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Active Orders</h3>
+              <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{activeOrders.length} in progress</p>
+            </div>
+          </div>
+          <button onClick={onViewAll} className="text-[11px] font-semibold flex items-center gap-1"
+            style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}>
+            View All <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {activeOrders.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-6">
+            <CheckCircle2 className="w-8 h-8 mb-2" style={{ color: "rgba(34,197,94,0.3)" }} />
+            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>No active orders</p>
+          </div>
+        ) : (
+          <div className="space-y-2 flex-1">
+            {activeOrders.slice(0, 4).map((o) => {
+              const cfg = ORDER_STATUS_CFG[o.status] || ORDER_STATUS_CFG.pending;
+              return (
+                <div key={o.id} className="flex items-center gap-3 p-2.5 rounded-xl"
+                  style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: cfg.bg }}>
+                    <span style={{ color: cfg.color }}>{cfg.icon}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>{o.number}</p>
+                    <p className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>
+                      {o.items} item{o.items !== 1 ? "s" : ""} · {o.date}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge className="text-[9px] h-4 gap-0.5" style={{ backgroundColor: cfg.bg, color: cfg.color, border: "none" }}>
+                      {cfg.icon}{cfg.label}
+                    </Badge>
+                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--sf-text-primary)" }}>{o.total}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function TodaysOrderCard({ summary }: {
   summary: OrderSummary | null;
 }) {
