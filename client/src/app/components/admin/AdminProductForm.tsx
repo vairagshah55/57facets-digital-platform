@@ -680,7 +680,9 @@ export function AdminProductForm() {
               <FieldInput label="Diamond Shape" placeholder="Round, Princess, Oval" value={form.diamond_shape} onChange={f("diamond_shape")} />
               <FieldInput label="Diamond Color" placeholder="D, E, F" value={form.diamond_color} onChange={f("diamond_color")} />
               <FieldInput label="Diamond Clarity" placeholder="VS1, VVS2" value={form.diamond_clarity} onChange={f("diamond_clarity")} />
-              <FieldInput label="Certification" placeholder="GIA, IGI" value={form.diamond_certification} onChange={f("diamond_certification")} />
+              <FieldSelect label="Certification" placeholder="Select certification" value={form.diamond_certification} onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
+                {["GIA", "GSI", "IGI"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              </FieldSelect>
               <FieldInput label="Setting Type" placeholder="Prong, Bezel, Pave" value={form.setting_type} onChange={f("setting_type")} />
             </div>
 

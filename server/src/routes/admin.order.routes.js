@@ -101,7 +101,7 @@ router.get("/:id", async (req, res, next) => {
     if (rows.length === 0) throw new AppError("Order not found", 404);
 
     const { rows: items } = await query(
-      `SELECT oi.*, p.name, p.sku, p.product_code,
+      `SELECT oi.*, p.name, p.sku,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               c.name AS category
        FROM order_items oi

@@ -58,7 +58,6 @@ type ProductListItem = {
   id: string;
   name: string;
   sku: string;
-  product_code: string | null;
   base_price: number;
   carat: number | null;
   metal_type: string | null;
@@ -132,7 +131,7 @@ async function downloadSampleFile() {
   const zip = new JSZip();
 
   const headers = [
-    "product_code", "name", "sku", "description", "category",
+    "name", "sku", "description", "category",
     "base_price", "metal_type", "gold_colour", "metal_weight",
     "diamond_type", "diamond_shape", "diamond_color", "diamond_clarity",
     "diamond_certification", "carat", "setting_type", "hallmark",
@@ -142,7 +141,7 @@ async function downloadSampleFile() {
   ];
 
   const hints = [
-    "e.g. 100891", "Product Name", "RNG-18K-001", "Description text", "Ring / Necklace / Bracelet",
+    "Product Name", "RNG-18K-001", "Description text", "Ring / Necklace / Bracelet",
     "45000", "14KT | 18KT | 22KT", "YELLOW | ROSE | WHITE | TWO TONE", "4.5 (grams)",
     "Natural | Lab-grown", "Round | Princess | Pan | Baguette | Marquise | Oval | Solitaire | Emerald | Cushion | Radiant",
     "EF | FG | GH | HI | IJ", "VVS | VVS-VS | VS | VS-SI | SI",
@@ -156,7 +155,7 @@ async function downloadSampleFile() {
   ];
 
   const sample = [
-    "100891", "Radiant Diamond Solitaire Ring", "RNG-18K-001", "Elegant 18K gold ring", "Ring",
+    "Radiant Diamond Solitaire Ring", "RNG-18K-001", "Elegant 18K gold ring", "Ring",
     "45000", "18KT", "YELLOW", "4.5",
     "Natural", "Round", "EF", "VVS",
     "GIA", "1.5", "Prong", "BIS 916",
@@ -198,7 +197,7 @@ async function downloadSampleFile() {
 HOW TO USE:
 1. Open products.csv and fill in your product data
 2. Row 2 (hints) will be auto-skipped during import — delete or keep it
-3. Required columns: product_code, name, sku
+3. Required columns: name, sku
 4. All other columns are optional
 
 IMAGES:
@@ -227,7 +226,7 @@ SAMPLE ZIP STRUCTURE:
   └── README.txt (this file)
 
 NOTES:
-- Duplicate SKU or product_code will be skipped
+- Duplicate SKU will be skipped
 - New categories will be auto-created if they don't exist
 - Max file size: 100MB
 `);
@@ -633,11 +632,6 @@ export function AdminProducts() {
                               style={{ color: "var(--sf-text-primary)" }}
                             >
                               {p.name}
-                              {p.product_code && (
-                                <span className="ml-1 text-xs font-normal" style={{ color: "var(--sf-text-muted)" }}>
-                                  ({p.product_code})
-                                </span>
-                              )}
                             </span>
                             {p.is_new && (
                               <Badge

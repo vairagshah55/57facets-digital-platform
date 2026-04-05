@@ -603,7 +603,9 @@ export function AdminProductDrawer({ open, productId, onClose, onSaved }: AdminP
                     <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity} onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
                       {DIAMOND_QUALITIES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                     </FSelect>
-                    <FInput label="Certification" placeholder="GIA, IGI" value={form.diamond_certification} onChange={f("diamond_certification")} />
+                    <FSelect label="Certification" placeholder="Select certification" value={form.diamond_certification} onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
+                      {["GIA", "GSI", "IGI"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                    </FSelect>
                     <FInput label="Setting Type" placeholder="Prong, Bezel, Pave" value={form.setting_type} onChange={f("setting_type")} />
                   </div>
 

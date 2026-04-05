@@ -44,7 +44,7 @@ type OrderItem = {
   carat: number | null; metal_type: string | null; gold_colour: string | null;
   diamond_shape: string | null; diamond_shade: string | null; diamond_quality: string | null;
   color_stone_name: string | null; color_stone_quality: string | null; note: string | null;
-  name: string; sku: string; product_code: string | null; image: string | null; category: string | null;
+  name: string; sku: string; image: string | null; category: string | null;
 };
 
 type TrackingEntry = { status: string; detail: string | null; created_at: string };

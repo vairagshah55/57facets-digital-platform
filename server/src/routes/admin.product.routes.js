@@ -20,7 +20,7 @@ router.get("/", async (req, res, next) => {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.product_code ILIKE $${idx})`);
+      conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -40,7 +40,7 @@ router.get("/", async (req, res, next) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.product_code, p.base_price, p.carat, p.metal_type,
+      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type,
               p.availability, p.is_new, p.is_active, p.min_order_qty, p.max_order_qty,
               p.lead_time_days, p.occasion_tags, p.created_at,
               c.name AS category,
@@ -117,7 +117,7 @@ router.get("/:id", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const {
-      name, sku, product_code, description, category_id,
+      name, sku, description, category_id,
       base_price, carat, metal_type, gold_colour, metal_weight,
       diamond_type, diamond_shape, diamond_color, diamond_clarity,
       diamond_certification, setting_type, hallmark,
@@ -130,19 +130,15 @@ router.post("/", async (req, res, next) => {
       collection_ids,
     } = req.body;
 
-    if (!name || !sku || !product_code) throw new AppError("Name, SKU, and Product Code are required");
+    if (!name || !sku) throw new AppError("Name and SKU are required");
 
     // Check SKU uniqueness (only active products)
     const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
     if (existing.length > 0) throw new AppError("SKU already exists");
 
-    // Check product_code uniqueness (only active products)
-    const { rows: existingCode } = await query("SELECT id FROM products WHERE product_code = $1 AND is_active = true", [product_code]);
-    if (existingCode.length > 0) throw new AppError("Product Code already exists");
-
     const { rows } = await query(
       `INSERT INTO products (
-        name, sku, product_code, description, category_id, base_price, carat,
+        name, sku, description, category_id, base_price, carat,
         metal_type, gold_colour, metal_weight, diamond_type, diamond_shape,
         diamond_color, diamond_clarity, diamond_certification,
         setting_type, hallmark, width_mm, height_mm, availability,
@@ -151,11 +147,11 @@ router.post("/", async (req, res, next) => {
         price_modifiers, lead_time_days, min_order_qty, max_order_qty,
         color_stone_name, color_stone_quality
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31
       ) RETURNING *`,
       [
-        name, sku, product_code || null, description || null, category_id || null,
+        name, sku, description || null, category_id || null,
         base_price || 0, carat || 0, metal_type || null, gold_colour || null,
         metal_weight || null,
         diamond_type || null, diamond_shape || null, diamond_color || null,
@@ -209,7 +205,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const {
-      name, product_code, description, category_id,
+      name, description, category_id,
       base_price, carat, metal_type, gold_colour, metal_weight,
       diamond_type, diamond_shape, diamond_color, diamond_clarity,
       diamond_certification, setting_type, hallmark,
@@ -225,41 +221,40 @@ router.put("/:id", async (req, res, next) => {
     const { rows } = await query(
       `UPDATE products SET
         name = COALESCE($1, name),
-        product_code = COALESCE($2, product_code),
-        description = COALESCE($3, description),
-        category_id = COALESCE($4, category_id),
-        base_price = COALESCE($5, base_price),
-        carat = COALESCE($6, carat),
-        metal_type = COALESCE($7, metal_type),
-        gold_colour = COALESCE($8, gold_colour),
-        metal_weight = COALESCE($9, metal_weight),
-        diamond_type = COALESCE($10, diamond_type),
-        diamond_shape = COALESCE($11, diamond_shape),
-        diamond_color = COALESCE($12, diamond_color),
-        diamond_clarity = COALESCE($13, diamond_clarity),
-        diamond_certification = COALESCE($14, diamond_certification),
-        setting_type = COALESCE($15, setting_type),
-        hallmark = COALESCE($16, hallmark),
-        width_mm = COALESCE($17, width_mm),
-        height_mm = COALESCE($18, height_mm),
-        availability = COALESCE($19, availability),
-        is_new = COALESCE($20, is_new),
-        is_active = COALESCE($21, is_active),
-        occasion_tags = COALESCE($22, occasion_tags),
-        gold_purity_options = COALESCE($23, gold_purity_options),
-        carat_range_min = COALESCE($24, carat_range_min),
-        carat_range_max = COALESCE($25, carat_range_max),
-        finish_options = COALESCE($26, finish_options),
-        price_modifiers = COALESCE($27, price_modifiers),
-        lead_time_days = COALESCE($28, lead_time_days),
-        min_order_qty = COALESCE($29, min_order_qty),
-        max_order_qty = COALESCE($30, max_order_qty),
-        color_stone_name = COALESCE($31, color_stone_name),
-        color_stone_quality = COALESCE($32, color_stone_quality),
+        description = COALESCE($2, description),
+        category_id = COALESCE($3, category_id),
+        base_price = COALESCE($4, base_price),
+        carat = COALESCE($5, carat),
+        metal_type = COALESCE($6, metal_type),
+        gold_colour = COALESCE($7, gold_colour),
+        metal_weight = COALESCE($8, metal_weight),
+        diamond_type = COALESCE($9, diamond_type),
+        diamond_shape = COALESCE($10, diamond_shape),
+        diamond_color = COALESCE($11, diamond_color),
+        diamond_clarity = COALESCE($12, diamond_clarity),
+        diamond_certification = COALESCE($13, diamond_certification),
+        setting_type = COALESCE($14, setting_type),
+        hallmark = COALESCE($15, hallmark),
+        width_mm = COALESCE($16, width_mm),
+        height_mm = COALESCE($17, height_mm),
+        availability = COALESCE($18, availability),
+        is_new = COALESCE($19, is_new),
+        is_active = COALESCE($20, is_active),
+        occasion_tags = COALESCE($21, occasion_tags),
+        gold_purity_options = COALESCE($22, gold_purity_options),
+        carat_range_min = COALESCE($23, carat_range_min),
+        carat_range_max = COALESCE($24, carat_range_max),
+        finish_options = COALESCE($25, finish_options),
+        price_modifiers = COALESCE($26, price_modifiers),
+        lead_time_days = COALESCE($27, lead_time_days),
+        min_order_qty = COALESCE($28, min_order_qty),
+        max_order_qty = COALESCE($29, max_order_qty),
+        color_stone_name = COALESCE($30, color_stone_name),
+        color_stone_quality = COALESCE($31, color_stone_quality),
         updated_at = NOW()
-       WHERE id = $33 RETURNING *`,
+       WHERE id = $32 RETURNING *`,
       [
-        name, product_code, description, category_id,
+        name, description, category_id,
         base_price, carat, metal_type, gold_colour, metal_weight,
         diamond_type, diamond_shape, diamond_color, diamond_clarity,
         diamond_certification, setting_type, hallmark,
@@ -296,7 +291,7 @@ router.put("/:id", async (req, res, next) => {
 router.delete("/:id", async (req, res, next) => {
   try {
     await query(
-      `UPDATE products SET is_active = false, sku = sku || '_deleted_' || id, product_code = product_code || '_deleted_' || id, updated_at = NOW() WHERE id = $1`,
+      `UPDATE products SET is_active = false, sku = sku || '_deleted_' || id, updated_at = NOW() WHERE id = $1`,
       [req.params.id]
     );
 
@@ -371,7 +366,7 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     const headers = lines[0].split(",").map((h) => h.replace(/[\uFEFF\xEF\xBB\xBF]/g, "").replace(/^"|"$/g, "").trim().toLowerCase());
     const col = (name) => headers.indexOf(name);
 
-    const reqCols = ["product_code", "name", "sku"];
+    const reqCols = ["name", "sku"];
     for (const r of reqCols) {
       if (col(r) === -1) throw new AppError(`CSV must have a '${r}' column`);
     }
@@ -416,22 +411,20 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     for (let i = startRow; i < lines.length; i++) {
       const cols = parseCsvRow(lines[i]);
 
-      const product_code = getVal(cols, col("product_code"));
       const name = getVal(cols, col("name"));
       const sku = getVal(cols, col("sku"));
 
-      if (!product_code || !name || !sku) {
+      if (!name || !sku) {
         skipped++;
-        errors.push({ row: i + 1, reason: "Missing product_code, name, or sku" });
+        errors.push({ row: i + 1, reason: "Missing name or sku" });
         continue;
       }
 
       // Check duplicates (only active products)
       const { rows: existSku } = await client.query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
-      const { rows: existCode } = await client.query("SELECT id FROM products WHERE product_code = $1 AND is_active = true", [product_code]);
-      if (existSku.length > 0 || existCode.length > 0) {
+      if (existSku.length > 0) {
         skipped++;
-        errors.push({ row: i + 1, reason: `Duplicate SKU (${sku}) or code (${product_code})` });
+        errors.push({ row: i + 1, reason: `Duplicate SKU (${sku})` });
         continue;
       }
 
@@ -454,7 +447,7 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
 
       const { rows: inserted } = await client.query(
         `INSERT INTO products (
-          product_code, name, sku, description, category_id, base_price,
+          name, sku, description, category_id, base_price,
           metal_type, gold_colour, metal_weight, diamond_type, diamond_shape,
           diamond_color, diamond_clarity, diamond_certification, carat,
           setting_type, hallmark, width_mm, height_mm,
@@ -462,11 +455,11 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
           availability, lead_time_days, min_order_qty, max_order_qty,
           is_new, occasion_tags, finish_options
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-          $20,$21,$22,$23,$24,$25,$26,$27,$28
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+          $19,$20,$21,$22,$23,$24,$25,$26,$27
         ) RETURNING id`,
         [
-          product_code, name, sku,
+          name, sku,
           getVal(cols, col("description")),
           category_id,
           getNum(cols, col("base_price")) || 0,
