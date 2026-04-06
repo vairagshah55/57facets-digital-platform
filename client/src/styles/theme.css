@@ -53,6 +53,30 @@
   --sf-text-muted: #8A929F;
   --sf-divider: #1C2535;
   --sf-overlay-bg: rgba(8, 10, 13, 0.92);
+
+  /* Semi-transparent utility tokens (glass / surface) */
+  --sf-glass-bg: rgba(255,255,255,0.03);
+  --sf-glass-bg-hover: rgba(255,255,255,0.06);
+  --sf-glass-border: rgba(255,255,255,0.07);
+  --sf-glass-border-strong: rgba(255,255,255,0.12);
+  --sf-glass-handle: rgba(255,255,255,0.15);
+  --sf-glass-pill: rgba(255,255,255,0.04);
+  --sf-backdrop: rgba(0,0,0,0.6);
+  --sf-shadow-lg: rgba(0,0,0,0.4);
+  --sf-shadow-teal: rgba(48,184,191,0.45);
+  --sf-teal-subtle: rgba(48,184,191,0.1);
+  --sf-teal-glass: rgba(48,184,191,0.18);
+  --sf-teal-border: rgba(48,184,191,0.25);
+  --sf-red-subtle: rgba(239,68,68,0.06);
+  --sf-red-border: rgba(239,68,68,0.12);
+  --sf-red-text: rgba(239,68,68,0.7);
+  --sf-gold-subtle: rgba(212,168,67,0.1);
+  --sf-purple-subtle: rgba(155,89,182,0.1);
+  --sf-disabled-opacity: 0.45;
+  --sf-amber: #f59e0b;
+  --sf-amber-subtle: rgba(245,158,11,0.1);
+  --sf-amber-border: rgba(245,158,11,0.25);
+  --sf-amber-bg: rgba(245,158,11,0.06);
 }
 
 /* ── Retailer Portal Light Theme ──────────────────────── */
@@ -61,56 +85,95 @@
   --sf-bg-base: #F5F7FA;
   --sf-bg-surface-1: #FFFFFF;
   --sf-bg-surface-2: #F0F2F5;
-  --sf-bg-surface-3: #E8EBF0;
+  --sf-bg-surface-3: #E5E8ED;
   --sf-blue-primary: #1D4E8A;
   --sf-blue-secondary: #2A6AAF;
-  --sf-teal: #148B91;
-  --sf-text-primary: #0F172A;
-  --sf-text-secondary: #334155;
+  --sf-teal: #0E8A90;
+  --sf-text-primary: #1E293B;
+  --sf-text-secondary: #475569;
   --sf-text-muted: #64748B;
-  --sf-divider: #D5DAE1;
+  --sf-divider: #D1D5DB;
   --sf-overlay-bg: rgba(255, 255, 255, 0.96);
+
+  /* Semi-transparent utility tokens (glass / surface) — light */
+  --sf-glass-bg: rgba(0,0,0,0.024);
+  --sf-glass-bg-hover: rgba(0,0,0,0.045);
+  --sf-glass-border: rgba(0,0,0,0.08);
+  --sf-glass-border-strong: rgba(0,0,0,0.14);
+  --sf-glass-handle: rgba(0,0,0,0.12);
+  --sf-glass-pill: rgba(0,0,0,0.035);
+  --sf-backdrop: rgba(0,0,0,0.35);
+  --sf-shadow-lg: rgba(0,0,0,0.1);
+  --sf-shadow-teal: rgba(14,138,144,0.22);
+  --sf-teal-subtle: rgba(14,138,144,0.08);
+  --sf-teal-glass: rgba(14,138,144,0.1);
+  --sf-teal-border: rgba(14,138,144,0.24);
+  --sf-red-subtle: rgba(220,38,38,0.05);
+  --sf-red-border: rgba(220,38,38,0.15);
+  --sf-red-text: rgba(220,38,38,0.75);
+  --sf-gold-subtle: rgba(161,117,20,0.1);
+  --sf-purple-subtle: rgba(126,34,206,0.07);
+  --sf-disabled-opacity: 0.7;
+  --sf-amber: #b45309;
+  --sf-amber-subtle: rgba(180,83,9,0.1);
+  --sf-amber-border: rgba(180,83,9,0.3);
+  --sf-amber-bg: rgba(180,83,9,0.06);
 
   /* shadcn/ui core tokens — used by Tailwind classes & components */
   --background: #F5F7FA;
-  --foreground: #0F172A;
+  --foreground: #1E293B;
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #1E293B;
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #1E293B;
   --primary: #1D4E8A;
   --primary-foreground: #FFFFFF;
   --secondary: #F0F2F5;
-  --secondary-foreground: #334155;
+  --secondary-foreground: #475569;
   --muted: #F0F2F5;
   --muted-foreground: #64748B;
-  --accent: #148B91;
+  --accent: #0E8A90;
   --accent-foreground: #FFFFFF;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #D5DAE1;
+  --border: #D1D5DB;
   --input: #F0F2F5;
   --input-background: #FFFFFF;
   --ring: #2A6AAF;
 
   /* Sidebar */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #0F172A;
+  --sidebar-foreground: #1E293B;
   --sidebar-primary: #1D4E8A;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F0F2F5;
-  --sidebar-accent-foreground: #334155;
-  --sidebar-border: #D5DAE1;
+  --sidebar-accent-foreground: #475569;
+  --sidebar-border: #D1D5DB;
   --sidebar-ring: #2A6AAF;
 
+  /* Slightly heavier weights — text renders thinner on light backgrounds */
+  --font-weight-normal: 420;
+  --font-weight-medium: 520;
+
   color-scheme: light;
+}
+
+/* Disabled / locked section — theme-aware */
+.sf-disabled-section {
+  opacity: 0.45;
+  filter: grayscale(0.5);
+  transition: opacity 0.2s, filter 0.2s;
+}
+.retailer-light .sf-disabled-section {
+  opacity: 1;
+  filter: grayscale(0.3);
 }
 
 /* Light mode: sharper text rendering */
 .retailer-light,
 .retailer-light * {
-  -webkit-font-smoothing: auto;
-  -moz-osx-font-smoothing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
@@ -213,8 +276,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'General Sans', 'Inter', sans-serif;
-    background-color: #080A0D;
-    color: #FFFFFF;
     overflow-x: hidden;
   }
 

@@ -396,7 +396,7 @@ export function ProductDetail() {
                     onClick={prevImage}
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
                     style={{
-                      backgroundColor: "rgba(8, 10, 13, 0.6)",
+                      backgroundColor: "var(--sf-overlay-bg)",
                       color: "var(--sf-text-primary)",
                     }}
                   >
@@ -406,7 +406,7 @@ export function ProductDetail() {
                     onClick={nextImage}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
                     style={{
-                      backgroundColor: "rgba(8, 10, 13, 0.6)",
+                      backgroundColor: "var(--sf-overlay-bg)",
                       color: "var(--sf-text-primary)",
                     }}
                   >
@@ -429,7 +429,7 @@ export function ProductDetail() {
               <div
                 className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md"
                 style={{
-                  backgroundColor: "rgba(8, 10, 13, 0.6)",
+                  backgroundColor: "var(--sf-overlay-bg)",
                   color: "var(--sf-text-secondary)",
                 }}
               >
@@ -552,7 +552,7 @@ export function ProductDetail() {
             <div className="rounded-2xl border mb-5 overflow-hidden"
               style={{
                 backgroundColor: "var(--sf-bg-surface-1)",
-                borderColor: existingOrder ? "rgba(245,158,11,0.3)" : "var(--sf-divider)",
+                borderColor: existingOrder ? "var(--sf-amber-border)" : "var(--sf-divider)",
               }}>
 
               {/* Header */}
@@ -560,12 +560,12 @@ export function ProductDetail() {
                 style={{ borderBottom: "1px solid var(--sf-divider)" }}>
                 {existingOrder ? (
                   <>
-                    <Shield className="w-4 h-4" style={{ color: "#f59e0b" }} />
-                    <span className="text-[13px] font-semibold" style={{ color: "#f59e0b", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                    <Shield className="w-4 h-4" style={{ color: "var(--sf-amber)" }} />
+                    <span className="text-[13px] font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
                       Order Locked
                     </span>
                     <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
-                      style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
+                      style={{ background: "var(--sf-amber-subtle)", color: "var(--sf-amber)", border: "1px solid var(--sf-amber-border)" }}>
                       {existingOrder.order_number} · {existingOrder.status}
                     </span>
                   </>
@@ -582,16 +582,18 @@ export function ProductDetail() {
               {/* Locked overlay notice */}
               {existingOrder && (
                 <div className="px-5 py-3 flex items-center gap-2.5"
-                  style={{ background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.12)" }}>
-                  <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "#f59e0b" }} />
-                  <p className="text-[11px]" style={{ color: "#f59e0b" }}>
+                  style={{ background: "var(--sf-amber-bg)", borderBottom: "1px solid var(--sf-amber-border)" }}>
+                  <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sf-amber)" }} />
+                  <p className="text-[11px]" style={{ color: "var(--sf-amber)" }}>
                     Customization is locked because this product has an active order. Cancel the order to make changes.
                   </p>
                 </div>
               )}
 
               {/* Lock wrapper — disables all interaction when order exists */}
-              <div style={{ pointerEvents: existingOrder ? "none" : "auto", opacity: existingOrder ? 0.55 : 1, transition: "opacity 0.2s" }}>
+              <div className={existingOrder ? "sf-disabled-section" : ""} style={{
+                pointerEvents: existingOrder ? "none" : "auto",
+              }}>
 
               {/* ─── Metal ──────────────────────────────── */}
               {(product.customization.goldTypes.length > 0 || product.customization.goldColours.length > 0) && (() => {
@@ -604,7 +606,7 @@ export function ProductDetail() {
                 const sw = swatchMap[selectedGoldColour || product.customization.goldColours[0]] || swatchMap.YELLOW;
                 const purity = selectedGoldType || product.customization.goldTypes[0] || "";
                 return (
-                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between mb-5">
@@ -639,8 +641,8 @@ export function ProductDetail() {
                                 <button key={opt} onClick={() => setSelectedGoldType(opt)}
                                   className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
                                   style={{
-                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.22), rgba(212,168,67,0.07))" : "rgba(255,255,255,0.03)",
-                                    border: active ? "1.5px solid rgba(212,168,67,0.58)" : "1px solid rgba(255,255,255,0.08)",
+                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.22), rgba(212,168,67,0.07))" : "var(--sf-glass-bg)",
+                                    border: active ? "1.5px solid rgba(212,168,67,0.58)" : "1px solid var(--sf-glass-border)",
                                     color: active ? "#D4A843" : "var(--sf-text-secondary)",
                                     boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.1), 0 4px 12px rgba(212,168,67,0.2)" : "none",
                                     transform: active ? "translateY(-1px)" : "none",
@@ -652,7 +654,7 @@ export function ProductDetail() {
                       )}
 
                       {product.customization.goldTypes.length > 0 && product.customization.goldColours.length > 0 && (
-                        <div className="w-px self-stretch rounded-full" style={{ background: "rgba(255,255,255,0.08)", minHeight: 28 }} />
+                        <div className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
                       )}
 
                       {product.customization.goldColours.length > 0 && (
@@ -666,8 +668,8 @@ export function ProductDetail() {
                                 <button key={opt} onClick={() => setSelectedGoldColour(opt)}
                                   className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
                                   style={{
-                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.18), rgba(212,168,67,0.05))" : "rgba(255,255,255,0.03)",
-                                    border: active ? "1.5px solid rgba(212,168,67,0.52)" : "1px solid rgba(255,255,255,0.08)",
+                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.18), rgba(212,168,67,0.05))" : "var(--sf-glass-bg)",
+                                    border: active ? "1.5px solid rgba(212,168,67,0.52)" : "1px solid var(--sf-glass-border)",
                                     boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.08), 0 4px 12px rgba(212,168,67,0.18)" : "none",
                                     transform: active ? "translateY(-1px)" : "none",
                                   }}>
@@ -695,13 +697,13 @@ export function ProductDetail() {
                   { label: "Clarity", options: product.customization.diamondQualities, selected: selectedDiamondQuality, set: setSelectedDiamondQuality },
                 ].filter((f) => f.options.length > 0);
                 return (
-                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
 
                     {/* Header */}
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: "linear-gradient(135deg, rgba(48,184,191,0.25), rgba(48,184,191,0.07))", border: "1px solid rgba(48,184,191,0.28)" }}>
+                          style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
                           <Diamond className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
                         </div>
                         <div>
@@ -710,7 +712,7 @@ export function ProductDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
-                        style={{ background: "rgba(48,184,191,0.08)", border: "1px solid rgba(48,184,191,0.22)" }}>
+                        style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
                         <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
                           {[shape, shade, clarity].filter(Boolean).join(" · ")}
                         </span>
@@ -722,7 +724,7 @@ export function ProductDetail() {
                       {fields.map((field, fi) => (
                         <>
                           {fi > 0 && (
-                            <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "rgba(255,255,255,0.08)", minHeight: 28 }} />
+                            <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
                           )}
                           <div key={field.label} className="flex items-center gap-2">
                             <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
@@ -734,11 +736,11 @@ export function ProductDetail() {
                                     className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
                                     style={{
                                       background: active
-                                        ? "linear-gradient(135deg, rgba(48,184,191,0.22), rgba(48,184,191,0.07))"
-                                        : "rgba(255,255,255,0.03)",
-                                      border: active ? "1.5px solid rgba(48,184,191,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                                        ? "var(--sf-teal-glass)"
+                                        : "var(--sf-glass-bg)",
+                                      border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
                                       color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
-                                      boxShadow: active ? "0 0 0 3px rgba(48,184,191,0.1), 0 4px 12px rgba(48,184,191,0.2)" : "none",
+                                      boxShadow: active ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 12px var(--sf-shadow-teal)" : "none",
                                       transform: active ? "translateY(-1px)" : "none",
                                     }}>{opt}</button>
                                 );
@@ -749,11 +751,11 @@ export function ProductDetail() {
                       ))}
                     </div>
                     {/* Carat */}
-                    <div className="mt-5 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="mt-5 pt-5" style={{ borderTop: "1px solid var(--sf-glass-border)" }}>
                       <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: "linear-gradient(135deg, rgba(48,184,191,0.25), rgba(48,184,191,0.07))", border: "1px solid rgba(48,184,191,0.28)" }}>
+                            style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
                             <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
                           </div>
                           <div>
@@ -762,9 +764,9 @@ export function ProductDetail() {
                           </div>
                         </div>
                         <div className="flex items-baseline gap-1 px-4 py-2 rounded-full"
-                          style={{ background: "rgba(48,184,191,0.1)", border: "1px solid rgba(48,184,191,0.24)" }}>
+                          style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
                           <span className="text-[18px] font-black leading-none" style={{ color: "var(--sf-teal)" }}>{selectedCarat}</span>
-                          <span className="text-[11px] font-bold" style={{ color: "rgba(48,184,191,0.6)" }}>ct</span>
+                          <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-3">
@@ -778,21 +780,21 @@ export function ProductDetail() {
                                 style={{
                                   width: 68, height: 68,
                                   background: active
-                                    ? "linear-gradient(145deg, rgba(48,184,191,0.26), rgba(48,184,191,0.08))"
-                                    : "rgba(255,255,255,0.025)",
-                                  border: active ? "1.5px solid rgba(48,184,191,0.65)" : "1px solid rgba(255,255,255,0.07)",
+                                    ? "var(--sf-teal-glass)"
+                                    : "var(--sf-glass-bg)",
+                                  border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
                                   boxShadow: active
-                                    ? "0 0 0 4px rgba(48,184,191,0.1), 0 8px 28px rgba(48,184,191,0.28), inset 0 1px 0 rgba(255,255,255,0.12)"
-                                    : "inset 0 1px 0 rgba(255,255,255,0.04)",
+                                    ? "0 0 0 4px var(--sf-teal-subtle), 0 8px 28px var(--sf-shadow-teal)"
+                                    : "none",
                                   transform: active ? "translateY(-2px)" : "translateY(0)",
                                 }}>
                                 <span className="text-[16px] font-black leading-none"
                                   style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
                                 <span className="text-[9px] font-semibold tracking-widest mt-1.5 leading-none uppercase"
-                                  style={{ color: active ? "rgba(48,184,191,0.65)" : "var(--sf-text-muted)" }}>ct</span>
+                                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
                                 {active && (
                                   <span className="absolute flex items-center justify-center rounded-full"
-                                    style={{ top: -8, right: -8, width: 20, height: 20, background: "var(--sf-teal)", boxShadow: "0 2px 10px rgba(48,184,191,0.6)" }}>
+                                    style={{ top: -8, right: -8, width: 20, height: 20, background: "var(--sf-teal)", boxShadow: "0 2px 10px var(--sf-shadow-teal)" }}>
                                     <Check className="w-3 h-3 text-white" strokeWidth={3} />
                                   </span>
                                 )}
@@ -834,7 +836,7 @@ export function ProductDetail() {
                 };
 
                 return (
-                  <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
 
                     {/* Section header */}
                     <div className="flex items-center justify-between mb-5">
@@ -877,8 +879,8 @@ export function ProductDetail() {
                             style={{
                               background: active
                                 ? `linear-gradient(135deg, ${c.activeBg}, ${c.bg})`
-                                : "rgba(255,255,255,0.025)",
-                              border: active ? `1.5px solid ${c.border}` : "1px solid rgba(255,255,255,0.07)",
+                                : "var(--sf-glass-bg)",
+                              border: active ? `1.5px solid ${c.border}` : "1px solid var(--sf-glass-border)",
                               boxShadow: active ? `0 0 0 3px ${c.bg}, 0 8px 24px ${c.glow.replace("0.45", "0.2")}` : "none",
                               transform: active ? "translateY(-1px)" : "none",
                             }}>
@@ -888,9 +890,9 @@ export function ProductDetail() {
                               style={{
                                 background: active
                                   ? `radial-gradient(circle at 32% 32%, ${c.dot}DD, ${c.dot}77)`
-                                  : "rgba(255,255,255,0.05)",
+                                  : "var(--sf-glass-pill)",
                                 boxShadow: active ? `0 4px 14px ${c.glow}` : "none",
-                                border: active ? `1px solid ${c.dot}55` : "1px solid rgba(255,255,255,0.08)",
+                                border: active ? `1px solid ${c.dot}55` : "1px solid var(--sf-glass-border)",
                               }}>
                               <Gem className="w-4.5 h-4.5" style={{ color: active ? "#fff" : "var(--sf-text-muted)", opacity: active ? 1 : 0.45, width: 18, height: 18 }} />
                             </div>
@@ -899,7 +901,7 @@ export function ProductDetail() {
                             <div className="flex flex-col min-w-0 flex-1 gap-1">
                               {/* Category tag */}
                               <span className="inline-flex self-start text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                style={{ background: active ? c.tag : "rgba(255,255,255,0.05)", color: active ? c.text : "var(--sf-text-muted)" }}>
+                                style={{ background: active ? c.tag : "var(--sf-glass-pill)", color: active ? c.text : "var(--sf-text-muted)" }}>
                                 {shortCat}
                               </span>
                               {/* Quality — primary */}
@@ -931,18 +933,18 @@ export function ProductDetail() {
                   <span className="text-xs font-medium" style={{ color: "var(--sf-text-secondary)" }}>Quantity</span>
                 </div>
                 <div className="flex items-center rounded-lg overflow-hidden"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  style={{ border: "1px solid var(--sf-glass-border)" }}>
                   <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.08)]"
+                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[var(--sf-teal-subtle)]"
                     style={{ color: "var(--sf-text-muted)" }}>
                     <Minus className="w-3.5 h-3.5" />
                   </button>
                   <span className="w-11 h-9 flex items-center justify-center text-xs font-bold border-x"
-                    style={{ color: "var(--sf-text-primary)", borderColor: "rgba(255,255,255,0.08)" }}>
+                    style={{ color: "var(--sf-text-primary)", borderColor: "var(--sf-glass-border-strong)" }}>
                     {quantity}
                   </span>
                   <button onClick={() => setQuantity((q) => q + 1)}
-                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.08)]"
+                    className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[var(--sf-teal-subtle)]"
                     style={{ color: "var(--sf-text-muted)" }}>
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -993,9 +995,9 @@ export function ProductDetail() {
                 <Button
                   className="flex-1 h-12 text-base font-semibold gap-2"
                   style={{
-                    backgroundColor: "rgba(245,158,11,0.12)",
-                    color: "#f59e0b",
-                    border: "1px solid rgba(245,158,11,0.3)",
+                    backgroundColor: "var(--sf-amber-subtle)",
+                    color: "var(--sf-amber)",
+                    border: "1px solid var(--sf-amber-border)",
                   }}
                   onClick={() => navigate("/retailer/orders")}
                 >
@@ -1007,9 +1009,9 @@ export function ProductDetail() {
                 <Button
                   className="flex-1 h-12 text-base font-semibold gap-2"
                   style={{
-                    backgroundColor: "rgba(48,184,191,0.1)",
+                    backgroundColor: "var(--sf-teal-glass)",
                     color: "var(--sf-teal)",
-                    border: "1.5px solid rgba(48,184,191,0.4)",
+                    border: "1.5px solid var(--sf-teal-border)",
                   }}
                   onClick={() => navigate("/retailer/catalog")}
                 >
@@ -1025,7 +1027,7 @@ export function ProductDetail() {
                     border: "none",
                     boxShadow: addedToCart
                       ? "0 4px 20px rgba(34,197,94,0.4)"
-                      : "0 4px 20px rgba(48,184,191,0.3)",
+                      : "0 4px 20px var(--sf-shadow-teal)",
                   }}
                   onClick={handleAddToCart}
                 >
@@ -1069,8 +1071,8 @@ export function ProductDetail() {
               <TabsList
                 className="w-full gap-1 rounded-2xl"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "var(--sf-glass-bg)",
+                  border: "1px solid var(--sf-glass-border)",
                   padding: "5px",
                   backdropFilter: "blur(10px)",
                 }}
@@ -1099,17 +1101,17 @@ export function ProductDetail() {
               {/* Inject active-tab pill glow via CSS */}
               <style>{`
                 [data-slot="tabs-trigger"][data-state="active"] {
-                  background: linear-gradient(135deg, rgba(48,184,191,0.15), rgba(48,184,191,0.06)) !important;
-                  border: 1px solid rgba(48,184,191,0.25);
-                  box-shadow: 0 0 12px rgba(48,184,191,0.1), inset 0 1px 0 rgba(255,255,255,0.04);
+                  background: var(--sf-teal-glass) !important;
+                  border: 1px solid var(--sf-teal-border);
+                  box-shadow: 0 0 12px var(--sf-teal-subtle);
                 }
                 [data-slot="tabs-trigger"][data-state="inactive"] {
                   background: transparent;
                   border: 1px solid transparent;
                 }
                 [data-slot="tabs-trigger"][data-state="inactive"]:hover {
-                  background: rgba(255,255,255,0.04);
-                  border: 1px solid rgba(255,255,255,0.06);
+                  background: var(--sf-glass-pill);
+                  border: 1px solid var(--sf-glass-border);
                 }
               `}</style>
 
@@ -1135,8 +1137,8 @@ export function ProductDetail() {
                       transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
                       className="group relative flex items-center justify-between px-4 py-3.5 rounded-xl overflow-hidden cursor-default"
                       style={{
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "var(--sf-glass-bg)",
+                        border: "1px solid var(--sf-glass-border)",
                         transition: "border-color 0.3s ease, box-shadow 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
@@ -1144,7 +1146,7 @@ export function ProductDetail() {
                         e.currentTarget.style.boxShadow = `0 2px 12px rgba(${row.gradient},0.06)`;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                        e.currentTarget.style.borderColor = "var(--sf-glass-border)";
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
@@ -1179,7 +1181,7 @@ export function ProductDetail() {
                       background: "linear-gradient(135deg, rgba(93,173,226,0.1) 0%, rgba(48,184,191,0.07) 40%, rgba(165,105,189,0.05) 100%)",
                       border: "1px solid rgba(93,173,226,0.2)",
                       backdropFilter: "blur(12px)",
-                      boxShadow: "0 8px 32px rgba(93,173,226,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+                      boxShadow: "0 8px 32px rgba(93,173,226,0.08)",
                     }}>
                     {/* Decorative glow orb */}
                     <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full pointer-events-none"
@@ -1189,7 +1191,7 @@ export function ProductDetail() {
 
                     {/* Header strip */}
                     <div className="relative px-4 py-3.5 flex items-center justify-between"
-                      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}>
+                      style={{ borderBottom: "1px solid var(--sf-glass-border)", background: "var(--sf-glass-bg)" }}>
                       <div className="flex items-center gap-2.5">
                         <motion.div
                           animate={{ rotate: [0, 5, -5, 0] }}
@@ -1239,7 +1241,7 @@ export function ProductDetail() {
                           transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: "easeOut" }}
                           className="group relative flex flex-col items-center justify-center py-6 px-2 cursor-default"
                           style={{
-                            borderRight: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                            borderRight: i < 3 ? "1px solid var(--sf-glass-border)" : "none",
                             transition: "background 0.3s ease",
                           }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(${stat.gradient},0.06)`; }}
@@ -1280,8 +1282,8 @@ export function ProductDetail() {
                       transition={{ delay: 0.35, duration: 0.45 }}
                       className="rounded-2xl px-4 py-4"
                       style={{
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "var(--sf-glass-bg)",
+                        border: "1px solid var(--sf-glass-border)",
                         backdropFilter: "blur(8px)",
                       }}>
                       <div className="flex items-center gap-2 mb-3.5">
@@ -1309,15 +1311,15 @@ export function ProductDetail() {
                               className="relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors duration-200"
                               style={{
                                 background: active
-                                  ? "linear-gradient(135deg, rgba(48,184,191,0.22), rgba(48,184,191,0.08))"
-                                  : "rgba(255,255,255,0.04)",
-                                border: active ? "1.5px solid rgba(48,184,191,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                                  ? "var(--sf-teal-glass)"
+                                  : "var(--sf-glass-pill)",
+                                border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
                                 boxShadow: active
-                                  ? "0 0 0 3px rgba(48,184,191,0.1), 0 4px 16px rgba(48,184,191,0.2), inset 0 1px 0 rgba(255,255,255,0.05)"
+                                  ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 16px var(--sf-shadow-teal)"
                                   : "0 2px 8px rgba(0,0,0,0.1)",
                               }}>
                               <span className="text-[13px] font-black" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
-                              <span className="text-[9px] font-semibold" style={{ color: active ? "rgba(48,184,191,0.7)" : "var(--sf-text-muted)" }}>ct</span>
+                              <span className="text-[9px] font-semibold" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
                               <AnimatePresence>
                                 {active && (
                                   <motion.div
@@ -1368,17 +1370,17 @@ export function ProductDetail() {
                             transition={{ delay: i * 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                             className="group relative rounded-2xl px-4 pt-4 pb-3 overflow-hidden cursor-default"
                             style={{
-                              background: "rgba(255,255,255,0.02)",
-                              border: "1px solid rgba(255,255,255,0.07)",
+                              background: "var(--sf-glass-bg)",
+                              border: "1px solid var(--sf-glass-border)",
                               backdropFilter: "blur(8px)",
                               transition: "border-color 0.3s ease, box-shadow 0.3s ease",
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.borderColor = `rgba(${row.gradient},0.25)`;
-                              e.currentTarget.style.boxShadow = `0 4px 20px rgba(${row.gradient},0.08), inset 0 1px 0 rgba(255,255,255,0.04)`;
+                              e.currentTarget.style.boxShadow = `0 4px 20px rgba(${row.gradient},0.08)`;
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+                              e.currentTarget.style.borderColor = "var(--sf-glass-border)";
                               e.currentTarget.style.boxShadow = "none";
                             }}
                           >
@@ -1417,7 +1419,7 @@ export function ProductDetail() {
                               </div>
                             </div>
                             {/* Animated progress bar */}
-                            <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "var(--sf-glass-bg-hover)" }}>
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
@@ -1441,9 +1443,9 @@ export function ProductDetail() {
                         className="relative rounded-2xl overflow-hidden"
                         style={{
                           background: "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(48,184,191,0.04) 50%, rgba(93,173,226,0.04) 100%)",
-                          border: "1.5px solid rgba(48,184,191,0.28)",
+                          border: "1.5px solid var(--sf-teal-border)",
                           backdropFilter: "blur(12px)",
-                          boxShadow: "0 8px 32px rgba(48,184,191,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+                          boxShadow: "0 8px 32px var(--sf-shadow-teal)",
                         }}
                       >
                         {/* Shimmer overlay */}
@@ -1462,7 +1464,7 @@ export function ProductDetail() {
 
                         <div className="relative px-4 py-5 flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "rgba(48,184,191,0.6)" }}>Estimated Total</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "var(--sf-teal)" }}>Estimated Total</p>
                             <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
                               {quantity > 1 ? `${quantity} pcs · ` : ""}{formatPrice(product.goldPricePerGram)}/g gold rate
                             </p>
@@ -1482,7 +1484,7 @@ export function ProductDetail() {
                               {formatPrice(totalPrice)}
                             </motion.p>
                             {quantity > 1 && (
-                              <p className="text-[11px] mt-1" style={{ color: "rgba(48,184,191,0.55)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
+                              <p className="text-[11px] mt-1" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
                             )}
                           </div>
                         </div>
@@ -1508,7 +1510,7 @@ export function ProductDetail() {
                           />
                         </div>
                         {/* Composition legend */}
-                        <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "rgba(0,0,0,0.15)" }}>
+                        <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "var(--sf-glass-bg)" }}>
                           {rows.map((row) => (
                             <div key={row.label} className="flex items-center gap-1.5">
                               <div className="w-2 h-2 rounded-full" style={{ background: row.accent, boxShadow: `0 0 6px ${row.accent}50` }} />
@@ -1535,7 +1537,7 @@ export function ProductDetail() {
 function AvailabilityBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
     "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "rgba(48,184,191,0.15)", text: "var(--sf-teal)", label: "Made to Order" },
+    "made-to-order": { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "Made to Order" },
     "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
   };
   const s = map[status] || map["in-stock"];

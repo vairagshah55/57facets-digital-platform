@@ -51,7 +51,7 @@ type Notification = {
 
 const NOTIFICATION_ICON: Record<NotificationType, { icon: React.ReactNode; color: string; bg: string }> = {
   "order-update": { icon: <Truck className="w-4 h-4" />, color: "#a855f7", bg: "rgba(168,85,247,0.15)" },
-  "new-collection": { icon: <Sparkles className="w-4 h-4" />, color: "var(--sf-teal)", bg: "rgba(48,184,191,0.15)" },
+  "new-collection": { icon: <Sparkles className="w-4 h-4" />, color: "var(--sf-teal)", bg: "var(--sf-teal-glass)" },
   announcement: { icon: <Megaphone className="w-4 h-4" />, color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
   system: { icon: <Bell className="w-4 h-4" />, color: "var(--sf-blue-secondary)", bg: "rgba(56,128,190,0.15)" },
 };
@@ -237,8 +237,8 @@ function RetailerHeader() {
                 width: "34px",
                 height: "34px",
                 borderRadius: "10px",
-                background: "linear-gradient(135deg, rgba(48,184,191,0.15) 0%, rgba(38,96,160,0.15) 100%)",
-                border: "1px solid rgba(48,184,191,0.2)",
+                background: "var(--sf-teal-glass)",
+                border: "1px solid var(--sf-teal-border)",
               }}
             >
               <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
@@ -275,10 +275,8 @@ function RetailerHeader() {
                   onClick={() => navigate(item.path)}
                   className="px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all cursor-pointer"
                   style={{
-                    background: isActive
-                      ? "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(38,96,160,0.08) 100%)"
-                      : "none",
-                    border: isActive ? "1px solid rgba(48,184,191,0.18)" : "1px solid transparent",
+                    background: isActive ? "var(--sf-teal-glass)" : "none",
+                    border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid transparent",
                     color: isActive ? "var(--sf-text-primary)" : "var(--sf-text-muted)",
                     letterSpacing: "0.01em",
                   }}
@@ -315,14 +313,14 @@ function RetailerHeader() {
                 className="w-[380px] p-0 border-0 flex flex-col rounded-2xl overflow-hidden shadow-2xl"
                 style={{
                   backgroundColor: "var(--sf-bg-surface-1)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  border: "1px solid var(--sf-glass-border)",
                   maxHeight: "min(70vh, 500px)",
-                  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
+                  boxShadow: `0 25px 50px -12px var(--sf-shadow-lg), 0 0 0 1px var(--sf-glass-border)`,
                 }}
               >
                 {/* Header */}
                 <div className="px-5 py-4 shrink-0"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(135deg, rgba(48,184,191,0.06) 0%, transparent 60%)" }}>
+                  style={{ borderBottom: "1px solid var(--sf-glass-border)", background: "linear-gradient(135deg, var(--sf-teal-subtle) 0%, transparent 60%)" }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Notifications</h3>
@@ -335,7 +333,7 @@ function RetailerHeader() {
                     </div>
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
-                        className="text-[11px] font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all hover:bg-[rgba(48,184,191,0.08)]"
+                        className="text-[11px] font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all hover:bg-[var(--sf-teal-subtle)]"
                         style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}>
                         <Check className="w-3 h-3" /> Mark all read
                       </button>
@@ -345,7 +343,7 @@ function RetailerHeader() {
 
                 {/* Scrollable list */}
                 <div className="flex-1 overflow-y-auto min-h-0"
-                  style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.08) transparent" }}>
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "var(--sf-glass-border) transparent" }}>
                   {loadingNotifications ? (
                     <div className="flex flex-col items-center py-14">
                       <Loader2 className="w-5 h-5 animate-spin mb-2" style={{ color: "var(--sf-teal)" }} />
@@ -354,7 +352,7 @@ function RetailerHeader() {
                   ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center py-14">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
-                        style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
+                        style={{ backgroundColor: "var(--sf-glass-pill)" }}>
                         <Bell className="w-6 h-6" style={{ color: "var(--sf-text-muted)" }} />
                       </div>
                       <p className="text-sm font-medium" style={{ color: "var(--sf-text-muted)" }}>All caught up!</p>
@@ -370,13 +368,13 @@ function RetailerHeader() {
                             onClick={() => handleNotificationClick(notification)}
                             className="w-full text-left px-4 py-3 flex gap-3 transition-all duration-150 relative group"
                             style={{
-                              background: isUnread ? "rgba(48,184,191,0.03)" : "transparent",
-                              borderBottom: idx < notifications.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                              background: isUnread ? "var(--sf-teal-subtle)" : "transparent",
+                              borderBottom: idx < notifications.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
                               cursor: "pointer", border: "none",
                               borderLeft: isUnread ? "2px solid var(--sf-teal)" : "2px solid transparent",
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = isUnread ? "rgba(48,184,191,0.03)" : "transparent"; }}>
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = isUnread ? "var(--sf-teal-subtle)" : "transparent"; }}>
                             {/* Icon */}
                             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-200 group-hover:scale-105"
                               style={{ backgroundColor: cfg.bg }}>
@@ -409,10 +407,10 @@ function RetailerHeader() {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="shrink-0" style={{ borderTop: "1px solid var(--sf-glass-border)" }}>
                   <button
                     onClick={() => { setNotifPopoverOpen(false); setTimeout(() => navigate("/retailer/notifications"), 100); }}
-                    className="w-full py-3 text-xs font-semibold text-center transition-all hover:bg-[rgba(48,184,191,0.04)]"
+                    className="w-full py-3 text-xs font-semibold text-center transition-all hover:bg-[var(--sf-teal-subtle)]"
                     style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}>
                     View All Notifications
                   </button>

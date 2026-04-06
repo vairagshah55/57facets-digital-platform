@@ -56,7 +56,7 @@ type ViewMode = "grid" | "compact";
 const PRICE_MIN = 0, PRICE_MAX = 500000, CARAT_MIN = 0, CARAT_MAX = 5;
 
 const PLACEHOLDER_IMAGE =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' fill='%23222'%3E%3Crect width='400' height='400' fill='%231a1a2e'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%23555'%3ENo Image%3C/text%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
 
 function formatPrice(n: number): string { return "₹" + n.toLocaleString("en-IN"); }
 
@@ -172,7 +172,7 @@ export function ProductCatalog() {
         <div className="flex items-center gap-3">
           <div
             className="flex items-center justify-center w-10 h-10 rounded-xl"
-            style={{ backgroundColor: "rgba(48,184,191,0.12)" }}
+            style={{ backgroundColor: "var(--sf-teal-glass)" }}
           >
             <Package className="w-5 h-5" style={{ color: "var(--sf-teal)" }} />
           </div>
@@ -224,8 +224,8 @@ export function ProductCatalog() {
                   onClick={() => setActiveTab(tab.key)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer"
                   style={{
-                    background: isActive ? "linear-gradient(135deg, rgba(48,184,191,0.15), rgba(38,96,160,0.1))" : "none",
-                    border: isActive ? "1px solid rgba(48,184,191,0.25)" : "1px solid transparent",
+                    background: isActive ? "var(--sf-teal-glass)" : "none",
+                    border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid transparent",
                     color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)",
                   }}
                 >
@@ -272,8 +272,8 @@ export function ProductCatalog() {
                 onClick={() => setActiveCategory(cat.name)}
                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 cursor-pointer"
                 style={{
-                  background: isActive ? "linear-gradient(135deg, rgba(48,184,191,0.18), rgba(38,96,160,0.12))" : "var(--sf-bg-surface-2)",
-                  border: isActive ? "1px solid rgba(48,184,191,0.35)" : "1px solid var(--sf-divider)",
+                  background: isActive ? "var(--sf-teal-glass)" : "var(--sf-bg-surface-2)",
+                  border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid var(--sf-divider)",
                   color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)",
                 }}
               >
@@ -485,7 +485,7 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
 
   const availColors: Record<string, { bg: string; text: string; label: string }> = {
     "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "rgba(48,184,191,0.15)", text: "var(--sf-teal)", label: "Made to Order" },
+    "made-to-order": { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "Made to Order" },
     "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
   };
   const avail = availColors[product.availability];
@@ -532,7 +532,7 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
         <button
           onClick={prev}
           className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -541,7 +541,7 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
         <button
           onClick={next}
           className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -550,7 +550,7 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
         {images.length > 1 && (
           <div
             className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-secondary)" }}
+            style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-secondary)" }}
           >
             {activeIdx + 1} / {images.length}
           </div>

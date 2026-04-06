@@ -75,7 +75,7 @@ export function CartBar() {
           className="flex items-center justify-between px-5 py-3.5 rounded-2xl"
           style={{
             background: "linear-gradient(135deg, var(--sf-teal) 0%, #1a9fa6 100%)",
-            boxShadow: "0 8px 32px rgba(48,184,191,0.45), 0 2px 8px rgba(0,0,0,0.3)",
+            boxShadow: `0 8px 32px var(--sf-shadow-teal), 0 2px 8px var(--sf-shadow-lg)`,
           }}
         >
           {/* Left: item count badge */}
@@ -113,7 +113,7 @@ export function CartBar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50"
-              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+              style={{ background: "var(--sf-backdrop)", backdropFilter: "blur(4px)" }}
               onClick={() => setOpen(false)}
             />
 
@@ -128,27 +128,27 @@ export function CartBar() {
               style={{
                 backgroundColor: "var(--sf-bg-surface-1)",
                 maxHeight: "85vh",
-                boxShadow: "0 -8px 40px rgba(0,0,0,0.4)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: `0 -8px 40px var(--sf-shadow-lg)`,
+                border: `1px solid var(--sf-glass-border)`,
                 borderBottom: "none",
               }}
             >
               {/* Handle */}
               <div className="flex justify-center pt-3 pb-1 shrink-0">
-                <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
+                <div className="w-10 h-1 rounded-full" style={{ background: "var(--sf-glass-handle)" }} />
               </div>
 
               {/* Header */}
               <div
                 className="flex items-center justify-between px-5 py-4 shrink-0"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+                style={{ borderBottom: `1px solid var(--sf-divider)` }}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center"
                     style={{
-                      background: "linear-gradient(135deg, rgba(48,184,191,0.2), rgba(48,184,191,0.06))",
-                      border: "1px solid rgba(48,184,191,0.25)",
+                      background: "var(--sf-teal-glass)",
+                      border: `1px solid var(--sf-teal-border)`,
                     }}
                   >
                     <ShoppingCart className="w-4.5 h-4.5" style={{ color: "var(--sf-teal)", width: 18, height: 18 }} />
@@ -166,7 +166,7 @@ export function CartBar() {
                   onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
                   style={{
-                    background: "rgba(255,255,255,0.06)",
+                    background: "var(--sf-glass-bg-hover)",
                     color: "var(--sf-text-muted)",
                     border: "none",
                     cursor: "pointer",
@@ -178,13 +178,13 @@ export function CartBar() {
 
               {/* Items list */}
               <div className="flex-1 overflow-y-auto px-4 py-3" style={{ scrollbarWidth: "thin" }}>
-                {items.map((item, idx) => (
+                {items.map((item) => (
                   <div
                     key={item.cartId}
                     className="mb-3 rounded-2xl overflow-hidden"
                     style={{
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      background: "var(--sf-glass-bg)",
+                      border: `1px solid var(--sf-glass-border)`,
                     }}
                   >
                     {/* Item row */}
@@ -192,7 +192,7 @@ export function CartBar() {
                       {/* Image / placeholder */}
                       <div
                         className="w-14 h-14 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                        style={{ background: "var(--sf-glass-pill)", border: `1px solid var(--sf-glass-border)` }}
                       >
                         {item.productImage ? (
                           <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
@@ -216,25 +216,25 @@ export function CartBar() {
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {item.carat && (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                              style={{ background: "rgba(48,184,191,0.1)", color: "var(--sf-teal)" }}>
+                              style={{ background: "var(--sf-teal-subtle)", color: "var(--sf-teal)" }}>
                               {item.carat} ct
                             </span>
                           )}
                           {item.metalType && (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                              style={{ background: "rgba(212,168,67,0.1)", color: "#D4A843" }}>
+                              style={{ background: "var(--sf-gold-subtle)", color: "#D4A843" }}>
                               {item.metalType} {item.goldColour || ""}
                             </span>
                           )}
                           {item.diamondShape && (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                              style={{ background: "rgba(255,255,255,0.06)", color: "var(--sf-text-muted)" }}>
+                              style={{ background: "var(--sf-glass-bg-hover)", color: "var(--sf-text-muted)" }}>
                               {[item.diamondShape, item.diamondShade, item.diamondQuality].filter(Boolean).join(" · ")}
                             </span>
                           )}
                           {item.colorStoneName && (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                              style={{ background: "rgba(155,89,182,0.1)", color: "#9B59B6" }}>
+                              style={{ background: "var(--sf-purple-subtle)", color: "#9B59B6" }}>
                               {item.colorStoneName} {item.colorStoneQuality || ""}
                             </span>
                           )}
@@ -255,30 +255,34 @@ export function CartBar() {
                     {/* Controls row */}
                     <div
                       className="flex items-center justify-between px-4 py-2.5"
-                      style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+                      style={{ borderTop: `1px solid var(--sf-glass-border)` }}
                     >
                       {/* Qty stepper */}
                       <div
                         className="flex items-center rounded-lg overflow-hidden"
-                        style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+                        style={{ border: `1px solid var(--sf-glass-border-strong)` }}
                       >
                         <button
                           onClick={() => updateQuantity(item.cartId, item.quantity - 1)}
-                          className="w-8 h-8 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.1)]"
+                          className="w-8 h-8 flex items-center justify-center transition-colors"
                           style={{ color: "var(--sf-text-muted)", border: "none", background: "none", cursor: "pointer" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sf-teal-subtle)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                         >
                           <Minus className="w-3 h-3" />
                         </button>
                         <span
                           className="w-9 h-8 flex items-center justify-center text-[13px] font-bold border-x"
-                          style={{ color: "var(--sf-text-primary)", borderColor: "rgba(255,255,255,0.1)" }}
+                          style={{ color: "var(--sf-text-primary)", borderColor: "var(--sf-glass-border-strong)" }}
                         >
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.cartId, item.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.1)]"
+                          className="w-8 h-8 flex items-center justify-center transition-colors"
                           style={{ color: "var(--sf-text-muted)", border: "none", background: "none", cursor: "pointer" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sf-teal-subtle)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -290,7 +294,7 @@ export function CartBar() {
                           onClick={() => setNoteOpen(noteOpen === item.cartId ? null : item.cartId)}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
                           style={{
-                            background: noteOpen === item.cartId || item.note ? "rgba(48,184,191,0.08)" : "rgba(255,255,255,0.04)",
+                            background: noteOpen === item.cartId || item.note ? "var(--sf-teal-subtle)" : "var(--sf-glass-pill)",
                             color: noteOpen === item.cartId || item.note ? "var(--sf-teal)" : "var(--sf-text-muted)",
                             border: "none",
                             cursor: "pointer",
@@ -303,8 +307,10 @@ export function CartBar() {
                         {/* Remove */}
                         <button
                           onClick={() => removeItem(item.cartId)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-                          style={{ color: "rgba(239,68,68,0.6)", border: "none", background: "rgba(255,255,255,0.04)", cursor: "pointer" }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                          style={{ color: "var(--sf-red-text)", border: "none", background: "var(--sf-glass-pill)", cursor: "pointer" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sf-red-subtle)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--sf-glass-pill)"; }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -320,7 +326,7 @@ export function CartBar() {
                           exit={{ height: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-4 pb-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                          <div className="px-4 pb-3" style={{ borderTop: `1px solid var(--sf-glass-border)` }}>
                             <textarea
                               placeholder="Add a note (engraving, size, special requests…)"
                               value={item.note || ""}
@@ -328,8 +334,8 @@ export function CartBar() {
                               rows={2}
                               className="w-full mt-2.5 px-3 py-2 rounded-xl text-[12px] resize-none outline-none"
                               style={{
-                                background: "rgba(255,255,255,0.04)",
-                                border: "1px solid rgba(255,255,255,0.09)",
+                                background: "var(--sf-glass-pill)",
+                                border: `1px solid var(--sf-glass-border-strong)`,
                                 color: "var(--sf-text-primary)",
                                 fontFamily: "inherit",
                               }}
@@ -345,7 +351,7 @@ export function CartBar() {
               {/* Footer: summary + place order */}
               <div
                 className="shrink-0 px-4 pt-3 pb-6"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "var(--sf-bg-surface-1)" }}
+                style={{ borderTop: `1px solid var(--sf-divider)`, background: "var(--sf-bg-surface-1)" }}
               >
                 {/* Price summary */}
                 <div className="flex items-center justify-between mb-4 px-1">
@@ -361,9 +367,9 @@ export function CartBar() {
                     onClick={clearCart}
                     className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors"
                     style={{
-                      color: "rgba(239,68,68,0.7)",
-                      background: "rgba(239,68,68,0.06)",
-                      border: "1px solid rgba(239,68,68,0.12)",
+                      color: "var(--sf-red-text)",
+                      background: "var(--sf-red-subtle)",
+                      border: `1px solid var(--sf-red-border)`,
                       cursor: "pointer",
                     }}
                   >
@@ -386,7 +392,7 @@ export function CartBar() {
                     cursor: placing || success ? "default" : "pointer",
                     boxShadow: success
                       ? "0 4px 20px rgba(34,197,94,0.4)"
-                      : "0 4px 20px rgba(48,184,191,0.35)",
+                      : `0 4px 20px var(--sf-shadow-teal)`,
                     opacity: placing ? 0.8 : 1,
                   }}
                 >

@@ -246,7 +246,7 @@ export function RetailerDashboard() {
           <div
             className="absolute top-0 right-0 w-64 h-64 rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(48,184,191,0.08) 0%, transparent 70%)",
+              background: "radial-gradient(circle, var(--sf-teal-subtle) 0%, transparent 70%)",
               transform: "translate(30%, -30%)",
               pointerEvents: "none",
             }}
@@ -432,7 +432,7 @@ function SectionBar({ icon, title, subtitle, actionLabel, onAction }: {
       <div className="flex items-center gap-2.5">
         <div
           className="flex items-center justify-center w-8 h-8 rounded-lg [&>svg]:w-4 [&>svg]:h-4"
-          style={{ backgroundColor: "rgba(48,184,191,0.12)", color: "var(--sf-teal)" }}
+          style={{ backgroundColor: "var(--sf-teal-glass)", color: "var(--sf-teal)" }}
         >
           {icon}
         </div>
@@ -457,7 +457,7 @@ function SectionBar({ icon, title, subtitle, actionLabel, onAction }: {
 /* ── Announcements Card ───────────────────────────────── */
 function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
   const typeConfig: Record<string, { bg: string; text: string; label: string }> = {
-    new: { bg: "rgba(48,184,191,0.12)", text: "var(--sf-teal)", label: "New" },
+    new: { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "New" },
     offer: { bg: "rgba(34,197,94,0.12)", text: "#22c55e", label: "Offer" },
     info: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Info" },
   };
@@ -466,7 +466,7 @@ function AnnouncementsCard({ announcements }: { announcements: Announcement[] })
     <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(48,184,191,0.12)" }}>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
             <Megaphone className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
           </div>
           <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Announcements</h3>
@@ -588,7 +588,7 @@ function TodaysOrderCard({ summary }: {
     <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(48,184,191,0.12)" }}>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
             <Layers className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
           </div>
           <div>
@@ -631,7 +631,7 @@ function CategoryBrowseSection({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg" style={{ backgroundColor: "rgba(48,184,191,0.12)" }}>
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
             <Filter className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
           </div>
           <div>
@@ -671,8 +671,8 @@ function CategoryBrowseSection({
               onClick={() => onCategoryChange(cat)}
               className="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer"
               style={{
-                background: isActive ? "linear-gradient(135deg, rgba(48,184,191,0.18), rgba(38,96,160,0.12))" : "var(--sf-bg-surface-2)",
-                border: isActive ? "1px solid rgba(48,184,191,0.35)" : "1px solid var(--sf-divider)",
+                background: isActive ? "var(--sf-teal-glass)" : "var(--sf-bg-surface-2)",
+                border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid var(--sf-divider)",
                 color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)",
               }}
             >
@@ -799,7 +799,7 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
         <button
           onClick={prev}
           className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -808,7 +808,7 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
         <button
           onClick={next}
           className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -817,7 +817,7 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
         {images.length > 1 && (
           <div
             className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "var(--sf-text-secondary)" }}
+            style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-secondary)" }}
           >
             {activeIdx + 1} / {images.length}
           </div>

@@ -129,7 +129,7 @@ button, a {
   background: linear-gradient(
     105deg,
     transparent 20%,
-    rgba(255,255,255,0.06) 50%,
+    var(--sf-glass-bg-hover) 50%,
     transparent 80%
   );
   pointer-events: none;
@@ -142,10 +142,16 @@ button, a {
 /* ─── Interactive lift on product cards ─────────────────────────────────── */
 .card-shimmer-wrap:hover {
   transform: translateY(-4px);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  box-shadow: 0 8px 24px var(--sf-shadow-lg), 0 2px 8px rgba(0,0,0,0.04);
+  border-color: var(--sf-teal-border) !important;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease !important;
 }
 .card-shimmer-wrap {
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
 }
 
 /* ─── Microinteraction: button active press ─────────────────────────────── */
