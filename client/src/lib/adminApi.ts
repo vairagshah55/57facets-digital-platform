@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5000/api/admin";
+const API_BASE = `${import.meta.env.VITE_API_URL ?? "http://localhost:5000/api"}/admin`;
 
 function getAdminToken(): string | null {
   return localStorage.getItem("sf_admin_token");
@@ -119,7 +119,7 @@ export const adminProducts = {
     const formData = new FormData();
     for (const file of Array.from(files)) formData.append("images", file);
     const token = getAdminToken();
-    const res = await fetch(`http://localhost:5000/api/upload/product-images/${productId}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:5000/api"}/upload/product-images/${productId}`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
