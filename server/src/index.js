@@ -5,6 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 
 const { errorHandler } = require("./middleware/errorHandler");
@@ -38,23 +39,52 @@ app.use("/uploads", (req, res, next) => {
 }, express.static(path.join(__dirname, "../uploads")));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 200,
-  message: { error: "Too many requests, please try again later" },
-});
-app.use("/api", limiter);
+function getRateLimitKey(req, useIpOnly = false) {
+  if (!useIpOnly) {
+    const header = req.headers.authorization;
+    if (header && header.startsWith("Bearer ")) {
+      try {
+        const token = header.split(" ")[1];
+        const payload = jwt.verify(token, process.env.JWT_SECRET);
+        if (payload?.id) {
+          const actorType = payload.type === "admin" ? "admin" : "retailer";
+          return `${actorType}:${payload.id}`;
+        }
+      } catch {
+        // Fall back to IP-based limiting when auth is unavailable.
+      }
+    }
+  }
+
+  return `ip:${req.ip}`;
+}
+
+function createLimiter({ max, useIpOnly = false }) {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 min
+    max,
+    standardHeaders: "draft-6",
+    legacyHeaders: false,
+    keyGenerator: (req) => getRateLimitKey(req, useIpOnly),
+    message: { error: "Too many requests, please try again later" },
+  });
+}
+
+const authLimiter = createLimiter({ max: 30, useIpOnly: true });
+const uploadLimiter = createLimiter({ max: 300 });
+const apiLimiter = createLimiter({ max: 1000 });
 
 // ── Routes ─────────────────────────────────────────
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/admin/auth", authLimiter, adminAuthRoutes);
+app.use("/api/upload", uploadLimiter, uploadRoutes);
+app.use("/api/admin/upload", uploadLimiter, uploadRoutes);
+app.use("/api", apiLimiter);
 app.use("/api/products", productRoutes);
 app.use("/api/collections", collectionRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/upload", uploadRoutes);
-app.use("/api/admin/upload", uploadRoutes);
-app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/retailers", adminRetailerRoutes);
 app.use("/api/admin/products", adminProductRoutes);
