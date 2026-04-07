@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
 const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
@@ -9,7 +10,9 @@ const AppError = require("../utils/AppError");
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const type = req.params.type || "products";
-    cb(null, path.join(__dirname, "../../uploads", type));
+    const dest = path.join(__dirname, "../../uploads", type);
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
