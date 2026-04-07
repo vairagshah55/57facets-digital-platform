@@ -1,5 +1,5 @@
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api";
-export const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE = (import.meta.env.VITE_API_URL || "https://facets-backend-608725052152.us-central1.run.app") + "/api";
+export const SERVER_URL = import.meta.env.VITE_API_URL || "https://facets-backend-608725052152.us-central1.run.app";
 
 // Converts a relative image path from the API (e.g. "/uploads/products/abc.jpg")
 // into a full URL the browser can load
