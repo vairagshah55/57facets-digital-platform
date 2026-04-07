@@ -22,6 +22,7 @@ const adminProductRoutes = require("./routes/admin.product.routes");
 const adminOrderRoutes = require("./routes/admin.order.routes");
 
 const app = express();
+app.set("trust proxy", 1); // Required for Cloud Run / load balancers
 const PORT = process.env.PORT || 5000;
 
 // ── Middleware ──────────────────────────────────────
