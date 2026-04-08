@@ -35,6 +35,8 @@ router.get("/", async (req, res, next) => {
     }
     if (is_new === "true") {
       conditions.push("p.is_new = true");
+    } else if (is_new === "false") {
+      conditions.push("p.is_new = false");
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
