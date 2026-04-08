@@ -446,7 +446,7 @@ export function AdminProducts() {
           >
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
+              <SelectItem key={c.id} value={c.name}>
                 {c.name}
               </SelectItem>
             ))}
