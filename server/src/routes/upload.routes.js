@@ -1,26 +1,12 @@
 const router = require("express").Router();
 const multer = require("multer");
-const fs = require("fs");
 const path = require("path");
 const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
+const { uploadToGCS } = require("../utils/gcsUpload");
 
-// ── Multer config ──────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const type = req.params.type || "products";
-    const dest = path.join(__dirname, "../../uploads", type);
-    fs.mkdirSync(dest, { recursive: true });
-    cb(null, dest);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const name = `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-    cb(null, name);
-  },
-});
-
+// -- Multer config (memory storage  files go to GCS, not local disk) ------
 const fileFilter = (req, file, cb) => {
   const allowed = /\.(jpg|jpeg|png|webp|avif|mp4|mov)$/i;
   if (allowed.test(path.extname(file.originalname))) {
@@ -31,12 +17,19 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
 });
 
-// ── POST /api/upload/product-images/:productId ─────
+// Helper: generate a unique GCS filename
+const makeFilename = (folder, originalname) => {
+  const ext = path.extname(originalname);
+  const name = `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+  return `${folder}/${name}`;
+};
+
+// -- POST /api/upload/product-images/:productId --------
 // Upload one or more images for a product
 router.post(
   "/product-images/:productId",
@@ -66,7 +59,9 @@ router.post(
       const inserted = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const imageUrl = `/uploads/products/${file.filename}`;
+        const gcsFilename = makeFilename("products", file.originalname);
+        const imageUrl = await uploadToGCS(file.buffer, gcsFilename, file.mimetype);
+
         const isVideo = /\.(mp4|mov)$/i.test(file.originalname);
         const mediaType = isVideo ? "video" : "image";
         const isPrimary = !hasPrimary && i === 0;
@@ -89,7 +84,7 @@ router.post(
   }
 );
 
-// ── PUT /api/upload/product-images/:imageId/primary ─
+// -- PUT /api/upload/product-images/:imageId/primary -
 // Set an image as the primary image
 router.put("/product-images/:imageId/primary", authenticate, async (req, res, next) => {
   try {
@@ -102,35 +97,39 @@ router.put("/product-images/:imageId/primary", authenticate, async (req, res, ne
 
     const productId = images[0].product_id;
 
-    // Unset all primary for this product
+    // Clear existing primary
     await query(
       "UPDATE product_images SET is_primary = false WHERE product_id = $1",
       [productId]
     );
 
-    // Set this one as primary
-    await query(
-      "UPDATE product_images SET is_primary = true WHERE id = $1",
+    // Set new primary
+    const { rows } = await query(
+      "UPDATE product_images SET is_primary = true WHERE id = $1 RETURNING *",
       [req.params.imageId]
     );
 
-    res.json({ success: true });
+    res.json(rows[0]);
   } catch (err) {
     next(err);
   }
 });
 
-// ── DELETE /api/upload/product-images/:imageId ──────
+// -- DELETE /api/upload/product-images/:imageId -------
 router.delete("/product-images/:imageId", authenticate, async (req, res, next) => {
   try {
-    await query("DELETE FROM product_images WHERE id = $1", [req.params.imageId]);
-    res.json({ deleted: true });
+    const { rows } = await query(
+      "DELETE FROM product_images WHERE id = $1 RETURNING *",
+      [req.params.imageId]
+    );
+    if (rows.length === 0) throw new AppError("Image not found", 404);
+    res.json({ message: "Image deleted", image: rows[0] });
   } catch (err) {
     next(err);
   }
 });
 
-// ── POST /api/upload/category-image/:categoryId ────
+// -- POST /api/upload/category-image/:categoryId ------
 router.post(
   "/category-image/:categoryId",
   authenticate,
@@ -140,7 +139,9 @@ router.post(
     try {
       if (!req.file) throw new AppError("No file uploaded");
 
-      const imageUrl = `/uploads/categories/${req.file.filename}`;
+      const gcsFilename = makeFilename("categories", req.file.originalname);
+      const imageUrl = await uploadToGCS(req.file.buffer, gcsFilename, req.file.mimetype);
+
       await query(
         "UPDATE categories SET image_url = $1 WHERE id = $2",
         [imageUrl, req.params.categoryId]
@@ -153,7 +154,7 @@ router.post(
   }
 );
 
-// ── POST /api/upload/collection-cover/:collectionId ─
+// -- POST /api/upload/collection-cover/:collectionId --
 router.post(
   "/collection-cover/:collectionId",
   authenticate,
@@ -163,7 +164,9 @@ router.post(
     try {
       if (!req.file) throw new AppError("No file uploaded");
 
-      const imageUrl = `/uploads/collections/${req.file.filename}`;
+      const gcsFilename = makeFilename("collections", req.file.originalname);
+      const imageUrl = await uploadToGCS(req.file.buffer, gcsFilename, req.file.mimetype);
+
       await query(
         "UPDATE collections SET cover_image = $1 WHERE id = $2",
         [imageUrl, req.params.collectionId]
@@ -176,7 +179,7 @@ router.post(
   }
 );
 
-// ── GET /api/upload/product-images/:productId ───────
+// -- GET /api/upload/product-images/:productId --------
 // List all images for a product
 router.get("/product-images/:productId", authenticate, async (req, res, next) => {
   try {
