@@ -4,7 +4,7 @@ const path = require("path");
 const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
-const { uploadToGCS } = require("../utils/gcsUpload");
+const { uploadFile } = require("../utils/gcsUpload");
 
 // -- Multer config (memory storage  files go to GCS, not local disk) ------
 const fileFilter = (req, file, cb) => {
@@ -60,7 +60,7 @@ router.post(
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const gcsFilename = makeFilename("products", file.originalname);
-        const imageUrl = await uploadToGCS(file.buffer, gcsFilename, file.mimetype);
+        const imageUrl = await uploadFile(file.buffer, gcsFilename, file.mimetype);
 
         const isVideo = /\.(mp4|mov)$/i.test(file.originalname);
         const mediaType = isVideo ? "video" : "image";
@@ -140,7 +140,7 @@ router.post(
       if (!req.file) throw new AppError("No file uploaded");
 
       const gcsFilename = makeFilename("categories", req.file.originalname);
-      const imageUrl = await uploadToGCS(req.file.buffer, gcsFilename, req.file.mimetype);
+      const imageUrl = await uploadFile(req.file.buffer, gcsFilename, req.file.mimetype);
 
       await query(
         "UPDATE categories SET image_url = $1 WHERE id = $2",
@@ -165,7 +165,7 @@ router.post(
       if (!req.file) throw new AppError("No file uploaded");
 
       const gcsFilename = makeFilename("collections", req.file.originalname);
-      const imageUrl = await uploadToGCS(req.file.buffer, gcsFilename, req.file.mimetype);
+      const imageUrl = await uploadFile(req.file.buffer, gcsFilename, req.file.mimetype);
 
       await query(
         "UPDATE collections SET cover_image = $1 WHERE id = $2",

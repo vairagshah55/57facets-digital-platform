@@ -6,7 +6,7 @@ const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
 const multer = require("multer");
 const AdmZip = require("adm-zip");
-const { uploadToGCS } = require("../utils/gcsUpload");
+const { uploadFile } = require("../utils/gcsUpload");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 router.use(adminAuth);
@@ -503,7 +503,7 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
           if (!buf) continue;
           const ext = path.extname(fnLower);
           const diskName = `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-        const imageUrl = await uploadToGCS(buf, `products/${diskName}`, 'image/jpeg');
+        const imageUrl = await uploadFile(buf, `products/${diskName}`, 'image/jpeg');
           await client.query(
             `INSERT INTO product_images (product_id, image_url, is_primary, sort_order, media_type)
              VALUES ($1, $2, $3, $4, 'image')`,

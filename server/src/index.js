@@ -26,6 +26,11 @@ const app = express();
 app.set("trust proxy", 1); // Required for Cloud Run / load balancers
 const PORT = process.env.PORT || 5000;
 
+// ── Static uploads (local dev only) ────────────────
+if (process.env.NODE_ENV === "local") {
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+}
+
 // ── Middleware ──────────────────────────────────────
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
