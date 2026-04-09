@@ -62,10 +62,11 @@ export function AdminLayout() {
       className="min-h-screen flex"
       style={{ backgroundColor: "var(--sf-bg-base)", fontFamily: "'General Sans','Inter',sans-serif" }}
     >
-      {/* ── Desktop: spacer keeps layout stable ───── */}
-      <div
+      {/* ── Desktop: spacer — mirrors sidebar width so content is never covered ── */}
+      <motion.div
         className="hidden lg:block shrink-0"
-        style={{ width: pinned ? W_EXPANDED : W_COLLAPSED, transition: "width 0.3s cubic-bezier(0.4,0,0.2,1)" }}
+        animate={{ width: expanded ? W_EXPANDED : W_COLLAPSED }}
+        transition={spring}
       />
 
       {/* ── Desktop: fixed sidebar ─────────────────── */}
@@ -75,7 +76,11 @@ export function AdminLayout() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-30 border-r overflow-hidden"
-        style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
+        style={{
+          backgroundColor: "var(--sf-bg-surface-1)",
+          borderColor: "var(--sf-divider)",
+          boxShadow: "none",
+        }}
       >
         <SidebarContents
           expanded={expanded}
@@ -115,7 +120,7 @@ export function AdminLayout() {
       </AnimatePresence>
 
       {/* ── Content ────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminTopBar onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1">
           <Outlet />
