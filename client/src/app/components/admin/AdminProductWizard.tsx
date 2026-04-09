@@ -4,11 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Check, Save, Loader2, ImagePlus,
   Trash2, Star, X, AlertCircle, Package, Image as ImageIcon,
-  Layers, DollarSign, ShieldCheck, Plus,
+  Layers, DollarSign, ShieldCheck, Plus, ArrowLeft,
 } from "lucide-react";
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { Textarea } from "../ui/textarea";
 import {
@@ -39,8 +37,9 @@ type ProductDetail = {
 };
 
 type ProductImage = { id: string; url: string; is_primary: boolean; sort_order: number };
-type Category = { id: string; name: string };
-type Collection = { id: string; name: string };
+type Category    = { id: string; name: string };
+type Collection  = { id: string; name: string };
+type FieldErrors = Record<string, string>;
 
 type FormData = {
   name: string; sku: string; description: string; category_id: string;
@@ -49,7 +48,8 @@ type FormData = {
   finish_options: string; diamond_type: string; diamond_shape: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
-  gold_purity_options: string; carat: string; carat_range_min: string; carat_range_max: string; carat_options: number[];
+  gold_purity_options: string; carat: string; carat_range_min: string;
+  carat_range_max: string; carat_options: number[];
   color_stones: { name: string; quality: string }[];
   base_price: string; price_modifiers: string;
   availability: string; lead_time_days: string; min_order_qty: string; max_order_qty: string;
@@ -61,11 +61,11 @@ type FormData = {
    ═══════════════════════════════════════════════════════ */
 
 const STEPS = [
-  { id: 1, key: "basic",   label: "Basic Info",      desc: "Name, SKU & category",      icon: Package    },
-  { id: 2, key: "media",   label: "Images",           desc: "Product photos",             icon: ImageIcon  },
-  { id: 3, key: "specs",   label: "Specifications",   desc: "Gold, diamond & stones",    icon: Layers     },
-  { id: 4, key: "pricing", label: "Pricing",          desc: "Price & modifiers",          icon: DollarSign },
-  { id: 5, key: "status",  label: "Availability",     desc: "Stock & visibility",         icon: ShieldCheck},
+  { id: 1, key: "basic",   label: "Basic Info",     desc: "Name, SKU & category",   icon: Package,     color: "var(--sf-teal)",   glow: "#30b8bf" },
+  { id: 2, key: "media",   label: "Images",          desc: "Product photos",          icon: ImageIcon,   color: "#3b82f6",          glow: "#3b82f6" },
+  { id: 3, key: "specs",   label: "Specifications",  desc: "Gold, diamond & stones", icon: Layers,      color: "#a855f7",          glow: "#a855f7" },
+  { id: 4, key: "pricing", label: "Pricing",         desc: "Price & modifiers",       icon: DollarSign,  color: "#22c55e",          glow: "#22c55e" },
+  { id: 5, key: "status",  label: "Availability",    desc: "Stock & visibility",      icon: ShieldCheck, color: "#f59e0b",          glow: "#f59e0b" },
 ] as const;
 
 const AVAILABILITY_OPTIONS = [
@@ -74,21 +74,20 @@ const AVAILABILITY_OPTIONS = [
   { value: "out-of-stock",  label: "Out of Stock"  },
 ] as const;
 
-const GOLD_TYPES      = ["14KT", "18KT", "22KT"];
-const GOLD_COLOURS    = ["YELLOW", "ROSE", "WHITE", "TWO TONE"];
-const DIAMOND_SHAPES  = ["Round", "Princess", "Pan", "Baguette", "Marquise", "Oval", "Solitaire", "Emerald", "Cushion", "Radiant"];
-const DIAMOND_SHADES  = ["EF", "FG", "GH", "HI", "IJ"];
-const DIAMOND_QUALITIES = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
-const COLOR_STONE_NAMES = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Beads", "Kundan"];
+const GOLD_TYPES         = ["14KT", "18KT", "22KT"];
+const GOLD_COLOURS       = ["YELLOW", "ROSE", "WHITE", "TWO TONE"];
+const DIAMOND_SHAPES     = ["Round", "Princess", "Pan", "Baguette", "Marquise", "Oval", "Solitaire", "Emerald", "Cushion", "Radiant"];
+const DIAMOND_SHADES     = ["EF", "FG", "GH", "HI", "IJ"];
+const DIAMOND_QUALITIES  = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
+const COLOR_STONE_NAMES  = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Beads", "Kundan"];
 const COLOR_STONE_QUALITY_MAP: Record<string, string[]> = {
-  "Precious Stones":       ["EMERALD", "Ruby", "BLUE SAPPHIRE", "YELLOW SAPPHIRE", "NAVRATNA"],
-  "Semi Precious Stones":  ["BLUE COLOUR STONE", "GREEN COLOUR STONE", "RED COLOUR STONE"],
-  "Synthetic Stones":      ["CORAL", "BLUE COLOUR STONE", "GREEN COLOUR STONE", "RED COLOUR STONE"],
-  "Pearl":                 ["FRESH WATER PEARLS", "PEARL"],
-  "Beads":                 ["Beads"],
-  "Kundan":                ["Kundan Billor"],
+  "Precious Stones":      ["EMERALD", "Ruby", "BLUE SAPPHIRE", "YELLOW SAPPHIRE", "NAVRATNA"],
+  "Semi Precious Stones": ["BLUE COLOUR STONE", "GREEN COLOUR STONE", "RED COLOUR STONE"],
+  "Synthetic Stones":     ["CORAL", "BLUE COLOUR STONE", "GREEN COLOUR STONE", "RED COLOUR STONE"],
+  "Pearl":                ["FRESH WATER PEARLS", "PEARL"],
+  "Beads":                ["Beads"],
+  "Kundan":               ["Kundan Billor"],
 };
-
 const MAX_IMAGES = 10;
 
 const EMPTY: FormData = {
@@ -117,10 +116,8 @@ function detailToForm(d: ProductDetail): FormData {
     metal_type: d.metal_type || "", gold_colour: d.gold_colour || "",
     metal_weight: d.metal_weight != null ? String(d.metal_weight) : "",
     finish_options: Array.isArray(d.finish_options) ? d.finish_options.join(", ") : (d.finish_options || ""),
-    diamond_type: d.diamond_type || "",
-    diamond_shape: d.diamond_shape || "",
-    diamond_color: d.diamond_color || "",
-    diamond_clarity: d.diamond_clarity || "",
+    diamond_type: d.diamond_type || "", diamond_shape: d.diamond_shape || "",
+    diamond_color: d.diamond_color || "", diamond_clarity: d.diamond_clarity || "",
     diamond_certification: d.diamond_certification || "", setting_type: d.setting_type || "",
     hallmark: d.hallmark || "",
     width_mm: d.width_mm != null ? String(d.width_mm) : "",
@@ -150,14 +147,11 @@ function formToPayload(f: FormData) {
     name: f.name.trim(), sku: f.sku.trim(), description: f.description.trim() || null,
     category_id: f.category_id || null, collection_ids: f.collection_ids,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    metal_type: f.metal_type || null,
-    gold_colour: f.gold_colour || null,
+    metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
     metal_weight: f.metal_weight ? parseFloat(f.metal_weight) : null,
     finish_options: f.finish_options ? f.finish_options.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    diamond_type: f.diamond_type.trim() || null,
-    diamond_shape: f.diamond_shape || null,
-    diamond_color: f.diamond_color || null,
-    diamond_clarity: f.diamond_clarity || null,
+    diamond_type: f.diamond_type.trim() || null, diamond_shape: f.diamond_shape || null,
+    diamond_color: f.diamond_color || null, diamond_clarity: f.diamond_clarity || null,
     diamond_certification: f.diamond_certification.trim() || null,
     setting_type: f.setting_type.trim() || null, hallmark: f.hallmark.trim() || null,
     width_mm: f.width_mm ? parseFloat(f.width_mm) : null,
@@ -179,52 +173,97 @@ function formToPayload(f: FormData) {
   };
 }
 
+function validateStep(step: number, form: FormData): FieldErrors {
+  const errors: FieldErrors = {};
+  if (step === 1) {
+    if (!form.name.trim())  errors.name = "Product name is required";
+    if (!form.sku.trim())   errors.sku  = "SKU is required";
+  }
+  if (step === 4) {
+    if (!form.base_price || isNaN(Number(form.base_price)) || Number(form.base_price) <= 0)
+      errors.base_price = "A valid price is required";
+  }
+  return errors;
+}
+
 /* ═══════════════════════════════════════════════════════
-   TINY FIELD COMPONENTS
+   FIELD COMPONENTS
    ═══════════════════════════════════════════════════════ */
 
-const iStyle = {
+const iBase = {
   backgroundColor: "var(--sf-bg-surface-2)",
-  borderColor: "var(--sf-divider)",
-  color: "var(--sf-text-primary)",
+  borderColor:     "var(--sf-divider)",
+  color:           "var(--sf-text-primary)",
 } as const;
 
-function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
+const iError = {
+  backgroundColor: "var(--sf-bg-surface-2)",
+  borderColor:     "#ef444466",
+  color:           "var(--sf-text-primary)",
+  boxShadow:       "0 0 0 3px rgba(239,68,68,0.08)",
+} as const;
+
+function Field({ label, required, hint, error, children }: {
+  label: string; required?: boolean; hint?: string; error?: string; children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <label className="text-xs font-medium" style={{ color: "var(--sf-text-secondary)" }}>
-        {label}{required && <span className="ml-0.5" style={{ color: "var(--destructive)" }}>*</span>}
+        {label}
+        {required && <span className="ml-0.5" style={{ color: "#ef4444" }}>*</span>}
       </label>
       {children}
-      {hint && <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{hint}</p>}
+      <AnimatePresence>
+        {error ? (
+          <motion.p
+            key="err"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="text-[11px] flex items-center gap-1"
+            style={{ color: "#ef4444" }}
+          >
+            <AlertCircle className="w-3 h-3 shrink-0" /> {error}
+          </motion.p>
+        ) : hint ? (
+          <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{hint}</p>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
-function FInput({ label, required, hint, ...p }: { label: string; required?: boolean; hint?: string } & React.ComponentProps<typeof Input>) {
+function FInput({ label, required, hint, error, ...p }: {
+  label: string; required?: boolean; hint?: string; error?: string;
+} & React.ComponentProps<typeof Input>) {
   return (
-    <Field label={label} required={required} hint={hint}>
-      <Input {...p} className={`h-9 text-sm ${p.className || ""}`} style={{ ...iStyle, ...p.style }} />
+    <Field label={label} required={required} hint={hint} error={error}>
+      <Input {...p} className={`h-9 text-sm ${p.className || ""}`}
+        style={{ ...(error ? iError : iBase), ...p.style }} />
     </Field>
   );
 }
 
-function FTextarea({ label, hint, ...p }: { label: string; hint?: string } & React.ComponentProps<typeof Textarea>) {
+function FTextarea({ label, hint, error, ...p }: {
+  label: string; hint?: string; error?: string;
+} & React.ComponentProps<typeof Textarea>) {
   return (
-    <Field label={label} hint={hint}>
-      <Textarea {...p} className={`min-h-[80px] text-sm resize-none ${p.className || ""}`} style={{ ...iStyle, ...p.style }} />
+    <Field label={label} hint={hint} error={error}>
+      <Textarea {...p} className={`min-h-[80px] text-sm resize-none ${p.className || ""}`}
+        style={{ ...(error ? iError : iBase), ...p.style }} />
     </Field>
   );
 }
 
-function FSelect({ label, required, placeholder, value, onValueChange, children }: {
+function FSelect({ label, required, placeholder, value, onValueChange, error, children }: {
   label: string; required?: boolean; placeholder: string; value: string;
-  onValueChange: (v: string) => void; children: React.ReactNode;
+  onValueChange: (v: string) => void; error?: string; children: React.ReactNode;
 }) {
   return (
-    <Field label={label} required={required}>
+    <Field label={label} required={required} error={error}>
       <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className="h-9 text-sm" style={iStyle}>
+        <SelectTrigger className="h-9 text-sm" style={error ? iError : iBase}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}>
@@ -237,39 +276,50 @@ function FSelect({ label, required, placeholder, value, onValueChange, children 
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "var(--sf-text-muted)" }}>{children}</span>
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "var(--sf-text-muted)" }}>
+        {children}
+      </span>
       <div className="flex-1 h-px" style={{ backgroundColor: "var(--sf-divider)" }} />
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   STEP CONTENT COMPONENTS
+   STEP CONTENT — BASIC
    ═══════════════════════════════════════════════════════ */
 
-function StepBasic({ form, setForm, categories, collections }: {
+function StepBasic({ form, setForm, categories, collections, errors, clearError }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
-  categories: Category[]; collections: Collection[];
+  categories: Category[]; collections: Collection[]; errors: FieldErrors;
+  clearError: (key: string) => void;
 }) {
-  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((p) => ({ ...p, [key]: e.target.value }));
+    clearError(key);
+  };
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
-        <FInput label="Product Name" required placeholder="e.g. Radiant Diamond Solitaire Ring" value={form.name} onChange={f("name")} />
-        <FInput label="SKU" required placeholder="e.g. RNG-18K-001" value={form.sku} onChange={f("sku")} />
+        <FInput label="Product Name" required placeholder="e.g. Radiant Diamond Solitaire Ring"
+          value={form.name} onChange={f("name")} error={errors.name} />
+        <FInput label="SKU" required placeholder="e.g. RNG-18K-001"
+          value={form.sku} onChange={f("sku")} error={errors.sku} />
       </div>
-      <FTextarea label="Description" placeholder="Describe the product — material, style, occasion…" value={form.description} onChange={f("description")} />
+      <FTextarea label="Description" placeholder="Describe the product — material, style, occasion…"
+        value={form.description} onChange={f("description")} />
       <div className="grid grid-cols-2 gap-4">
-        <FSelect label="Category" required placeholder="Select category" value={form.category_id} onValueChange={(v) => setForm((p) => ({ ...p, category_id: v }))}>
+        <FSelect label="Category" required placeholder="Select category"
+          value={form.category_id} onValueChange={(v) => setForm((p) => ({ ...p, category_id: v }))}>
           {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
         </FSelect>
-        <FInput label="Occasion Tags" placeholder="wedding, anniversary, gift" value={form.occasion_tags} onChange={f("occasion_tags")} hint="Comma-separated" />
+        <FInput label="Occasion Tags" placeholder="wedding, anniversary, gift"
+          value={form.occasion_tags} onChange={f("occasion_tags")} hint="Comma-separated" />
       </div>
       {collections.length > 0 && (
         <Field label="Collections">
-          <div className="grid grid-cols-3 gap-2 p-3 rounded-xl border" style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}>
+          <div className="grid grid-cols-3 gap-2 p-3 rounded-xl border"
+            style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}>
             {collections.map((c) => (
               <label key={c.id} className="flex items-center gap-2 cursor-pointer py-1">
                 <Checkbox
@@ -291,16 +341,19 @@ function StepBasic({ form, setForm, categories, collections }: {
   );
 }
 
+/* ═══════════════════════════════════════════════════════
+   STEP CONTENT — MEDIA
+   ═══════════════════════════════════════════════════════ */
+
 function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInputRef, handleFiles, removeNew, deleteExisting, setPrimary }: {
   existingImages: ProductImage[]; newPreviews: string[]; dragOver: boolean;
   setDragOver: (v: boolean) => void; fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (f: FileList | File[]) => void; removeNew: (i: number) => void;
   deleteExisting: (id: string) => void; setPrimary: (id: string) => void;
 }) {
-  const totalImages = existingImages.length + newPreviews.length;
+  const total = existingImages.length + newPreviews.length;
   return (
     <div className="space-y-5">
-      {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -308,29 +361,30 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
         onClick={() => fileInputRef.current?.click()}
         className="rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all"
         style={{
-          borderColor: dragOver ? "var(--sf-teal)" : "var(--sf-divider)",
-          backgroundColor: dragOver ? "rgba(48,184,191,0.06)" : "var(--sf-bg-surface-2)",
+          borderColor: dragOver ? "#3b82f6" : "var(--sf-divider)",
+          backgroundColor: dragOver ? "rgba(59,130,246,0.06)" : "var(--sf-bg-surface-2)",
         }}
       >
         <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4"
-          style={{ backgroundColor: dragOver ? "rgba(48,184,191,0.15)" : "rgba(255,255,255,0.05)" }}>
-          <ImagePlus className="w-6 h-6" style={{ color: dragOver ? "var(--sf-teal)" : "var(--sf-text-muted)" }} />
+          style={{ backgroundColor: dragOver ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.05)" }}>
+          <ImagePlus className="w-6 h-6" style={{ color: dragOver ? "#3b82f6" : "var(--sf-text-muted)" }} />
         </div>
         <p className="text-sm font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
           {dragOver ? "Drop to upload" : "Drag & drop images here"}
         </p>
-        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>or click to browse · JPG, PNG, WEBP · up to {MAX_IMAGES} images</p>
-        {totalImages > 0 && (
+        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+          or click to browse · JPG, PNG, WEBP · up to {MAX_IMAGES} images
+        </p>
+        {total > 0 && (
           <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs"
-            style={{ backgroundColor: "rgba(48,184,191,0.12)", color: "var(--sf-teal)" }}>
-            {totalImages} / {MAX_IMAGES} uploaded
+            style={{ backgroundColor: "rgba(59,130,246,0.12)", color: "#3b82f6" }}>
+            {total} / {MAX_IMAGES} uploaded
           </div>
         )}
         <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden"
           onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = ""; }} />
       </div>
 
-      {/* Image grid */}
       {(existingImages.length > 0 || newPreviews.length > 0) && (
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
           {existingImages.map((img) => (
@@ -348,7 +402,7 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
                 {!img.is_primary && (
                   <button className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/15 hover:bg-white/25 text-white transition-colors"
-                    onClick={(e) => { e.stopPropagation(); setPrimary(img.id); }} title="Set as primary">
+                    onClick={(e) => { e.stopPropagation(); setPrimary(img.id); }}>
                     <Star className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -364,7 +418,8 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
               style={{ borderColor: "rgba(59,130,246,0.4)", backgroundColor: "var(--sf-bg-surface-2)" }}>
               <img src={src} alt="" className="w-full h-full object-cover" />
               <div className="absolute top-1.5 left-1.5">
-                <Badge className="text-[9px] h-4 px-1.5" style={{ backgroundColor: "var(--sf-blue-primary)", color: "#fff", border: "none" }}>NEW</Badge>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                  style={{ backgroundColor: "#3b82f6", color: "#fff" }}>NEW</span>
               </div>
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <button className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/15 hover:bg-red-500/60 text-white transition-colors"
@@ -380,12 +435,15 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
   );
 }
 
+/* ═══════════════════════════════════════════════════════
+   STEP CONTENT — SPECS
+   ═══════════════════════════════════════════════════════ */
+
 function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat, setPendingCarat }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
   pendingStone: { name: string; quality: string };
   setPendingStone: React.Dispatch<React.SetStateAction<{ name: string; quality: string }>>;
-  pendingCarat: string;
-  setPendingCarat: React.Dispatch<React.SetStateAction<string>>;
+  pendingCarat: string; setPendingCarat: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
@@ -394,10 +452,12 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
       <div>
         <GroupLabel>Gold</GroupLabel>
         <div className="grid grid-cols-2 gap-4">
-          <FSelect label="Gold Type" placeholder="Select gold type" value={form.metal_type} onValueChange={(v) => setForm((p) => ({ ...p, metal_type: v }))}>
+          <FSelect label="Gold Type" placeholder="Select gold type" value={form.metal_type}
+            onValueChange={(v) => setForm((p) => ({ ...p, metal_type: v }))}>
             {GOLD_TYPES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Gold Colour" placeholder="Select colour" value={form.gold_colour} onValueChange={(v) => setForm((p) => ({ ...p, gold_colour: v }))}>
+          <FSelect label="Gold Colour" placeholder="Select colour" value={form.gold_colour}
+            onValueChange={(v) => setForm((p) => ({ ...p, gold_colour: v }))}>
             {GOLD_COLOURS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
           <FInput label="Metal Weight (g)" type="number" placeholder="4.5" value={form.metal_weight} onChange={f("metal_weight")} />
@@ -411,16 +471,20 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
         <GroupLabel>Diamond</GroupLabel>
         <div className="grid grid-cols-2 gap-4">
           <FInput label="Diamond Type" placeholder="Natural, Lab-grown" value={form.diamond_type} onChange={f("diamond_type")} />
-          <FSelect label="Diamond Shape" placeholder="Select shape" value={form.diamond_shape} onValueChange={(v) => setForm((p) => ({ ...p, diamond_shape: v }))}>
+          <FSelect label="Diamond Shape" placeholder="Select shape" value={form.diamond_shape}
+            onValueChange={(v) => setForm((p) => ({ ...p, diamond_shape: v }))}>
             {DIAMOND_SHAPES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Diamond Shade" placeholder="Select shade" value={form.diamond_color} onValueChange={(v) => setForm((p) => ({ ...p, diamond_color: v }))}>
+          <FSelect label="Diamond Shade" placeholder="Select shade" value={form.diamond_color}
+            onValueChange={(v) => setForm((p) => ({ ...p, diamond_color: v }))}>
             {DIAMOND_SHADES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity} onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
+          <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity}
+            onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
             {DIAMOND_QUALITIES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FSelect label="Certification" placeholder="Select certification" value={form.diamond_certification} onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
+          <FSelect label="Certification" placeholder="Select certification" value={form.diamond_certification}
+            onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
             {["GIA", "GSI", "IGI"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
           <FInput label="Setting Type" placeholder="Prong, Bezel, Pave" value={form.setting_type} onChange={f("setting_type")} />
@@ -435,10 +499,10 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
           <div className="flex flex-wrap gap-2 mb-3">
             {form.color_stones.map((s, i) => (
               <div key={i} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                style={{ backgroundColor: "var(--sf-bg-surface-3)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)" }}>
-                <span>{s.name} — {s.quality}</span>
+                style={{ backgroundColor: "rgba(168,85,247,0.12)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.25)" }}>
+                {s.name} — {s.quality}
                 <button type="button" onClick={() => setForm((p) => ({ ...p, color_stones: p.color_stones.filter((_, idx) => idx !== i) }))}>
-                  <X className="h-3 w-3" style={{ color: "var(--sf-text-muted)" }} />
+                  <X className="h-3 w-3 ml-0.5 opacity-70" />
                 </button>
               </div>
             ))}
@@ -456,10 +520,11 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
               .map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
         </div>
-        <button type="button" disabled={!pendingStone.name || !pendingStone.quality}
+        <button type="button"
+          disabled={!pendingStone.name || !pendingStone.quality}
           onClick={() => { setForm((p) => ({ ...p, color_stones: [...p.color_stones, pendingStone] })); setPendingStone({ name: "", quality: "" }); }}
-          className="mt-2 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded"
-          style={{ backgroundColor: "var(--sf-accent)", color: "var(--sf-bg-base)", opacity: (!pendingStone.name || !pendingStone.quality) ? 0.4 : 1 }}>
+          className="mt-3 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity"
+          style={{ backgroundColor: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.4)", cursor: "pointer", opacity: (!pendingStone.name || !pendingStone.quality) ? 0.4 : 1 }}>
           <Plus className="h-3 w-3" /> Add Stone
         </button>
       </div>
@@ -476,17 +541,16 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
           <FInput label="Width (mm)" type="number" placeholder="2.5" value={form.width_mm} onChange={f("width_mm")} />
           <FInput label="Height (mm)" type="number" placeholder="8.0" value={form.height_mm} onChange={f("height_mm")} />
         </div>
-
-        <div className="mt-4">
+        <div className="mt-5">
           <GroupLabel>Carat Options</GroupLabel>
           {form.carat_options.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {[...form.carat_options].sort((a, b) => a - b).map((ct) => (
                 <div key={ct} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
                   style={{ backgroundColor: "var(--sf-bg-surface-3)", color: "var(--sf-text-primary)", border: "1px solid var(--sf-divider)" }}>
-                  <span>{ct} ct</span>
+                  {ct} ct
                   <button type="button" onClick={() => setForm((p) => ({ ...p, carat_options: p.carat_options.filter(v => v !== ct) }))}>
-                    <X className="h-3 w-3" style={{ color: "var(--sf-text-muted)" }} />
+                    <X className="h-3 w-3 opacity-70" />
                   </button>
                 </div>
               ))}
@@ -494,20 +558,14 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
           )}
           <div className="flex gap-2 items-end">
             <div className="w-32">
-              <FInput label="Add Carat" type="number" placeholder="e.g. 1.5" step="0.25" value={pendingCarat}
-                onChange={(e) => setPendingCarat(e.target.value)} />
+              <FInput label="Add Carat" type="number" placeholder="e.g. 1.5" step="0.25"
+                value={pendingCarat} onChange={(e) => setPendingCarat(e.target.value)} />
             </div>
             <button type="button"
               disabled={!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))}
-              onClick={() => {
-                const val = parseFloat(pendingCarat);
-                if (!isNaN(val) && !form.carat_options.includes(val)) {
-                  setForm((p) => ({ ...p, carat_options: [...p.carat_options, val] }));
-                  setPendingCarat("");
-                }
-              }}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded mb-0.5"
-              style={{ backgroundColor: "var(--sf-accent)", color: "var(--sf-bg-base)", opacity: (!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))) ? 0.4 : 1 }}>
+              onClick={() => { const val = parseFloat(pendingCarat); if (!isNaN(val) && !form.carat_options.includes(val)) { setForm((p) => ({ ...p, carat_options: [...p.carat_options, val] })); setPendingCarat(""); } }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg mb-0.5 transition-opacity"
+              style={{ backgroundColor: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.4)", cursor: "pointer", opacity: (!pendingCarat || isNaN(parseFloat(pendingCarat)) || form.carat_options.includes(parseFloat(pendingCarat))) ? 0.4 : 1 }}>
               <Plus className="h-3 w-3" /> Add
             </button>
           </div>
@@ -517,42 +575,50 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
   );
 }
 
-function StepPricing({ form, setForm }: { form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>> }) {
-  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+/* ═══════════════════════════════════════════════════════
+   STEP CONTENT — PRICING
+   ═══════════════════════════════════════════════════════ */
+
+function StepPricing({ form, setForm, errors, clearError }: {
+  form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>; errors: FieldErrors;
+  clearError: (key: string) => void;
+}) {
+  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((p) => ({ ...p, [key]: e.target.value }));
+    clearError(key);
+  };
   return (
     <div className="space-y-5">
       <div className="max-w-xs">
-        <FInput label="Base Price (₹)" required type="number" placeholder="45000" value={form.base_price} onChange={f("base_price")} />
+        <FInput label="Base Price (₹)" required type="number" placeholder="45000"
+          value={form.base_price} onChange={f("base_price")} error={errors.base_price} />
       </div>
-      <div
-        className="rounded-xl p-4"
-        style={{ backgroundColor: "rgba(48,184,191,0.06)", border: "1px solid rgba(48,184,191,0.2)" }}
-      >
-        <p className="text-xs font-medium mb-1" style={{ color: "var(--sf-teal)" }}>Price Modifiers (optional)</p>
+      <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
+        <p className="text-xs font-semibold mb-1" style={{ color: "#22c55e" }}>Price Modifiers (optional)</p>
         <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
-          JSON multipliers applied per material or option selection. Example: {`{"18K": 1.0, "22K": 1.25, "Platinum": 1.5}`}
+          JSON multipliers applied per material. Example: {`{"18K": 1.0, "22K": 1.25}`}
         </p>
-        <FTextarea
-          label=""
-          placeholder={'{\n  "18K": 1.0,\n  "22K": 1.25,\n  "Platinum": 1.5\n}'}
-          value={form.price_modifiers}
-          onChange={f("price_modifiers")}
-          className="font-mono text-xs min-h-[120px]"
-        />
+        <FTextarea label="" placeholder={'{\n  "18K": 1.0,\n  "22K": 1.25,\n  "Platinum": 1.5\n}'}
+          value={form.price_modifiers} onChange={f("price_modifiers")}
+          className="font-mono text-xs min-h-[120px]" />
       </div>
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════
+   STEP CONTENT — STATUS
+   ═══════════════════════════════════════════════════════ */
+
 function StepStatus({ form, setForm }: { form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>> }) {
-  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <GroupLabel>Stock Settings</GroupLabel>
       <div className="grid grid-cols-3 gap-4">
-        <FSelect label="Availability" required placeholder="Select" value={form.availability} onValueChange={(v) => setForm((p) => ({ ...p, availability: v }))}>
+        <FSelect label="Availability" required placeholder="Select" value={form.availability}
+          onValueChange={(v) => setForm((p) => ({ ...p, availability: v }))}>
           {AVAILABILITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
         </FSelect>
         <FInput label="Lead Time (days)" type="number" placeholder="7" value={form.lead_time_days} onChange={f("lead_time_days")} />
@@ -566,28 +632,56 @@ function StepStatus({ form, setForm }: { form: FormData; setForm: React.Dispatch
 
       <GroupLabel>Visibility Flags</GroupLabel>
       <div className="grid grid-cols-2 gap-4">
-        <label className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer group transition-all"
-          style={{
-            backgroundColor: form.is_new ? "rgba(48,184,191,0.07)" : "var(--sf-bg-surface-2)",
-            borderColor: form.is_new ? "rgba(48,184,191,0.35)" : "var(--sf-divider)",
-          }}>
-          <Checkbox checked={form.is_new} onCheckedChange={(v) => setForm((p) => ({ ...p, is_new: v === true }))} className="mt-0.5" />
-          <div>
-            <p className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>New Arrival</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Displays a "NEW" badge on the catalog card</p>
+        {[
+          { key: "is_new" as const, label: "New Arrival", desc: 'Displays a "NEW" badge on the catalog card', on: "rgba(48,184,191,0.08)", border: "rgba(48,184,191,0.3)", color: "var(--sf-teal)" },
+          { key: "is_active" as const, label: "Active", desc: "Visible to retailers in the product catalog", on: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.3)", color: "#22c55e" },
+        ].map(({ key, label, desc, on, border, color }) => (
+          <label key={key} className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all"
+            style={{
+              backgroundColor: form[key] ? on : "var(--sf-bg-surface-2)",
+              borderColor: form[key] ? border : "var(--sf-divider)",
+            }}>
+            <Checkbox checked={form[key]} onCheckedChange={(v) => setForm((p) => ({ ...p, [key]: v === true }))} className="mt-0.5" />
+            <div>
+              <p className="text-sm font-medium" style={{ color: form[key] ? color : "var(--sf-text-primary)" }}>{label}</p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{desc}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   PAGE LOADING SKELETON
+   ═══════════════════════════════════════════════════════ */
+
+function WizardSkeleton() {
+  return (
+    <div className="min-h-screen animate-pulse" style={{ backgroundColor: "var(--sf-bg-base)" }}>
+      <div className="h-14 border-b" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }} />
+      <div className="h-0.5" style={{ backgroundColor: "var(--sf-divider)" }} />
+      <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8">
+        <aside className="w-60 shrink-0 space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-1)" }} />
+          ))}
+        </aside>
+        <div className="flex-1 space-y-4">
+          <div className="h-12 w-48 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-1)" }} />
+          <div className="rounded-2xl p-6 space-y-4" style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)" }}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-9 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+              <div className="h-9 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+            </div>
+            <div className="h-20 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-9 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+              <div className="h-9 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+            </div>
           </div>
-        </label>
-        <label className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer group transition-all"
-          style={{
-            backgroundColor: form.is_active ? "rgba(34,197,94,0.07)" : "var(--sf-bg-surface-2)",
-            borderColor: form.is_active ? "rgba(34,197,94,0.35)" : "var(--sf-divider)",
-          }}>
-          <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm((p) => ({ ...p, is_active: v === true }))} className="mt-0.5" />
-          <div>
-            <p className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>Active</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Visible to retailers in the product catalog</p>
-          </div>
-        </label>
+        </div>
       </div>
     </div>
   );
@@ -598,28 +692,30 @@ function StepStatus({ form, setForm }: { form: FormData; setForm: React.Dispatch
    ═══════════════════════════════════════════════════════ */
 
 export function AdminProductWizard() {
-  const { id } = useParams<{ id?: string }>();
+  const { id }  = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const isEdit = !!id;
+  const isEdit   = !!id;
 
-  const [step, setStep] = useState(1);
+  const [step,           setStep]           = useState(1);
+  const [direction,      setDirection]      = useState(1);   // 1=forward, -1=backward
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const [form, setForm] = useState<FormData>({ ...EMPTY });
-  const [pendingStone, setPendingStone] = useState({ name: "", quality: "" });
-  const [pendingCarat, setPendingCarat] = useState("");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [fieldErrors,    setFieldErrors]    = useState<FieldErrors>({});
+  const clearError = (key: string) => setFieldErrors((p) => { const n = { ...p }; delete n[key]; return n; });
+  const [globalError,    setGlobalError]    = useState<string | null>(null);
+  const [form,           setForm]           = useState<FormData>({ ...EMPTY });
+  const [pendingStone,   setPendingStone]   = useState({ name: "", quality: "" });
+  const [pendingCarat,   setPendingCarat]   = useState("");
+  const [categories,     setCategories]     = useState<Category[]>([]);
+  const [collections,    setCollections]    = useState<Collection[]>([]);
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [newPreviews, setNewPreviews] = useState<string[]>([]);
-  const [dragOver, setDragOver] = useState(false);
-  const [pageLoading, setPageLoading] = useState(isEdit);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [newFiles,       setNewFiles]       = useState<File[]>([]);
+  const [newPreviews,    setNewPreviews]     = useState<string[]>([]);
+  const [dragOver,       setDragOver]       = useState(false);
+  const [pageLoading,    setPageLoading]    = useState(isEdit);
+  const [saving,         setSaving]         = useState(false);
+  const [uploading,      setUploading]      = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ── Load meta ─────────────────────────────────────── */
   useEffect(() => {
     (async () => {
       try {
@@ -630,7 +726,6 @@ export function AdminProductWizard() {
     })();
   }, []);
 
-  /* ── Load product for edit ─────────────────────────── */
   useEffect(() => {
     if (!isEdit) return;
     (async () => {
@@ -639,23 +734,22 @@ export function AdminProductWizard() {
         setForm(detailToForm(d));
         setExistingImages(d.images || []);
       } catch (e: any) {
-        setError(e.message || "Failed to load product");
+        setGlobalError(e.message || "Failed to load product");
       } finally {
         setPageLoading(false);
       }
     })();
   }, [id, isEdit]);
 
-  /* ── File handling ─────────────────────────────────── */
   function handleFiles(files: FileList | File[]) {
     const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (!arr.length) return;
     if (existingImages.length + newFiles.length + arr.length > MAX_IMAGES) {
-      setError(`Maximum ${MAX_IMAGES} images allowed.`); return;
+      setGlobalError(`Maximum ${MAX_IMAGES} images allowed.`); return;
     }
     setNewFiles((p) => [...p, ...arr]);
     setNewPreviews((p) => [...p, ...arr.map((f) => URL.createObjectURL(f))]);
-    setError(null);
+    setGlobalError(null);
   }
   function removeNew(idx: number) {
     URL.revokeObjectURL(newPreviews[idx]);
@@ -671,47 +765,39 @@ export function AdminProductWizard() {
     catch { /* silent */ }
   }
 
-  /* ── Step navigation ───────────────────────────────── */
-  function validateStep(s: number): string | null {
-    if (s === 1) {
-      if (!form.name.trim()) return "Product name is required.";
-      if (!form.sku.trim()) return "SKU is required.";
-    }
-    if (s === 4) {
-      if (!form.base_price) return "Base price is required.";
-    }
-    return null;
-  }
-
   function goNext() {
-    const err = validateStep(step);
-    if (err) { setError(err); return; }
-    setError(null);
+    const errs = validateStep(step, form);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setFieldErrors({});
+    setGlobalError(null);
     setCompletedSteps((p) => new Set([...p, step]));
+    setDirection(1);
     setStep((s) => Math.min(STEPS.length, s + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function goBack() {
-    setError(null);
+    setFieldErrors({});
+    setGlobalError(null);
+    setDirection(-1);
     setStep((s) => Math.max(1, s - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function jumpTo(s: number) {
     if (s === step) return;
-    // Allow jump to completed steps or next step
-    if (completedSteps.has(s) || s === step + 1 || s < step) {
-      setError(null);
+    if (completedSteps.has(s) || s < step) {
+      setFieldErrors({});
+      setGlobalError(null);
+      setDirection(s > step ? 1 : -1);
       setStep(s);
     }
   }
 
-  /* ── Submit ────────────────────────────────────────── */
   async function handleSave() {
-    const err = validateStep(step);
-    if (err) { setError(err); return; }
-    setSaving(true); setError(null);
+    const errs = validateStep(step, form);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setSaving(true); setGlobalError(null);
     try {
       const payload = formToPayload(form);
       let pid = id;
@@ -724,146 +810,149 @@ export function AdminProductWizard() {
       newPreviews.forEach((u) => URL.revokeObjectURL(u));
       navigate("/admin/products");
     } catch (e: any) {
-      setError(e.message || "Failed to save product");
+      setGlobalError(e.message || "Failed to save product");
     } finally {
       setSaving(false);
     }
   }
 
-  const isLastStep = step === STEPS.length;
-  const currentStep = STEPS[step - 1];
+  const isLastStep    = step === STEPS.length;
+  const currentStep   = STEPS[step - 1];
+  const isBusy        = saving || uploading;
 
-  if (pageLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--sf-teal)" }} />
-      </div>
-    );
-  }
+  if (pageLoading) return <WizardSkeleton />;
 
-  /* ════════════════════════════════════════════════════
-     RENDER
-     ════════════════════════════════════════════════════ */
+  /* ── Direction-aware animation variants ─── */
+  const slideVariants = {
+    enter:   { opacity: 0, x: direction * 32 },
+    center:  { opacity: 1, x: 0 },
+    exit:    { opacity: 0, x: direction * -32 },
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--sf-bg-base)" }}>
 
       {/* ── Top bar ──────────────────────────────────── */}
       <div
-        className="sticky top-0 z-20 px-6 py-3 flex items-center justify-between"
+        className="sticky top-0 z-20 h-14 flex items-center justify-between px-6"
         style={{ backgroundColor: "var(--sf-bg-surface-1)", borderBottom: "1px solid var(--sf-divider)" }}
       >
         <button
           onClick={() => navigate("/admin/products")}
-          className="flex items-center gap-2 text-sm transition-colors cursor-pointer"
-          style={{ color: "var(--sf-text-muted)", background: "none", border: "none" }}
+          className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+          style={{ color: "var(--sf-text-muted)", background: "none", border: "none", cursor: "pointer" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "var(--sf-text-primary)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "var(--sf-text-muted)")}
         >
-          <ChevronLeft className="w-4 h-4" />
-          Back to Products
+          <ArrowLeft className="w-4 h-4" />
+          Products
         </button>
 
         <div className="absolute left-1/2 -translate-x-1/2 text-center">
           <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-            {isEdit ? "Edit Product" : "Add New Product"}
+            {isEdit ? "Edit Product" : "New Product"}
           </p>
-          <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+          <p className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>
             Step {step} of {STEPS.length} — {currentStep.label}
           </p>
         </div>
 
-        <Button
-          size="sm" className="gap-1.5 h-8"
-          disabled={saving || uploading}
-          onClick={isLastStep ? handleSave : goNext}
-          style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
-        >
-          {saving || uploading ? (
-            <><Loader2 className="w-3.5 h-3.5 animate-spin" />{uploading ? "Uploading…" : "Saving…"}</>
-          ) : isLastStep ? (
-            <><Save className="w-3.5 h-3.5" />{isEdit ? "Update Product" : "Create Product"}</>
-          ) : (
-            <>Continue <ChevronRight className="w-3.5 h-3.5" /></>
-          )}
-        </Button>
+        {/* Save shortcut in top bar */}
+        {isLastStep && (
+          <button
+            disabled={isBusy}
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-60"
+            style={{ backgroundColor: currentStep.color === "var(--sf-teal)" ? "var(--sf-teal)" : currentStep.color, color: "#fff", border: "none", cursor: isBusy ? "not-allowed" : "pointer" }}
+          >
+            {isBusy
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{uploading ? "Uploading…" : "Saving…"}</>
+              : <><Save className="w-3.5 h-3.5" />{isEdit ? "Update" : "Create"}</>}
+          </button>
+        )}
+        {!isLastStep && <div className="w-24" />}
       </div>
 
-      {/* ── Progress bar ─────────────────────────────── */}
-      <div className="h-0.5 w-full" style={{ backgroundColor: "var(--sf-divider)" }}>
+      {/* ── Step progress bar ────────────────────────── */}
+      <div className="h-[3px] w-full" style={{ backgroundColor: "var(--sf-divider)" }}>
         <motion.div
           className="h-full"
-          style={{ backgroundColor: "var(--sf-teal)" }}
+          style={{ background: `linear-gradient(90deg, var(--sf-teal), ${currentStep.glow})` }}
           animate={{ width: `${(step / STEPS.length) * 100}%` }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         />
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8">
 
-        {/* ── Left stepper sidebar ─────────────────── */}
-        <aside className="w-60 shrink-0">
+        {/* ── Step sidebar ─────────────────────────── */}
+        <aside className="w-56 shrink-0">
           <div className="sticky top-24 space-y-1">
             {STEPS.map((s) => {
-              const isDone = completedSteps.has(s.id);
-              const isActive = step === s.id;
+              const isDone     = completedSteps.has(s.id);
+              const isActive   = step === s.id;
               const isReachable = isDone || s.id <= step;
-              const Icon = s.icon;
+              const Icon       = s.icon;
+
               return (
                 <button
                   key={s.id}
                   onClick={() => jumpTo(s.id)}
                   disabled={!isReachable}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all cursor-pointer disabled:cursor-default"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all disabled:cursor-default disabled:opacity-50"
                   style={{
-                    backgroundColor: isActive ? "rgba(48,184,191,0.1)" : "transparent",
-                    border: isActive ? "1px solid rgba(48,184,191,0.25)" : "1px solid transparent",
+                    backgroundColor: isActive ? `${s.glow}14` : "transparent",
+                    border: isActive ? `1px solid ${s.glow}30` : "1px solid transparent",
+                    cursor: isReachable ? "pointer" : "default",
                   }}
+                  onMouseEnter={e => { if (!isActive && isReachable) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
                 >
-                  {/* Step circle */}
+                  {/* Circle */}
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all"
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all"
                     style={{
-                      backgroundColor: isDone
-                        ? "var(--sf-teal)"
-                        : isActive
-                        ? "rgba(48,184,191,0.2)"
-                        : "var(--sf-bg-surface-2)",
-                      color: isDone
-                        ? "#fff"
-                        : isActive
-                        ? "var(--sf-teal)"
-                        : "var(--sf-text-muted)",
-                      border: isActive && !isDone ? "1.5px solid var(--sf-teal)" : "none",
+                      backgroundColor: isDone ? s.glow : isActive ? `${s.glow}22` : "var(--sf-bg-surface-2)",
+                      color:           isDone ? "#fff" : isActive ? s.color : "var(--sf-text-muted)",
+                      border:          isActive && !isDone ? `1.5px solid ${s.glow}` : "none",
                     }}
                   >
-                    {isDone ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : s.id}
+                    {isDone
+                      ? <Check className="w-3 h-3" strokeWidth={3} />
+                      : <Icon className="w-3.5 h-3.5" />}
                   </div>
 
-                  {/* Step text */}
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: isActive ? "var(--sf-teal)" : isDone ? "var(--sf-text-secondary)" : "var(--sf-text-muted)" }}>
+                    <p className="text-xs font-semibold truncate"
+                      style={{ color: isActive ? s.color : isDone ? "var(--sf-text-secondary)" : "var(--sf-text-muted)" }}>
                       {s.label}
                     </p>
-                    <p className="text-[11px] truncate mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                    <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
                       {s.desc}
                     </p>
                   </div>
 
-                  {/* Done indicator */}
                   {isDone && !isActive && (
-                    <div className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--sf-teal)" }} />
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: s.glow }} />
                   )}
                 </button>
               );
             })}
 
-            {/* Summary card */}
+            {/* Progress card */}
             {completedSteps.size > 0 && (
-              <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}>
-                <p className="text-[10px] font-semibold mb-2" style={{ color: "var(--sf-text-muted)" }}>PROGRESS</p>
+              <div className="mt-3 p-3 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}>
+                <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--sf-text-muted)" }}>Progress</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(completedSteps.size / STEPS.length) * 100}%`, backgroundColor: "var(--sf-teal)" }} />
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      animate={{ width: `${(completedSteps.size / STEPS.length) * 100}%` }}
+                      transition={{ duration: 0.4 }}
+                      style={{ backgroundColor: "var(--sf-teal)" }}
+                    />
                   </div>
-                  <span className="text-[10px] font-medium" style={{ color: "var(--sf-teal)" }}>
+                  <span className="text-[10px] font-semibold shrink-0" style={{ color: "var(--sf-teal)" }}>
                     {completedSteps.size}/{STEPS.length}
                   </span>
                 </div>
@@ -876,95 +965,155 @@ export function AdminProductWizard() {
         <div className="flex-1 min-w-0">
 
           {/* Step header */}
-          <div className="mb-6 flex items-center gap-4">
-            <div className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0"
-              style={{ backgroundColor: "rgba(48,184,191,0.12)" }}>
-              <currentStep.icon className="w-5 h-5" style={{ color: "var(--sf-teal)" }} />
+          <div className="mb-5 flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${currentStep.glow}18` }}
+            >
+              <currentStep.icon className="w-5 h-5" style={{ color: currentStep.color }} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+              <h2 className="text-lg font-bold" style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}>
                 {currentStep.label}
               </h2>
-              <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>{currentStep.desc}</p>
+              <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{currentStep.desc}</p>
+            </div>
+            {/* Step accent dot */}
+            <div className="ml-auto flex items-center gap-1">
+              {STEPS.map((s) => (
+                <div key={s.id}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width:  step === s.id ? 20 : 6,
+                    height: 6,
+                    backgroundColor: step === s.id ? s.glow : completedSteps.has(s.id) ? `${s.glow}55` : "var(--sf-divider)",
+                  }}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Error */}
+          {/* Global error */}
           <AnimatePresence>
-            {error && (
+            {globalError && (
               <motion.div
-                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                className="mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm"
-                style={{ backgroundColor: "rgba(194,23,59,0.1)", color: "var(--destructive)", border: "1px solid rgba(194,23,59,0.25)" }}
+                initial={{ opacity: 0, y: -6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -6, height: 0 }}
+                className="mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm overflow-hidden"
+                style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
               >
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{error}</span>
-                <button onClick={() => setError(null)} className="shrink-0"><X className="w-3.5 h-3.5" /></button>
+                <span className="flex-1">{globalError}</span>
+                <button onClick={() => setGlobalError(null)} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Step content card */}
-          <AnimatePresence mode="wait">
+          {/* Step card */}
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl p-6"
               style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)" }}
             >
-              {step === 1 && <StepBasic form={form} setForm={setForm} categories={categories} collections={collections} />}
+              {step === 1 && (
+                <StepBasic form={form} setForm={setForm} categories={categories}
+                  collections={collections} errors={fieldErrors} clearError={clearError} />
+              )}
               {step === 2 && (
-                <StepMedia
-                  existingImages={existingImages} newPreviews={newPreviews}
+                <StepMedia existingImages={existingImages} newPreviews={newPreviews}
                   dragOver={dragOver} setDragOver={setDragOver}
                   fileInputRef={fileInputRef} handleFiles={handleFiles}
-                  removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary}
-                />
+                  removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary} />
               )}
-              {step === 3 && <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone} setPendingStone={setPendingStone} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />}
-              {step === 4 && <StepPricing form={form} setForm={setForm} />}
+              {step === 3 && (
+                <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone}
+                  setPendingStone={setPendingStone} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />
+              )}
+              {step === 4 && <StepPricing form={form} setForm={setForm} errors={fieldErrors} clearError={clearError} />}
               {step === 5 && <StepStatus form={form} setForm={setForm} />}
             </motion.div>
           </AnimatePresence>
 
-          {/* Bottom nav */}
-          <div className="flex items-center justify-between mt-6">
-            <Button
-              variant="outline" size="sm" className="gap-1.5 h-9"
+          {/* ── Bottom nav ─────────────────────────── */}
+          <div className="flex items-center justify-between mt-6 gap-3">
+
+            {/* Back / Cancel */}
+            <button
               onClick={step === 1 ? () => navigate("/admin/products") : goBack}
-              style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}
+              className="flex items-center gap-2 px-5 h-10 rounded-xl text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: "var(--sf-bg-surface-1)",
+                border:          "1px solid var(--sf-divider)",
+                color:           "var(--sf-text-secondary)",
+                cursor:          "pointer",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--sf-divider)")}
             >
               <ChevronLeft className="w-4 h-4" />
               {step === 1 ? "Cancel" : "Back"}
-            </Button>
+            </button>
 
-            <div className="flex items-center gap-1.5">
-              {STEPS.map((s) => (
-                <div key={s.id} className="w-2 h-2 rounded-full transition-all duration-300"
-                  style={{ backgroundColor: step === s.id ? "var(--sf-teal)" : completedSteps.has(s.id) ? "rgba(48,184,191,0.4)" : "var(--sf-divider)" }} />
-              ))}
-            </div>
-
-            <Button
-              size="sm" className="gap-1.5 h-9"
-              disabled={saving || uploading}
+            {/* Next / Save */}
+            <button
+              disabled={isBusy}
               onClick={isLastStep ? handleSave : goNext}
-              style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
+              className="flex items-center gap-2 px-6 h-10 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                background: `linear-gradient(135deg, ${currentStep.glow}, ${currentStep.glow}bb)`,
+                color:  "#fff",
+                border: "none",
+                cursor: isBusy ? "not-allowed" : "pointer",
+                boxShadow: `0 4px 20px ${currentStep.glow}40`,
+              }}
+              onMouseEnter={e => { if (!isBusy) (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
             >
-              {saving || uploading ? (
-                <><Loader2 className="w-3.5 h-3.5 animate-spin" />{uploading ? "Uploading…" : "Saving…"}</>
+              {isBusy ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />{uploading ? "Uploading…" : "Saving…"}</>
               ) : isLastStep ? (
-                <><Save className="w-3.5 h-3.5" />{isEdit ? "Update" : "Create Product"}</>
+                <><Save className="w-4 h-4" />{isEdit ? "Update Product" : "Create Product"}</>
               ) : (
-                <>Next <ChevronRight className="w-4 h-4" /></>
+                <>Next step <ChevronRight className="w-4 h-4" /></>
               )}
-            </Button>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ── Full-screen save overlay ──────────────── */}
+      <AnimatePresence>
+        {isBusy && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4"
+            style={{ backgroundColor: "rgba(8,10,13,0.75)", backdropFilter: "blur(6px)" }}
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${currentStep.glow}30, ${currentStep.glow}15)`, border: `1px solid ${currentStep.glow}40` }}
+            >
+              <Loader2 className="w-7 h-7 animate-spin" style={{ color: currentStep.glow }} />
+            </div>
+            <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+              {uploading ? "Uploading images…" : isEdit ? "Updating product…" : "Creating product…"}
+            </p>
+            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Please don't close this tab</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
