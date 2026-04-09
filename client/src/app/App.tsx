@@ -30,6 +30,7 @@ import { RetailerOrders } from "./components/RetailerOrders";
 import { RetailerCollections } from "./components/RetailerCollections";
 import { CategoryGallery } from "./components/CategoryGallery";
 import { ThemeProvider } from "../context/ThemeContext";
+import { Toaster } from "./components/ui/sonner";
 
 function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -157,6 +158,7 @@ export default function App() {
           <Route path="notifications" element={<AdminNotifications />} />
         </Route>
       </Routes>
+      <Toaster position="bottom-right" richColors closeButton />
     </BrowserRouter>
     </AuthProvider>
   );

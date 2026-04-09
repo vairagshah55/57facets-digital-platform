@@ -2,29 +2,28 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Eye, ChevronLeft, ChevronRight, Loader2, ShoppingCart,
-  Package, Truck, CheckCircle2, XCircle, Clock, ArrowRight,
-  User, Phone, Mail, FileText, X,
+  Package, Truck, CheckCircle2, XCircle, Clock,
+  User, Phone, Mail, FileText, ToggleLeft, ToggleRight,
+  History, ChevronDown as ChevronDownIcon, ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "../ui/dialog";
+  Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle,
+} from "../ui/sheet";
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "../ui/table";
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
+import { ScrollArea } from "../ui/scroll-area";
 import { adminOrders } from "../../../lib/adminApi";
 import { imageUrl } from "../../../lib/api";
 
-/* ═══════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    TYPES & CONSTANTS
-   ═══════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 type OrderListItem = {
   id: string; order_number: string; status: string; total: number;
@@ -37,6 +36,25 @@ type OrderDetail = OrderListItem & {
   retailer_email: string | null;
   items: OrderItem[];
   tracking: TrackingEntry[];
+  edit_allowed: boolean;
+  edit_allowed_at: string | null;
+  edit_allowed_by: string | null;
+  edit_note: string | null;
+  edit_logs_count: number;
+};
+
+type EditLog = {
+  id: string;
+  order_id: string;
+  retailer_id: string;
+  retailer_name: string;
+  edited_at: string;
+  old_items: (OrderItem & { quantity: number; note: string | null })[];
+  old_note: string | null;
+  old_total: number;
+  new_items: (OrderItem & { quantity: number; note: string | null })[];
+  new_note: string | null;
+  new_total: number;
 };
 
 type OrderItem = {
@@ -83,9 +101,9 @@ function StatusBadge({ status }: { status: string }) {
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4 } };
 
-/* ═══════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN COMPONENT
-   ═══════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 export function AdminOrders() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
@@ -96,7 +114,7 @@ export function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [summary, setSummary] = useState<Record<string, number>>({});
 
-  // Detail dialog
+  // Detail sheet
   const [detailOrder, setDetailOrder] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -105,7 +123,13 @@ export function AdminOrders() {
   const [updating, setUpdating] = useState(false);
   const [statusDetail, setStatusDetail] = useState("");
 
-  /* ── Fetch orders ──────────────────────────────── */
+  // Allow-edit
+  const [editNote, setEditNote]         = useState("");
+  const [allowingEdit, setAllowingEdit] = useState(false);
+  const [editLogs, setEditLogs]         = useState<EditLog[]>([]);
+  const [logsOpen, setLogsOpen]         = useState(false);
+
+  /* Fetch orders */
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
@@ -124,19 +148,50 @@ export function AdminOrders() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  /* ── Open detail ───────────────────────────────── */
+  /*  Open detail */
   async function openDetail(id: string) {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailOrder(null);
     setStatusDetail("");
+    setEditNote("");
+    setEditLogs([]);
+    setLogsOpen(false);
     try {
-      const data = await adminOrders.detail(id);
+      const [data, logs] = await Promise.all([
+        adminOrders.detail(id),
+        adminOrders.getEditLogs(id).catch(() => []),
+      ]);
       setDetailOrder(data);
+      setEditLogs(logs || []);
     } catch { /* silent */ } finally { setDetailLoading(false); }
   }
 
-  /* ── Update status ─────────────────────────────── */
+  /* Allow / revoke edit */
+  async function handleAllowEdit() {
+    if (!detailOrder || allowingEdit) return;
+    setAllowingEdit(true);
+    try {
+      await adminOrders.allowEdit(detailOrder.id, editNote || undefined);
+      const data = await adminOrders.detail(detailOrder.id);
+      setDetailOrder(data);
+      setEditNote("");
+    } catch (e: any) { alert(e.message || "Failed"); }
+    finally { setAllowingEdit(false); }
+  }
+
+  async function handleRevokeEdit() {
+    if (!detailOrder || allowingEdit) return;
+    setAllowingEdit(true);
+    try {
+      await adminOrders.revokeEdit(detailOrder.id);
+      const data = await adminOrders.detail(detailOrder.id);
+      setDetailOrder(data);
+    } catch (e: any) { alert(e.message || "Failed"); }
+    finally { setAllowingEdit(false); }
+  }
+
+  /* Update status */
   async function handleUpdateStatus(newStatus: string) {
     if (!detailOrder || updating) return;
     setUpdating(true);
@@ -152,14 +207,12 @@ export function AdminOrders() {
     } finally { setUpdating(false); }
   }
 
-  /* ════════════════════════════════════════════════════
-     RENDER
-     ════════════════════════════════════════════════════ */
+
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-5">
 
-      {/* ── Header ────────────────────────────────── */}
+      {/* Header */}
       <motion.div {...fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
@@ -169,7 +222,7 @@ export function AdminOrders() {
         </div>
       </motion.div>
 
-      {/* ── Summary Cards ─────────────────────────── */}
+      {/* â”€â”€ Summary Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}
         className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
@@ -189,16 +242,16 @@ export function AdminOrders() {
         })}
       </motion.div>
 
-      {/* ── Search ────────────────────────────────── */}
+      {/* â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
-          <Input placeholder="Search order # or retailer…" value={search} onChange={(e) => setSearch(e.target.value)}
+          <Input placeholder="Search order # or retailer..." value={search} onChange={(e) => setSearch(e.target.value)}
             className="pl-10 h-9 text-sm" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }} />
         </div>
       </motion.div>
 
-      {/* ── Table ─────────────────────────────────── */}
+      {/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}
         className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
         {loading ? (
@@ -244,7 +297,7 @@ export function AdminOrders() {
         )}
       </motion.div>
 
-      {/* ── Pagination ────────────────────────────── */}
+      {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
@@ -263,156 +316,428 @@ export function AdminOrders() {
         </div>
       )}
 
-      {/* ── Order Detail Dialog ───────────────────── */}
-      <Dialog open={detailOpen} onOpenChange={(open) => { if (!open) setDetailOpen(false); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto"
-          style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+      {/* â”€â”€ Order Detail Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <Sheet
+        open={detailOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailOpen(false);
+            setDetailOrder(null);
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full max-w-none sm:w-[760px] sm:max-w-[94vw] md:w-[820px] p-0 gap-0 flex flex-col h-full overflow-hidden [&>button]:hidden"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
+        >
+          <SheetTitle className="sr-only">
+            {detailOrder ? `Order details ${detailOrder.order_number}` : "Order details"}
+          </SheetTitle>
+          <SheetDescription className="sr-only">
+            View full order details, update status, and manage retailer edit access.
+          </SheetDescription>
+
           {detailLoading || !detailOrder ? (
-            <div className="flex items-center justify-center py-16">
+            <div className="flex-1 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} />
             </div>
           ) : (
             <>
-              <DialogHeader>
-                <DialogTitle style={{ color: "var(--sf-text-primary)" }}>
-                  <div className="flex items-center justify-between">
-                    <span>{detailOrder.order_number}</span>
-                    <StatusBadge status={detailOrder.status} />
-                  </div>
-                </DialogTitle>
-                <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
-                  Placed on {formatDateTime(detailOrder.created_at)}
-                </DialogDescription>
-              </DialogHeader>
+              <div
+                className="h-[3px] w-full shrink-0"
+                style={{ backgroundColor: (STATUS_CONFIG[detailOrder.status] || STATUS_CONFIG.pending).color }}
+              />
 
-              {/* Retailer Info */}
-              <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "rgba(48,184,191,0.1)" }}>
-                  <User className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>{detailOrder.retailer_name}</p>
-                  <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
-                    {detailOrder.retailer_company && <span>{detailOrder.retailer_company}</span>}
-                    {detailOrder.retailer_phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{detailOrder.retailer_phone}</span>}
-                    {detailOrder.retailer_email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{detailOrder.retailer_email}</span>}
+              <div className="px-6 py-5 shrink-0" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2
+                      className="text-2xl font-medium leading-tight"
+                      style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}
+                    >
+                      {detailOrder.order_number}
+                    </h2>
+                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                      <StatusBadge status={detailOrder.status} />
+                      <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                        Placed {formatDateTime(detailOrder.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--sf-text-muted)" }}>
+                      Order Total
+                    </p>
+                    <p className="text-xl font-semibold leading-tight mt-0.5" style={{ color: "var(--sf-teal)" }}>
+                      {formatPrice(detailOrder.total)}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                      {detailOrder.items.length} item{detailOrder.items.length !== 1 ? "s" : ""}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Items */}
-              <div>
-                <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-muted)" }}>
-                  ITEMS ({detailOrder.items.length})
-                </p>
-                <div className="space-y-2">
-                  {detailOrder.items.map((item) => (
-                    <div key={item.id} className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-                      {/* Image */}
-                      <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-                        {item.image ? (
-                          <img src={imageUrl(item.image)} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-5 h-5" style={{ color: "var(--sf-text-muted)" }} />
-                          </div>
+              <ScrollArea className="flex-1 min-h-0 [&_[data-slot=scroll-area-scrollbar]]:p-0.5 [&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:w-1.5 [&_[data-slot=scroll-area-scrollbar][data-orientation=horizontal]]:h-1.5 [&_[data-slot=scroll-area-thumb]]:rounded-full [&_[data-slot=scroll-area-thumb]]:bg-[var(--sf-divider)] [&_[data-slot=scroll-area-thumb]]:opacity-70">
+                <div className="px-6 py-5 space-y-5">
+                  <div
+                    className="rounded-2xl p-4 flex items-start gap-3 border"
+                    style={{
+                      background: "linear-gradient(120deg, rgba(48,184,191,0.08), transparent 60%)",
+                      borderColor: "var(--sf-divider)",
+                    }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: "rgba(48,184,191,0.12)" }}
+                    >
+                      <User className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                        {detailOrder.retailer_name}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                        {detailOrder.retailer_company && <span>{detailOrder.retailer_company}</span>}
+                        {detailOrder.retailer_phone && (
+                          <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{detailOrder.retailer_phone}</span>
+                        )}
+                        {detailOrder.retailer_email && (
+                          <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{detailOrder.retailer_email}</span>
                         )}
                       </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>{item.name}</p>
-                        <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
-                          {item.sku} {item.category && `· ${item.category}`}
-                        </p>
-                        {/* Customization tags */}
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {[
-                            item.metal_type, item.gold_colour, item.carat && `${item.carat} ct`,
-                            item.diamond_shape, item.diamond_shade, item.diamond_quality,
-                            item.color_stone_name, item.color_stone_quality,
-                          ].filter(Boolean).map((tag, i) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                              style={{ backgroundColor: "rgba(48,184,191,0.08)", color: "var(--sf-teal)" }}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      {/* Price */}
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>{formatPrice(item.unit_price)}</p>
-                        <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Qty: {item.quantity}</p>
-                      </div>
                     </div>
-                  ))}
-                </div>
-                {/* Total */}
-                <div className="flex justify-between items-center mt-3 pt-3" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                  <span className="text-sm font-semibold" style={{ color: "var(--sf-text-secondary)" }}>Order Total</span>
-                  <span className="text-base font-bold" style={{ color: "var(--sf-teal)" }}>{formatPrice(detailOrder.total)}</span>
-                </div>
-              </div>
+                  </div>
 
-              {/* Note */}
-              {detailOrder.note && (
-                <div className="rounded-xl p-3 flex gap-2" style={{ backgroundColor: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                  <FileText className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#f59e0b" }} />
-                  <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{detailOrder.note}</p>
-                </div>
-              )}
+                  <section className="space-y-2.5">
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>
+                      Items ({detailOrder.items.length})
+                    </p>
+                    <div className="space-y-2">
+                      {detailOrder.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex gap-3 p-3 rounded-2xl border"
+                          style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
+                        >
+                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
+                            {item.image ? (
+                              <img src={imageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-5 h-5" style={{ color: "var(--sf-text-muted)" }} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>{item.name}</p>
+                            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                              {item.sku} {item.category ? `· ${item.category}` : ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {[
+                                item.metal_type,
+                                item.gold_colour,
+                                item.carat && `${item.carat} ct`,
+                                item.diamond_shape,
+                                item.diamond_shade,
+                                item.diamond_quality,
+                                item.color_stone_name,
+                                item.color_stone_quality,
+                              ]
+                                .filter(Boolean)
+                                .map((tag, i) => (
+                                  <span
+                                    key={`${item.id}-tag-${i}`}
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                    style={{ backgroundColor: "rgba(48,184,191,0.08)", color: "var(--sf-teal)" }}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>{formatPrice(item.unit_price)}</p>
+                            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl"
+                      style={{
+                        background: "linear-gradient(to right, rgba(48,184,191,0.1), transparent)",
+                        border: "1px solid var(--sf-teal-border)",
+                      }}
+                    >
+                      <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                        Order Total
+                      </span>
+                      <span className="text-lg font-semibold" style={{ color: "var(--sf-teal)" }}>
+                        {formatPrice(detailOrder.total)}
+                      </span>
+                    </div>
+                  </section>
 
-              {/* Tracking Timeline */}
-              {detailOrder.tracking.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-muted)" }}>TRACKING</p>
-                  <div className="space-y-0">
-                    {detailOrder.tracking.map((t, i) => (
-                      <div key={i} className="flex gap-3">
-                        <div className="flex flex-col items-center">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: i === detailOrder.tracking.length - 1 ? "var(--sf-teal)" : "var(--sf-divider)" }} />
-                          {i < detailOrder.tracking.length - 1 && <div className="w-px flex-1 my-1" style={{ backgroundColor: "var(--sf-divider)" }} />}
-                        </div>
-                        <div className="pb-3">
-                          <p className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>{t.status}</p>
-                          {t.detail && <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{t.detail}</p>}
-                          <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{formatDateTime(t.created_at)}</p>
-                        </div>
+                  {detailOrder.note && (
+                    <div className="rounded-2xl p-4 flex gap-2.5 border" style={{ backgroundColor: "rgba(245,158,11,0.06)", borderColor: "rgba(245,158,11,0.2)" }}>
+                      <FileText className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#f59e0b" }} />
+                      <p className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{detailOrder.note}</p>
+                    </div>
+                  )}
+
+                  {detailOrder.tracking.length > 0 && (
+                    <section>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: "var(--sf-text-muted)" }}>
+                        Tracking
+                      </p>
+                      <div className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+                        {detailOrder.tracking.map((t, i) => (
+                          <div key={`${t.created_at}-${i}`} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                                style={{ backgroundColor: i === detailOrder.tracking.length - 1 ? "var(--sf-teal)" : "var(--sf-divider)" }}
+                              />
+                              {i < detailOrder.tracking.length - 1 && (
+                                <div className="w-px flex-1 my-1.5" style={{ backgroundColor: "var(--sf-divider)" }} />
+                              )}
+                            </div>
+                            <div className="pb-3">
+                              <p className="text-sm font-medium" style={{ color: "var(--sf-text-primary)" }}>{t.status}</p>
+                              {t.detail && <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{t.detail}</p>}
+                              <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{formatDateTime(t.created_at)}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </section>
+                  )}
 
-              <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
+                  {(VALID_TRANSITIONS[detailOrder.status] || []).length > 0 && (
+                    <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>
+                        Update Status
+                      </p>
+                      <Textarea
+                        placeholder="Add a note for this status change (optional)..."
+                        value={statusDetail}
+                        onChange={(e) => setStatusDetail(e.target.value)}
+                        className="min-h-[64px] text-sm"
+                        style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        {(VALID_TRANSITIONS[detailOrder.status] || []).map((s) => {
+                          const cfg = STATUS_CONFIG[s];
+                          return (
+                            <Button
+                              key={s}
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={updating}
+                              onClick={() => handleUpdateStatus(s)}
+                              style={{ backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}30` }}
+                            >
+                              {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : cfg.icon}
+                              {cfg.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
 
-              {/* Status Update */}
-              {(VALID_TRANSITIONS[detailOrder.status] || []).length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-muted)" }}>UPDATE STATUS</p>
-                  <Textarea placeholder="Add a note for this status change (optional)…"
-                    value={statusDetail} onChange={(e) => setStatusDetail(e.target.value)}
-                    className="mb-3 min-h-[60px] text-sm"
-                    style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }} />
-                  <div className="flex gap-2">
-                    {(VALID_TRANSITIONS[detailOrder.status] || []).map((s) => {
-                      const cfg = STATUS_CONFIG[s];
-                      return (
-                        <Button key={s} size="sm" className="gap-1.5" disabled={updating}
-                          onClick={() => handleUpdateStatus(s)}
-                          style={{ backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}30` }}>
-                          {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : cfg.icon}
-                          {cfg.label}
+                  <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
+                        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>
+                          Allow Retailer Edit
+                        </p>
+                      </div>
+                      {detailOrder.edit_allowed && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
+                          Edit Enabled
+                        </span>
+                      )}
+                    </div>
+
+                    {!detailOrder.edit_allowed ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          placeholder="Optional note to retailer about what to change..."
+                          value={editNote}
+                          onChange={(e) => setEditNote(e.target.value)}
+                          className="min-h-[64px] text-sm"
+                          style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={allowingEdit}
+                          onClick={handleAllowEdit}
+                          className="gap-1.5"
+                          style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }}
+                        >
+                          {allowingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                          Allow Edit
                         </Button>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl p-3 flex items-start justify-between gap-3" style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-medium" style={{ color: "#22c55e" }}>
+                            Edit access granted to retailer
+                          </p>
+                          {detailOrder.edit_note && (
+                            <p className="text-[11px]" style={{ color: "var(--sf-text-secondary)" }}>
+                              Note: {detailOrder.edit_note}
+                            </p>
+                          )}
+                          {detailOrder.edit_allowed_at && (
+                            <p className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>
+                              Granted {formatDateTime(detailOrder.edit_allowed_at)}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={allowingEdit}
+                          onClick={handleRevokeEdit}
+                          className="gap-1.5 shrink-0"
+                          style={{ borderColor: "rgba(239,68,68,0.3)", color: "#ef4444" }}
+                        >
+                          {allowingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                          Revoke
+                        </Button>
+                      </div>
+                    )}
+                  </section>
+
+                  {editLogs.length > 0 && (
+                    <section className="rounded-2xl border p-4" style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+                      <button
+                        onClick={() => setLogsOpen((v) => !v)}
+                        className="flex items-center gap-2 w-full mb-2"
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        <History className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
+                        <p className="text-xs font-semibold uppercase tracking-wider flex-1 text-left" style={{ color: "var(--sf-text-muted)" }}>
+                          Edit History ({editLogs.length})
+                        </p>
+                        <ChevronDownIcon
+                          className="w-3.5 h-3.5 transition-transform"
+                          style={{ color: "var(--sf-text-muted)", transform: logsOpen ? "rotate(180deg)" : "rotate(0)" }}
+                        />
+                      </button>
+
+                      <AnimatePresence>
+                        {logsOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-3 overflow-hidden"
+                          >
+                            {editLogs.map((log, li) => (
+                              <div key={log.id} className="rounded-xl overflow-hidden border" style={{ borderColor: "var(--sf-divider)" }}>
+                                <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
+                                  <span className="text-[11px] font-medium" style={{ color: "var(--sf-text-secondary)" }}>
+                                    Edit #{editLogs.length - li} by {log.retailer_name}
+                                  </span>
+                                  <span className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>
+                                    {formatDateTime(log.edited_at)}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 divide-x" style={{ borderColor: "var(--sf-divider)" }}>
+                                  <div className="p-3 space-y-1.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#ef4444" }}>Before</p>
+                                    {(log.old_items || []).map((item: any, i: number) => (
+                                      <div key={`old-${log.id}-${i}`} className="flex items-center justify-between">
+                                        <span className="text-[11px] truncate pr-2" style={{ color: "var(--sf-text-secondary)" }}>
+                                          {item.name || `Item ${i + 1}`}
+                                        </span>
+                                        <span className="text-[11px] font-medium shrink-0" style={{ color: "var(--sf-text-muted)" }}>
+                                          x{item.quantity}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {log.old_note && (
+                                      <p className="text-[10px] italic" style={{ color: "var(--sf-text-muted)" }}>
+                                        Note: {log.old_note}
+                                      </p>
+                                    )}
+                                    <p className="text-xs font-semibold pt-1" style={{ color: "var(--sf-text-secondary)", borderTop: "1px solid var(--sf-divider)" }}>
+                                      {formatPrice(log.old_total)}
+                                    </p>
+                                  </div>
+
+                                  <div className="p-3 space-y-1.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#22c55e" }}>After</p>
+                                    {(log.new_items || []).map((item: any, i: number) => {
+                                      const oldQty = log.old_items?.[i]?.quantity;
+                                      const changed = oldQty !== item.quantity;
+                                      return (
+                                        <div key={`new-${log.id}-${i}`} className="flex items-center justify-between">
+                                          <span className="text-[11px] truncate pr-2" style={{ color: "var(--sf-text-secondary)" }}>
+                                            {item.name || `Item ${i + 1}`}
+                                          </span>
+                                          <span className="text-[11px] font-medium shrink-0" style={{ color: changed ? "#22c55e" : "var(--sf-text-muted)" }}>
+                                            x{item.quantity}
+                                            {changed && <span className="ml-1 text-[9px]">(was x{oldQty})</span>}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                    {log.new_note && (
+                                      <p className="text-[10px] italic" style={{ color: "var(--sf-text-muted)" }}>
+                                        Note: {log.new_note}
+                                      </p>
+                                    )}
+                                    <p className="text-xs font-semibold pt-1" style={{ color: "var(--sf-teal)", borderTop: "1px solid var(--sf-divider)" }}>
+                                      {formatPrice(log.new_total)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </section>
+                  )}
+
+                  <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
                 </div>
-              )}
+              </ScrollArea>
+
+              <div
+                className="px-6 py-3.5 shrink-0 flex items-center justify-between gap-3"
+                style={{
+                  borderTop: "1px solid var(--sf-divider)",
+                  backgroundColor: "var(--sf-glass-bg)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                <span className="text-[11px] font-mono" style={{ color: "var(--sf-text-muted)" }}>
+                  {detailOrder.id.slice(0, 8).toUpperCase()}
+                </span>
+                <SheetClose asChild>
+                  <Button variant="ghost" size="sm" style={{ color: "var(--sf-text-secondary)" }}>
+                    Close
+                  </Button>
+                </SheetClose>
+              </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
+

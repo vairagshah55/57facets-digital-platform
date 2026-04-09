@@ -187,4 +187,13 @@ export const adminOrders = {
       method: "PUT",
       body: JSON.stringify({ status, detail }),
     }),
+  allowEdit: (id: string, note?: string) =>
+    request(`/orders/${id}/allow-edit`, {
+      method: "PUT",
+      body: JSON.stringify({ note }),
+    }),
+  revokeEdit: (id: string) =>
+    request(`/orders/${id}/allow-edit`, { method: "DELETE" }),
+  getEditLogs: (id: string) =>
+    request(`/orders/${id}/edit-logs`),
 };

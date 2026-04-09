@@ -127,6 +127,36 @@ export const wishlist = {
 };
 
 // ── Orders ────────────────────────────────────────
+type OrderUpdateItem =
+  | {
+      id: string;
+      quantity: number;
+      note?: string;
+      unitPrice?: number;
+      carat?: number;
+      metalType?: string;
+      goldColour?: string;
+      diamondShape?: string;
+      diamondShade?: string;
+      diamondQuality?: string;
+      colorStoneName?: string;
+      colorStoneQuality?: string;
+    }
+  | {
+      productId: string;
+      quantity: number;
+      note?: string;
+      unitPrice?: number;
+      carat?: number;
+      metalType?: string;
+      goldColour?: string;
+      diamondShape?: string;
+      diamondShade?: string;
+      diamondQuality?: string;
+      colorStoneName?: string;
+      colorStoneQuality?: string;
+    };
+
 export const orders = {
   list: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
@@ -140,6 +170,8 @@ export const orders = {
     }),
   stats: () => request("/orders/summary/stats"),
   checkProduct: (productId: string) => request(`/orders/check-product/${productId}`),
+  update: (id: string, data: { items: OrderUpdateItem[]; note?: string }) =>
+    request(`/orders/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 // ── Notifications ─────────────────────────────────

@@ -29,6 +29,7 @@ router.get("/", async (req, res, next) => {
 
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.status, o.total, o.note, o.created_at,
+              o.edit_allowed, o.edit_note,
               (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
        FROM orders o
        ${where}
@@ -73,6 +74,14 @@ router.get("/:id", async (req, res, next) => {
     // Items
     const { rows: items } = await query(
       `SELECT oi.*, p.name, p.sku,
+              p.metal_type AS product_metal_type,
+              p.gold_colour AS product_gold_colour,
+              p.diamond_shape AS product_diamond_shape,
+              p.diamond_color AS product_diamond_color,
+              p.diamond_clarity AS product_diamond_clarity,
+              p.color_stone_name AS product_color_stone_name,
+              p.color_stone_quality AS product_color_stone_quality,
+              p.carat_options AS product_carat_options,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               c.name AS category
        FROM order_items oi
@@ -168,6 +177,271 @@ router.post("/", async (req, res, next) => {
 
     await client.query("COMMIT");
     res.status(201).json(order);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── PUT /api/orders/:id ───────────────────────────
+// Retailer edits an order (only when edit_allowed = true)
+router.put("/:id", async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { note, items = [] } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new AppError("Order must have at least one item");
+    }
+
+    await client.query("BEGIN");
+
+    // Lock order row while we apply retailer edits.
+    const { rows } = await client.query(
+      "SELECT * FROM orders WHERE id = $1 AND retailer_id = $2 FOR UPDATE",
+      [req.params.id, req.retailer.id]
+    );
+    if (!rows.length) throw new AppError("Order not found", 404);
+    const order = rows[0];
+
+    if (!order.edit_allowed) throw new AppError("Edit not permitted for this order", 403);
+
+    // Snapshot current items before any changes.
+    const { rows: oldItems } = await client.query(
+      "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id",
+      [req.params.id]
+    );
+
+    const existingById = new Map(oldItems.map((row) => [row.id, row]));
+    const existingByProductId = new Map(
+      oldItems.filter((row) => row.product_id).map((row) => [row.product_id, row])
+    );
+
+    const cleanText = (value, fallback = null) => {
+      if (typeof value === "string") {
+        const t = value.trim();
+        return t.length ? t : null;
+      }
+      if (value === null || value === undefined) return fallback;
+      return value;
+    };
+
+    for (const item of items) {
+      const qty = Math.max(1, parseInt(item.quantity) || 1);
+      const itemNote = cleanText(item.note);
+
+      if (item.id) {
+        const existing = existingById.get(item.id);
+        if (!existing) {
+          throw new AppError("Invalid order item in edit payload", 400);
+        }
+
+        const unitPrice =
+          Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
+            ? parseFloat(item.unitPrice)
+            : parseFloat(existing.unit_price) || 0;
+        const carat = Number.isFinite(parseFloat(item.carat))
+          ? parseFloat(item.carat)
+          : existing.carat;
+
+        await client.query(
+          `UPDATE order_items SET
+             quantity = $1,
+             unit_price = $2,
+             carat = $3,
+             metal_type = $4,
+             gold_colour = $5,
+             diamond_shape = $6,
+             diamond_shade = $7,
+             diamond_quality = $8,
+             color_stone_name = $9,
+             color_stone_quality = $10,
+             note = $11
+           WHERE id = $12 AND order_id = $13`,
+          [
+            qty,
+            unitPrice,
+            carat || null,
+            cleanText(item.metalType, existing.metal_type || null),
+            cleanText(item.goldColour, existing.gold_colour || null),
+            cleanText(item.diamondShape, existing.diamond_shape || null),
+            cleanText(item.diamondShade, existing.diamond_shade || null),
+            cleanText(item.diamondQuality, existing.diamond_quality || null),
+            cleanText(item.colorStoneName, existing.color_stone_name || null),
+            cleanText(item.colorStoneQuality, existing.color_stone_quality || null),
+            itemNote,
+            item.id,
+            req.params.id,
+          ]
+        );
+        continue;
+      }
+
+      if (!item.productId) {
+        throw new AppError("Each item must include either id or productId", 400);
+      }
+
+      // If the product already exists in the order, treat this as an update.
+      const existingForProduct = existingByProductId.get(item.productId);
+      if (existingForProduct) {
+        const unitPrice =
+          Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
+            ? parseFloat(item.unitPrice)
+            : parseFloat(existingForProduct.unit_price) || 0;
+        const carat = Number.isFinite(parseFloat(item.carat))
+          ? parseFloat(item.carat)
+          : existingForProduct.carat;
+
+        await client.query(
+          `UPDATE order_items SET
+             quantity = $1,
+             unit_price = $2,
+             carat = $3,
+             metal_type = $4,
+             gold_colour = $5,
+             diamond_shape = $6,
+             diamond_shade = $7,
+             diamond_quality = $8,
+             color_stone_name = $9,
+             color_stone_quality = $10,
+             note = $11
+           WHERE id = $12 AND order_id = $13`,
+          [
+            qty,
+            unitPrice,
+            carat || null,
+            cleanText(item.metalType, existingForProduct.metal_type || null),
+            cleanText(item.goldColour, existingForProduct.gold_colour || null),
+            cleanText(item.diamondShape, existingForProduct.diamond_shape || null),
+            cleanText(item.diamondShade, existingForProduct.diamond_shade || null),
+            cleanText(item.diamondQuality, existingForProduct.diamond_quality || null),
+            cleanText(item.colorStoneName, existingForProduct.color_stone_name || null),
+            cleanText(item.colorStoneQuality, existingForProduct.color_stone_quality || null),
+            itemNote,
+            existingForProduct.id,
+            req.params.id,
+          ]
+        );
+        continue;
+      }
+
+      const { rows: products } = await client.query(
+        `SELECT id, base_price, carat, metal_type, diamond_shape, diamond_color, diamond_clarity
+         FROM products WHERE id = $1 AND is_active = true`,
+        [item.productId]
+      );
+      if (!products.length) throw new AppError("Product not found", 404);
+
+      const p = products[0];
+      const unitPrice =
+        Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
+          ? parseFloat(item.unitPrice)
+          : parseFloat(p.base_price) || 0;
+      const carat = Number.isFinite(parseFloat(item.carat))
+        ? parseFloat(item.carat)
+        : p.carat;
+
+      const { rows: insertedRows } = await client.query(
+        `INSERT INTO order_items (
+          order_id, product_id, quantity, unit_price, carat, metal_type,
+          gold_colour, diamond_shape, diamond_shade, diamond_quality,
+          color_stone_name, color_stone_quality, note
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        RETURNING id`,
+        [
+          req.params.id,
+          p.id,
+          qty,
+          unitPrice,
+          carat || null,
+          item.metalType || p.metal_type || null,
+          item.goldColour || null,
+          item.diamondShape || p.diamond_shape || null,
+          item.diamondShade || p.diamond_color || null,
+          item.diamondQuality || p.diamond_clarity || null,
+          item.colorStoneName || null,
+          item.colorStoneQuality || null,
+          itemNote,
+        ]
+      );
+      existingByProductId.set(p.id, {
+        id: insertedRows[0].id,
+        unit_price: unitPrice,
+        carat: carat || null,
+        metal_type: item.metalType || p.metal_type || null,
+        gold_colour: item.goldColour || null,
+        diamond_shape: item.diamondShape || p.diamond_shape || null,
+        diamond_shade: item.diamondShade || p.diamond_color || null,
+        diamond_quality: item.diamondQuality || p.diamond_clarity || null,
+        color_stone_name: item.colorStoneName || null,
+        color_stone_quality: item.colorStoneQuality || null,
+      });
+    }
+
+    const { rows: totalRows } = await client.query(
+      "SELECT COALESCE(SUM(quantity * unit_price), 0) AS total FROM order_items WHERE order_id = $1",
+      [req.params.id]
+    );
+    const newTotal = parseFloat(totalRows[0].total) || 0;
+    if (newTotal <= 0) throw new AppError("Order must have at least one item");
+
+    // Update order note, total, and consume the edit permission
+    await client.query(
+      `UPDATE orders SET note = $1, total = $2,
+       edit_allowed = false, edited_by_retailer_at = NOW(), updated_at = NOW()
+       WHERE id = $3`,
+      [note || null, newTotal, req.params.id]
+    );
+
+    // Fetch updated items for new snapshot
+    const { rows: newItems } = await client.query(
+      "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id",
+      [req.params.id]
+    );
+
+    // Save audit log
+    await client.query(
+      `INSERT INTO order_edit_logs
+         (order_id, retailer_id, old_items, old_note, old_total, new_items, new_note, new_total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [req.params.id, req.retailer.id,
+       JSON.stringify(oldItems), order.note, order.total,
+       JSON.stringify(newItems), note || null, newTotal]
+    );
+
+    // Tracking entry
+    await client.query(
+      "INSERT INTO order_tracking (order_id, status, detail) VALUES ($1, 'Order Updated', 'Retailer updated order details')",
+      [req.params.id]
+    );
+
+    // Notify retailer
+    await client.query(
+      `INSERT INTO notifications (retailer_id, type, title, message, action_path)
+       VALUES ($1, 'order-update', 'Order Updated', $2, '/retailer/orders')`,
+      [req.retailer.id, `${order.order_number} has been updated successfully.`]
+    );
+
+    // Notify admin
+    await client.query(
+      `INSERT INTO admin_notifications (type, title, message, action_path)
+       VALUES ('order', $1, $2, '/admin/orders')`,
+      [`Order Updated: ${order.order_number}`,
+       `A retailer updated order ${order.order_number}. Review the changes in the order detail.`]
+    );
+
+    // Activity log
+    await client.query(
+      `INSERT INTO activity_log (actor_type, actor_id, action, entity_type, entity_id, details)
+       VALUES ('retailer', $1, 'order_updated', 'order', $2, $3)`,
+      [req.retailer.id, req.params.id, JSON.stringify({ order_number: order.order_number })]
+    );
+
+    await client.query("COMMIT");
+
+    const { rows: result } = await query("SELECT * FROM orders WHERE id = $1", [req.params.id]);
+    res.json(result[0]);
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);

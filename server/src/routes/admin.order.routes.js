@@ -100,6 +100,12 @@ router.get("/:id", async (req, res, next) => {
     );
     if (rows.length === 0) throw new AppError("Order not found", 404);
 
+    // edit_logs count
+    const { rows: logCount } = await query(
+      "SELECT COUNT(*) FROM order_edit_logs WHERE order_id = $1",
+      [req.params.id]
+    );
+
     const { rows: items } = await query(
       `SELECT oi.*, p.name, p.sku,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
@@ -117,7 +123,81 @@ router.get("/:id", async (req, res, next) => {
       [req.params.id]
     );
 
-    res.json({ ...rows[0], items, tracking });
+    res.json({ ...rows[0], items, tracking, edit_logs_count: parseInt(logCount[0].count) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /api/admin/orders/:id/allow-edit ──────────
+// Grant retailer permission to edit this order
+router.put("/:id/allow-edit", async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { note } = req.body;
+
+    await client.query("BEGIN");
+
+    const { rows } = await client.query("SELECT * FROM orders WHERE id = $1 FOR UPDATE", [req.params.id]);
+    if (!rows.length) throw new AppError("Order not found", 404);
+    const order = rows[0];
+
+    await client.query(
+      `UPDATE orders SET edit_allowed = true, edit_allowed_at = NOW(),
+       edit_allowed_by = $1, edit_note = $2 WHERE id = $3`,
+      [req.admin.id, note || null, req.params.id]
+    );
+
+    // Notify retailer
+    const msg = `You can now edit order ${order.order_number}. Open your orders to review and update.${note ? ` Admin note: ${note}` : ""}`;
+    await client.query(
+      `INSERT INTO notifications (retailer_id, type, title, message, action_path)
+       VALUES ($1, 'order-update', 'Order Edit Available', $2, '/retailer/orders')`,
+      [order.retailer_id, msg]
+    );
+
+    await client.query(
+      `INSERT INTO activity_log (actor_type, actor_id, action, entity_type, entity_id, details)
+       VALUES ('admin', $1, 'order_edit_allowed', 'order', $2, $3)`,
+      [req.admin.id, req.params.id, JSON.stringify({ order_number: order.order_number, note })]
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: "Edit permission granted" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── DELETE /api/admin/orders/:id/allow-edit ───────
+// Revoke retailer edit permission
+router.delete("/:id/allow-edit", async (req, res, next) => {
+  try {
+    await query(
+      "UPDATE orders SET edit_allowed = false, edit_note = null WHERE id = $1",
+      [req.params.id]
+    );
+    res.json({ message: "Edit permission revoked" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/orders/:id/edit-logs ───────────
+// Full audit trail of retailer edits for an order
+router.get("/:id/edit-logs", async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT el.*, r.name AS retailer_name
+       FROM order_edit_logs el
+       LEFT JOIN retailers r ON r.id = el.retailer_id
+       WHERE el.order_id = $1 ORDER BY el.edited_at DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
   } catch (err) {
     next(err);
   }
