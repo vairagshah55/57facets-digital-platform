@@ -14,6 +14,9 @@ import {
   Package,
   Eye,
   Image as ImageIcon,
+  ImagePlus,
+  Star,
+  Camera,
   CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
@@ -45,6 +48,14 @@ import { imageUrl } from "../../../lib/api";
    ═══════════════════════════════════════════════════════ */
 
 type Category = { id: string; name: string };
+
+type ProductImage = {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+  sort_order: number;
+  media_type: string;
+};
 
 type ProductListItem = {
   id: string;
@@ -197,6 +208,15 @@ export function AdminProducts() {
   } | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
 
+  // Image management dialog
+  const [imgDialogPid,   setImgDialogPid]   = useState<string | null>(null);
+  const [imgDialogName,  setImgDialogName]  = useState("");
+  const [imgList,        setImgList]        = useState<ProductImage[]>([]);
+  const [imgLoading,     setImgLoading]     = useState(false);
+  const [imgUploading,   setImgUploading]   = useState(false);
+  const [imgDragOver,    setImgDragOver]    = useState(false);
+  const imgUploadRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     adminProducts.categories().then((cats: Category[]) => setCategories(cats || [])).catch(() => {});
   }, []);
@@ -254,6 +274,61 @@ export function AdminProducts() {
     } finally {
       setImporting(false);
     }
+  }
+
+  /* ── Image dialog handlers ──────────────────────── */
+  async function openImgDialog(pid: string, name: string) {
+    setImgDialogPid(pid);
+    setImgDialogName(name);
+    setImgList([]);
+    setImgLoading(true);
+    try {
+      const imgs = await adminProducts.listImages(pid);
+      setImgList(imgs);
+    } catch (err) { console.error(err); }
+    setImgLoading(false);
+  }
+
+  async function handleImgUpload(files: FileList | File[]) {
+    if (!imgDialogPid || !files.length) return;
+    setImgUploading(true);
+    try {
+      await adminProducts.uploadImages(imgDialogPid, files);
+      const imgs = await adminProducts.listImages(imgDialogPid);
+      setImgList(imgs);
+      const primary = imgs.find((i: ProductImage) => i.is_primary);
+      setProducts(prev => prev.map(p =>
+        p.id === imgDialogPid
+          ? { ...p, image_count: imgs.length, image: primary?.image_url ?? p.image }
+          : p
+      ));
+    } catch (err) { console.error(err); }
+    setImgUploading(false);
+  }
+
+  async function handleImgDelete(imageId: string) {
+    if (!imgDialogPid) return;
+    try {
+      await adminProducts.deleteImage(imageId);
+      const next = imgList.filter(i => i.id !== imageId);
+      setImgList(next);
+      setProducts(prev => prev.map(p =>
+        p.id === imgDialogPid ? { ...p, image_count: next.length } : p
+      ));
+    } catch (err) { console.error(err); }
+  }
+
+  async function handleImgSetPrimary(imageId: string) {
+    if (!imgDialogPid) return;
+    try {
+      await adminProducts.setPrimaryImage(imageId);
+      const next = imgList.map(i => ({ ...i, is_primary: i.id === imageId }));
+      setImgList(next);
+      const primary = next.find(i => i.is_primary);
+      setProducts(prev => prev.map(p =>
+        p.id === imgDialogPid ? { ...p, image: primary?.image_url ?? p.image } : p
+      ));
+    } catch (err) { console.error(err); }
   }
 
   const activeFilters = [categoryFilter, availabilityFilter, isNewFilter].filter(v => v !== "all").length;
@@ -437,17 +512,25 @@ export function AdminProducts() {
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sf-bg-surface-2)")}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                {/* Thumbnail */}
-                <div
-                  className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "var(--sf-bg-surface-2)" }}
+                {/* Thumbnail — click to manage images */}
+                <button
+                  onClick={() => openImgDialog(p.id, p.name)}
+                  title="Manage images"
+                  className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative"
+                  style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "none", cursor: "pointer", padding: 0 }}
                 >
                   {p.image ? (
                     <img src={imageUrl(p.image)} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <ImageIcon className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
                   )}
-                </div>
+                  <span
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+                  >
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </span>
+                </button>
 
                 {/* Name + meta */}
                 <div className="min-w-0 pr-3">
@@ -744,6 +827,136 @@ export function AdminProducts() {
                 Done
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image management dialog ─────────────────── */}
+      <Dialog open={!!imgDialogPid} onOpenChange={open => { if (!open) { setImgDialogPid(null); setImgList([]); } }}>
+        <DialogContent
+          className="sm:max-w-2xl"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
+        >
+          <DialogHeader>
+            <DialogTitle style={{ color: "var(--sf-text-primary)" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(59,130,246,0.12)" }}>
+                  <ImagePlus className="w-4 h-4" style={{ color: "#3b82f6" }} />
+                </div>
+                Manage Images
+              </div>
+            </DialogTitle>
+            <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
+              {imgDialogName} — click the star to set primary, trash to delete
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            {/* Existing images grid */}
+            {imgLoading ? (
+              <div className="grid grid-cols-4 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-xl animate-pulse"
+                    style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+                ))}
+              </div>
+            ) : imgList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 rounded-2xl"
+                style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px dashed var(--sf-divider)" }}>
+                <ImageIcon className="w-8 h-8 mb-2" style={{ color: "var(--sf-text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>No images yet</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-3">
+                {imgList.map((img) => (
+                  <div key={img.id} className="group/img relative aspect-square rounded-xl overflow-hidden"
+                    style={{
+                      border: img.is_primary ? "2px solid var(--sf-teal)" : "2px solid var(--sf-divider)",
+                      backgroundColor: "var(--sf-bg-surface-2)",
+                    }}>
+                    <img
+                      src={imageUrl(img.image_url)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Primary badge */}
+                    {img.is_primary && (
+                      <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                        style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>
+                        <Star className="w-2.5 h-2.5 fill-current" /> PRIMARY
+                      </span>
+                    )}
+                    {/* Hover actions */}
+                    <div className="absolute inset-0 flex items-end justify-end gap-1 p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                      style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }}>
+                      {!img.is_primary && (
+                        <button
+                          onClick={() => handleImgSetPrimary(img.id)}
+                          title="Set as primary"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                          style={{ backgroundColor: "rgba(245,158,11,0.85)", border: "none", cursor: "pointer" }}
+                        >
+                          <Star className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleImgDelete(img.id)}
+                        title="Delete image"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                        style={{ backgroundColor: "rgba(239,68,68,0.85)", border: "none", cursor: "pointer" }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setImgDragOver(true); }}
+              onDragLeave={() => setImgDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setImgDragOver(false); handleImgUpload(e.dataTransfer.files); }}
+              onClick={() => imgUploadRef.current?.click()}
+              className="rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all"
+              style={{
+                borderColor: imgDragOver ? "#3b82f6" : "var(--sf-divider)",
+                backgroundColor: imgDragOver ? "rgba(59,130,246,0.06)" : "transparent",
+              }}
+            >
+              {imgUploading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#3b82f6" }} />
+                  <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>Uploading…</span>
+                </div>
+              ) : (
+                <>
+                  <ImagePlus className="w-5 h-5 mx-auto mb-2" style={{ color: imgDragOver ? "#3b82f6" : "var(--sf-text-muted)" }} />
+                  <p className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>
+                    {imgDragOver ? "Drop to upload" : "Drag & drop or click to upload"}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                    JPG, PNG, WEBP · up to 10 images
+                  </p>
+                </>
+              )}
+              <input
+                ref={imgUploadRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.length) handleImgUpload(e.target.files); e.target.value = ""; }}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button size="sm" onClick={() => { setImgDialogPid(null); setImgList([]); }}
+              style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>
+              Done
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

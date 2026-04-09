@@ -128,10 +128,38 @@ export const adminProducts = {
     if (!res.ok) throw new Error(data.error || "Upload failed");
     return data;
   },
-  setPrimaryImage: (imageId: string) =>
-    request(`/upload/product-images/${imageId}/primary`, { method: "PUT" }),
-  deleteImage: (imageId: string) =>
-    request(`/upload/product-images/${imageId}`, { method: "DELETE" }),
+  listImages: async (productId: string) => {
+    const token = getAdminToken();
+    const base = import.meta.env.VITE_API_URL || "https://facets-backend-608725052152.us-central1.run.app";
+    const res = await fetch(`${base}/api/upload/product-images/${productId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load images");
+    return data as { id: string; image_url: string; is_primary: boolean; sort_order: number; media_type: string }[];
+  },
+  setPrimaryImage: async (imageId: string) => {
+    const token = getAdminToken();
+    const base = import.meta.env.VITE_API_URL || "https://facets-backend-608725052152.us-central1.run.app";
+    const res = await fetch(`${base}/api/upload/product-images/${imageId}/primary`, {
+      method: "PUT",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to set primary");
+    return data;
+  },
+  deleteImage: async (imageId: string) => {
+    const token = getAdminToken();
+    const base = import.meta.env.VITE_API_URL || "https://facets-backend-608725052152.us-central1.run.app";
+    const res = await fetch(`${base}/api/upload/product-images/${imageId}`, {
+      method: "DELETE",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to delete image");
+    return data;
+  },
   importCsv: async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
