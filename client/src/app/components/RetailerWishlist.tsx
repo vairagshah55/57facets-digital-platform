@@ -500,9 +500,9 @@ export function RetailerWishlist() {
               </Button>
             </div>
 
-            {/* Selection toolbar */}
+            {/* Selection toolbar — always visible in selection mode */}
             <AnimatePresence>
-              {selectionMode && selectedIds.size > 0 && (
+              {selectionMode && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -513,46 +513,55 @@ export function RetailerWishlist() {
                     className="flex items-center gap-2 p-3 rounded-xl border flex-wrap"
                     style={{
                       backgroundColor: "var(--sf-bg-surface-1)",
-                      borderColor: "var(--sf-teal)",
+                      borderColor: selectedIds.size > 0 ? "var(--sf-teal)" : "var(--sf-divider)",
                     }}
                   >
-                    <span className="text-xs font-medium mr-auto" style={{ color: "var(--sf-text-primary)" }}>
-                      {selectedIds.size} selected
+                    {/* Left: count + select all / deselect all */}
+                    <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>
+                      {selectedIds.size > 0 ? `${selectedIds.size} of ${displayed.length} selected` : "Select items"}
                     </span>
-                    <Button
-                      variant="ghost"
-                      className="h-8 text-xs gap-1"
-                      style={{ color: "var(--sf-text-secondary)" }}
-                      onClick={selectAll}
+                    <button
+                      onClick={selectedIds.size === displayed.length ? () => setSelectedIds(new Set()) : selectAll}
+                      className="text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
+                      style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}
                     >
-                      Select all
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="h-8 text-xs gap-1"
-                      style={{ color: "var(--sf-text-secondary)" }}
-                      onClick={() => setMoveToFolderOpen(true)}
-                    >
-                      <FolderPlus className="w-3.5 h-3.5" />
-                      Move to folder
-                    </Button>
-                    <Button
-                      className="h-8 text-xs gap-1"
-                      style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
-                      onClick={orderSelected}
-                    >
-                      <ShoppingCart className="w-3.5 h-3.5" />
-                      Order ({selectedIds.size})
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="h-8 text-xs gap-1"
-                      style={{ color: "var(--destructive)" }}
-                      onClick={removeSelected}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Remove
-                    </Button>
+                      {selectedIds.size === displayed.length ? "Deselect all" : "Select all"}
+                    </button>
+
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        className="h-8 text-xs gap-1"
+                        style={{ color: "var(--sf-text-secondary)" }}
+                        disabled={selectedIds.size === 0}
+                        onClick={() => setMoveToFolderOpen(true)}
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Move to folder</span>
+                      </Button>
+                      <Button
+                        className="h-8 text-xs gap-1"
+                        style={{
+                          backgroundColor: selectedIds.size > 0 ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
+                          color: selectedIds.size > 0 ? "var(--sf-bg-base)" : "var(--sf-text-muted)",
+                        }}
+                        disabled={selectedIds.size === 0}
+                        onClick={orderSelected}
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        Order{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="h-8 text-xs gap-1"
+                        style={{ color: selectedIds.size > 0 ? "var(--destructive)" : "var(--sf-text-muted)" }}
+                        disabled={selectedIds.size === 0}
+                        onClick={removeSelected}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Remove</span>
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -645,24 +654,51 @@ export function RetailerWishlist() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            {folders.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => moveSelectedToFolder(f.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:bg-[var(--sf-bg-surface-2)]"
-                style={{
-                  borderColor: "var(--sf-divider)",
-                  background: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: f.color }} />
-                <span className="text-sm font-medium flex-1" style={{ color: "var(--sf-text-primary)" }}>
-                  {f.name}
-                </span>
-                <ChevronRight className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
-              </button>
-            ))}
+            {folders.map((f) => {
+              const alreadyInFolder = [...selectedIds].filter((id) => f.productIds.includes(id)).length;
+              const newCount = selectedIds.size - alreadyInFolder;
+              const allAlreadyIn = newCount === 0;
+              return (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border"
+                  style={{
+                    borderColor: allAlreadyIn ? "var(--sf-glass-border)" : "var(--sf-divider)",
+                    background: allAlreadyIn ? "var(--sf-bg-surface-2)" : "none",
+                    opacity: allAlreadyIn ? 0.5 : 1,
+                  }}
+                >
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium block" style={{ color: "var(--sf-text-primary)" }}>
+                      {f.name}
+                    </span>
+                    {alreadyInFolder > 0 && (
+                      <span className="text-[11px] block mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                        {allAlreadyIn
+                          ? `All ${selectedIds.size} already in this folder`
+                          : `${alreadyInFolder} already here · ${newCount} new`}
+                      </span>
+                    )}
+                  </div>
+                  {allAlreadyIn ? (
+                    <Badge className="text-[10px] shrink-0" style={{ backgroundColor: "var(--sf-teal-glass)", color: "var(--sf-teal)", border: "none" }}>
+                      Added
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs gap-1 px-3 shrink-0"
+                      style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
+                      onClick={() => moveSelectedToFolder(f.id)}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {newCount === selectedIds.size ? "Add" : `Add ${newCount}`}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
             {folders.length === 0 && (
               <p className="text-sm text-center py-4" style={{ color: "var(--sf-text-muted)" }}>
                 No folders. Create one first.
@@ -751,40 +787,42 @@ function WishlistCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.35 }}
-      className="group rounded-xl border overflow-hidden relative"
+      className="group rounded-xl border overflow-hidden relative cursor-pointer"
       style={{
         backgroundColor: "var(--sf-bg-surface-1)",
         borderColor: selected ? "var(--sf-teal)" : "var(--sf-divider)",
-        boxShadow: selected ? "0 0 0 1px var(--sf-teal)" : "none",
+        boxShadow: selected ? "0 0 0 1px var(--sf-teal), 0 0 12px var(--sf-shadow-teal)" : "none",
+        opacity: selectionMode && !selected ? 0.75 : 1,
+        transition: "all 0.2s ease",
       }}
+      onClick={selectionMode ? onToggleSelect : undefined}
     >
-      {/* Selection checkbox overlay */}
+      {/* Selection checkbox — visible in selection mode */}
       {selectionMode && (
-        <button
-          onClick={onToggleSelect}
-          className="absolute top-2 left-2 z-10 w-6 h-6 rounded-md flex items-center justify-center border transition-colors"
+        <div
+          className="absolute top-2.5 left-2.5 z-10 w-7 h-7 rounded-lg flex items-center justify-center border-2 transition-all"
           style={{
-            backgroundColor: selected ? "var(--sf-teal)" : "var(--sf-backdrop)",
+            backgroundColor: selected ? "var(--sf-teal)" : "var(--sf-bg-surface-1)",
             borderColor: selected ? "var(--sf-teal)" : "var(--sf-divider)",
-            color: "white",
-            cursor: "pointer",
+            color: "#fff",
+            boxShadow: selected ? "0 2px 8px var(--sf-shadow-teal)" : "0 1px 4px var(--sf-shadow-lg)",
           }}
         >
-          {selected && <Check className="w-3.5 h-3.5" />}
-        </button>
+          {selected && <Check className="w-4 h-4" strokeWidth={3} />}
+        </div>
       )}
 
       {/* Image */}
       <div
-        className="aspect-[4/5] overflow-hidden cursor-pointer relative"
-        onClick={selectionMode ? onToggleSelect : onView}
+        className="aspect-[4/5] overflow-hidden relative"
+        onClick={!selectionMode ? onView : undefined}
       >
         <img
           src={imgSrc}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className={`w-full h-full object-cover transition-all duration-300 ${selectionMode && selected ? "scale-95 rounded-lg" : "group-hover:scale-105"}`}
         />
-        {/* Quick actions overlay */}
+        {/* Quick actions overlay — non-selection mode */}
         {!selectionMode && (
           <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
@@ -798,7 +836,7 @@ function WishlistCard({
         )}
         {/* Availability badge */}
         <Badge
-          className="absolute bottom-2 left-2 text-[10px]"
+          className="absolute bottom-2 left-2 text-[10px] backdrop-blur-md"
           style={{ backgroundColor: avail.bg, color: avail.text, border: "none" }}
         >
           {avail.label}
@@ -811,9 +849,9 @@ function WishlistCard({
           {product.category} {product.carat > 0 && `· ${product.carat} ct`}
         </p>
         <p
-          className="text-sm font-medium truncate mb-1 cursor-pointer"
+          className="text-sm font-medium truncate mb-1"
           style={{ color: "var(--sf-text-primary)" }}
-          onClick={onView}
+          onClick={!selectionMode ? onView : undefined}
         >
           {product.name}
         </p>
@@ -827,7 +865,7 @@ function WishlistCard({
               size="sm"
               className="h-7 text-[10px] gap-1 px-2"
               style={{ color: "var(--sf-teal)" }}
-              onClick={onOrder}
+              onClick={(e) => { e.stopPropagation(); onOrder(); }}
             >
               <ShoppingCart className="w-3 h-3" />
               Order
