@@ -506,12 +506,33 @@ export function AdminRetailers() {
         >
           <CardContent className="p-0">
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2
-                  className="w-6 h-6 animate-spin"
-                  style={{ color: "var(--sf-blue-primary)" }}
-                />
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow style={{ borderColor: "var(--sf-divider)" }}>
+                    <TableHead className="w-10"><div className="skeleton-shimmer h-4 w-4 rounded" /></TableHead>
+                    {["Name", "Phone", "Business", "City", "Tier", "Status", "Orders", "Last Active", "Actions"].map((h, i) => (
+                      <TableHead key={h} className={i === 2 ? "hidden md:table-cell" : i === 3 ? "hidden lg:table-cell" : i === 7 ? "hidden lg:table-cell" : i === 6 ? "hidden sm:table-cell" : ""}
+                        style={{ color: "var(--sf-text-muted)" }}>{h}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <TableRow key={i} style={{ borderColor: "var(--sf-divider)" }}>
+                      <TableCell><div className="skeleton-shimmer h-4 w-4 rounded" /></TableCell>
+                      <TableCell><div className="skeleton-shimmer h-4 w-28 rounded-md" /></TableCell>
+                      <TableCell><div className="skeleton-shimmer h-4 w-24 rounded-md" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><div className="skeleton-shimmer h-4 w-24 rounded-md" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><div className="skeleton-shimmer h-4 w-16 rounded-md" /></TableCell>
+                      <TableCell><div className="skeleton-shimmer h-5 w-16 rounded-full" /></TableCell>
+                      <TableCell><div className="skeleton-shimmer h-5 w-14 rounded-full" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><div className="skeleton-shimmer h-4 w-8 rounded-md" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><div className="skeleton-shimmer h-3 w-16 rounded-md" /></TableCell>
+                      <TableCell><div className="flex gap-1"><div className="skeleton-shimmer h-7 w-7 rounded-lg" /><div className="skeleton-shimmer h-7 w-7 rounded-lg" /></div></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : retailers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-2">
                 <Users

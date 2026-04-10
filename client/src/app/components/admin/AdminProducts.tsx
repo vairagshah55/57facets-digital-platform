@@ -1028,26 +1028,26 @@ function SkeletonRows() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="grid items-center px-4 py-3 border-b last:border-0 animate-pulse"
+          className="grid items-center px-4 py-3 border-b last:border-0"
           style={{
             borderColor: "var(--sf-divider)",
             gridTemplateColumns: "56px 1fr 110px 110px 100px 90px 72px 60px 80px",
           }}
         >
-          <div className="w-11 h-11 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+          <div className="skeleton-shimmer w-11 h-11 rounded-xl" />
           <div className="pr-3 space-y-1.5">
-            <div className="h-3 w-36 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-            <div className="h-2.5 w-20 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+            <div className="skeleton-shimmer h-3 w-36 rounded-full" />
+            <div className="skeleton-shimmer h-2.5 w-20 rounded-full" />
           </div>
-          <div className="hidden md:block h-5 w-16 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-          <div className="h-3 w-16 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-          <div className="h-5 w-20 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-          <div className="hidden lg:block h-3 w-10 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-          <div className="hidden md:block h-3 w-6 rounded-full mx-auto" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-          <div className="hidden lg:block h-3 w-6 rounded-full mx-auto" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+          <div className="hidden md:block skeleton-shimmer h-5 w-16 rounded-full" />
+          <div className="skeleton-shimmer h-3 w-16 rounded-full" />
+          <div className="skeleton-shimmer h-5 w-20 rounded-full" />
+          <div className="hidden lg:block skeleton-shimmer h-3 w-10 rounded-full" />
+          <div className="hidden md:block skeleton-shimmer h-3 w-6 rounded-full mx-auto" />
+          <div className="hidden lg:block skeleton-shimmer h-3 w-6 rounded-full mx-auto" />
           <div className="flex justify-center gap-1">
-            <div className="w-7 h-4 rounded-full" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
-            <div className="w-7 h-7 rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)" }} />
+            <div className="skeleton-shimmer w-7 h-4 rounded-full" />
+            <div className="skeleton-shimmer w-7 h-7 rounded-lg" />
           </div>
         </div>
       ))}

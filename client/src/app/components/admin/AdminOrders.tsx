@@ -255,9 +255,33 @@ export function AdminOrders() {
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}
         className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} />
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow style={{ borderColor: "var(--sf-divider)" }}>
+                {["Order #", "Retailer", "Items", "Total", "Status", "Date", ""].map((h) => (
+                  <TableHead key={h} className="text-xs font-semibold" style={{ color: "var(--sf-text-muted)" }}>{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i} style={{ borderColor: "var(--sf-divider)" }}>
+                  <TableCell><div className="skeleton-shimmer h-4 w-20 rounded-md" /></TableCell>
+                  <TableCell>
+                    <div className="space-y-1.5">
+                      <div className="skeleton-shimmer h-3.5 w-28 rounded-md" />
+                      <div className="skeleton-shimmer h-3 w-20 rounded-md" />
+                    </div>
+                  </TableCell>
+                  <TableCell><div className="skeleton-shimmer h-4 w-8 rounded-md" /></TableCell>
+                  <TableCell><div className="skeleton-shimmer h-4 w-16 rounded-md" /></TableCell>
+                  <TableCell><div className="skeleton-shimmer h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell><div className="skeleton-shimmer h-3 w-20 rounded-md" /></TableCell>
+                  <TableCell><div className="skeleton-shimmer h-8 w-8 rounded-lg" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <ShoppingCart className="w-10 h-10" style={{ color: "var(--sf-text-muted)" }} />

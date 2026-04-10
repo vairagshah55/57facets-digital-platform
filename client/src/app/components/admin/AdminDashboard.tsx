@@ -208,14 +208,53 @@ export function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-40">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--sf-teal)" }}
-        />
-        <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-          Loading dashboard…
-        </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="skeleton-shimmer h-6 w-32 rounded-md" />
+            <div className="skeleton-shimmer h-3 w-48 rounded-md" />
+          </div>
+          <div className="skeleton-shimmer h-8 w-24 rounded-full hidden sm:block" />
+        </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+              <div className="skeleton-shimmer w-9 h-9 rounded-lg" />
+              <div className="skeleton-shimmer h-3 w-16 rounded-md" />
+              <div className="skeleton-shimmer h-6 w-12 rounded-md" />
+            </div>
+          ))}
+        </div>
+        {/* Quick panels skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+              <div className="flex items-center gap-2">
+                <div className="skeleton-shimmer w-8 h-8 rounded-lg" />
+                <div className="skeleton-shimmer h-4 w-24 rounded-md" />
+              </div>
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="flex items-center gap-2">
+                  <div className="skeleton-shimmer h-3 flex-1 rounded-md" />
+                  <div className="skeleton-shimmer h-3 w-12 rounded-md" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+            <div className="skeleton-shimmer h-4 w-32 rounded-md mb-4" />
+            <div className="skeleton-shimmer h-48 w-full rounded-lg" />
+          </div>
+          <div className="rounded-xl border p-5" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+            <div className="skeleton-shimmer h-4 w-32 rounded-md mb-4" />
+            <div className="skeleton-shimmer h-48 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }

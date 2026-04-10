@@ -104,8 +104,17 @@ export function AdminNotifications() {
       {/* List */}
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} />
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 p-4 rounded-xl border" style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-1)" }}>
+                <div className="skeleton-shimmer w-9 h-9 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton-shimmer h-4 w-2/3 rounded-md" />
+                  <div className="skeleton-shimmer h-3 w-full rounded-md" />
+                  <div className="skeleton-shimmer h-2.5 w-20 rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
