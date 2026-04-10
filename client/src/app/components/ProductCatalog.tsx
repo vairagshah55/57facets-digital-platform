@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Diamond,
-  Loader2,
   Package,
   Heart,
 } from "lucide-react";
@@ -341,9 +340,19 @@ export function ProductCatalog() {
           {/* Grid */}
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center py-24">
-                <Loader2 className="w-8 h-8 mb-3 animate-spin" style={{ color: "var(--sf-teal)" }} />
-                <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Loading products...</p>
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+              >
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+                    <div className="skeleton-shimmer aspect-square" />
+                    <div className="p-3 space-y-2.5">
+                      <div className="skeleton-shimmer h-2.5 w-20 rounded-md" />
+                      <div className="skeleton-shimmer h-3.5 w-3/4 rounded-md" />
+                      <div className="skeleton-shimmer h-3.5 w-16 rounded-md" />
+                    </div>
+                  </div>
+                ))}
               </motion.div>
             ) : products.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center py-24">

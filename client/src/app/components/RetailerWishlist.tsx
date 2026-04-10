@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Plus,
   GripVertical,
-  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -310,9 +309,45 @@ export function RetailerWishlist() {
   if (loading) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: "var(--sf-teal)" }} />
-          <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>Loading wishlist...</p>
+        <div className="flex gap-6">
+          {/* Sidebar skeleton */}
+          <aside className="hidden lg:block w-[240px] shrink-0">
+            <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+              <div className="skeleton-shimmer h-4 w-16 rounded-md mb-4" />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
+                  <div className="skeleton-shimmer w-2.5 h-2.5 rounded-full" />
+                  <div className="skeleton-shimmer h-3.5 flex-1 rounded-md" />
+                  <div className="skeleton-shimmer h-3 w-5 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </aside>
+          {/* Cards skeleton */}
+          <div className="flex-1 min-w-0">
+            {/* Search bar skeleton */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="skeleton-shimmer h-10 flex-1 rounded-lg" />
+              <div className="skeleton-shimmer h-10 w-24 rounded-lg" />
+            </div>
+            {/* Grid skeleton */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-xl border overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+                  <div className="skeleton-shimmer aspect-[4/5]" />
+                  <div className="p-3 space-y-2.5">
+                    <div className="skeleton-shimmer h-3 w-16 rounded-md" />
+                    <div className="skeleton-shimmer h-4 w-3/4 rounded-md" />
+                    <div className="flex items-center justify-between">
+                      <div className="skeleton-shimmer h-4 w-20 rounded-md" />
+                      <div className="skeleton-shimmer h-6 w-14 rounded-md" />
+                    </div>
+                    <div className="skeleton-shimmer h-2.5 w-24 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
     );
