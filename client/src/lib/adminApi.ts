@@ -30,7 +30,7 @@ async function request<T = any>(
     headers,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !endpoint.startsWith("/auth/")) {
     clearAdminToken();
     window.location.href = "/admin/login";
     throw new Error("Session expired");

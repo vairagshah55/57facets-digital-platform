@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
-import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, Shield } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../ui/card";
@@ -13,14 +13,29 @@ export function AdminLogin() {
   const { login } = useAdminAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+
+  const validate = useCallback(() => {
+    const errors: { email?: string; password?: string } = {};
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Enter a valid email address";
+    }
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 4) {
+      errors.password = "Password is too short";
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [email, password]);
 
   const handleLogin = useCallback(async () => {
-    if (!email || !password) {
-      setError("Email and password are required");
-      return;
-    }
+    if (!validate()) return;
     setError("");
     setLoading(true);
     try {
@@ -32,16 +47,26 @@ export function AdminLogin() {
     } finally {
       setLoading(false);
     }
-  }, [email, password, login, navigate]);
+  }, [email, password, login, navigate, validate]);
+
+  const clearFieldError = (field: "email" | "password") => {
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (error) setError("");
+  };
 
   return (
     <section
       className="relative flex min-h-screen items-center justify-center px-4 py-20 overflow-hidden"
       style={{ backgroundColor: "var(--sf-bg-base)" }}
     >
+      {/* Background ambient orbs */}
       <div
         className="absolute top-[-120px] right-[-80px] w-[400px] h-[400px] rounded-full blur-[120px] opacity-20"
         style={{ background: "var(--sf-blue-primary)" }}
+      />
+      <div
+        className="absolute bottom-[-100px] left-[-60px] w-[350px] h-[350px] rounded-full blur-[100px] opacity-15"
+        style={{ background: "#a855f7" }}
       />
 
       <motion.div
@@ -55,15 +80,19 @@ export function AdminLogin() {
           style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
         >
           <CardHeader className="text-center pb-2">
+            {/* Logo */}
             <div
               className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)" }}
+              style={{ backgroundColor: "rgba(38,96,160,0.12)", border: "1px solid rgba(38,96,160,0.25)" }}
             >
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="opacity-90">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
                 <path d="M16 2L28 12L16 30L4 12L16 2Z" stroke="var(--sf-blue-primary)" strokeWidth="1.5" fill="none" />
                 <path d="M4 12H28M16 2L12 12L16 30L20 12L16 2Z" stroke="var(--sf-blue-primary)" strokeWidth="1.5" fill="none" opacity="0.5" />
               </svg>
             </div>
+            <p className="text-xs font-medium tracking-widest uppercase mb-1" style={{ color: "var(--sf-blue-secondary)", opacity: 0.8 }}>
+              57 Facets
+            </p>
             <CardTitle
               className="text-2xl font-semibold"
               style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
@@ -71,65 +100,110 @@ export function AdminLogin() {
               Admin Panel
             </CardTitle>
             <CardDescription style={{ color: "var(--sf-text-secondary)" }}>
-              Sign in to manage 57Facets
+              Sign in to manage your platform
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-2 space-y-4">
-            <div className="space-y-2">
+            {/* Email */}
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: fieldErrors.email ? "#ef4444" : "var(--sf-text-muted)" }} />
                 <Input
                   type="email"
                   placeholder="admin@57facets.com"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                  className="pl-10 h-12 text-base border-[var(--sf-divider)]"
-                  style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}
+                  onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
+                  className="pl-10 h-12 text-base"
+                  style={{
+                    backgroundColor: "var(--sf-bg-surface-2)",
+                    color: "var(--sf-text-primary)",
+                    borderColor: fieldErrors.email ? "#ef4444" : "var(--sf-divider)",
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 />
               </div>
+              {fieldErrors.email && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs" style={{ color: "#ef4444" }}>
+                  {fieldErrors.email}
+                </motion.p>
+              )}
             </div>
 
-            <div className="space-y-2">
+            {/* Password */}
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: fieldErrors.password ? "#ef4444" : "var(--sf-text-muted)" }} />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter password"
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                  className="pl-10 h-12 text-base border-[var(--sf-divider)]"
-                  style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}
+                  onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
+                  className="pl-10 pr-10 h-12 text-base"
+                  style={{
+                    backgroundColor: "var(--sf-bg-surface-2)",
+                    color: "var(--sf-text-primary)",
+                    borderColor: fieldErrors.password ? "#ef4444" : "var(--sf-divider)",
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--sf-text-muted)", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {fieldErrors.password && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs" style={{ color: "#ef4444" }}>
+                  {fieldErrors.password}
+                </motion.p>
+              )}
             </div>
 
+            {/* Server error */}
             {error && (
-              <motion.p
+              <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-sm"
-                style={{ color: "var(--destructive)" }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium"
+                style={{
+                  backgroundColor: "var(--sf-red-subtle)",
+                  border: "1px solid var(--sf-red-border)",
+                  color: "#ef4444",
+                }}
               >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                  <circle cx="8" cy="8" r="7" stroke="#ef4444" strokeWidth="1.5" />
+                  <path d="M8 4.5v4M8 10.5v.5" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
                 {error}
-              </motion.p>
+              </motion.div>
             )}
 
             <Button
               onClick={handleLogin}
-              disabled={loading || !email || !password}
+              disabled={loading}
               className="w-full h-12 text-base font-medium"
-              style={{ backgroundColor: "var(--sf-blue-primary)", color: "var(--sf-text-primary)" }}
+              style={{ backgroundColor: "var(--sf-blue-primary)", color: "#fff" }}
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign In <ArrowRight className="w-4 h-4 ml-1" /></>}
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 mr-1.5" />
+                  Sign In
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
             </Button>
           </CardContent>
 
