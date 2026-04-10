@@ -92,10 +92,15 @@ export function AboutSection() {
     offset: ["start 0.5", "start -0.1"],
   });
 
-  // Body row observer — resets every time row enters/leaves viewport
+  // Body row observer — animates in once, never resets
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => setBodyVisible(entry.isIntersecting),
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setBodyVisible(true);
+          observer.disconnect();
+        }
+      },
       { threshold: 0.1 }
     );
     if (bodyRef.current) observer.observe(bodyRef.current);

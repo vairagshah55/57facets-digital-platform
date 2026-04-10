@@ -78,7 +78,12 @@ function ReasonCard({
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
       { threshold: 0.12 }
     );
     if (cardRef.current) observer.observe(cardRef.current);
