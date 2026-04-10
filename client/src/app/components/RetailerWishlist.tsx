@@ -43,7 +43,21 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 
-import { wishlist as wishlistApi } from "../../lib/api";
+import { wishlist as wishlistApi, imageUrl } from "../../lib/api";
+
+/* ═══════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════ */
+
+/** Ensure every folder object has a productIds array */
+function mapFolders(raw: any[]): Folder[] {
+  return raw.map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    color: f.color || "var(--sf-teal)",
+    productIds: (Array.isArray(f.productIds) ? f.productIds : []).map(String),
+  }));
+}
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -135,7 +149,7 @@ export function RetailerWishlist() {
         ]);
         if (!cancelled) {
           setProducts(Array.isArray(itemsData) ? itemsData : itemsData.items ?? []);
-          setFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []);
+          setFolders(mapFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []));
         }
       } catch {
         // silently handle — empty state will show
@@ -280,7 +294,7 @@ export function RetailerWishlist() {
         // re-fetch folders to get correct state
         try {
           const foldersData = await wishlistApi.folders();
-          setFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []);
+          setFolders(mapFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []));
         } catch { /* ignore */ }
       }
     },
@@ -730,7 +744,7 @@ function WishlistCard({
     "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
   };
   const avail = availColors[product.availability] || availColors["in-stock"];
-  const imgSrc = product.image || PLACEHOLDER_IMAGE;
+  const imgSrc = product.image ? imageUrl(product.image) : PLACEHOLDER_IMAGE;
 
   return (
     <motion.div

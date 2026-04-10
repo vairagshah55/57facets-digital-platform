@@ -90,7 +90,13 @@ router.get("/folders", async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT wf.id, wf.name, wf.color,
-              (SELECT COUNT(*) FROM wishlist_folder_items fi WHERE fi.folder_id = wf.id) AS item_count
+              COALESCE(
+                (SELECT json_agg(w.product_id)
+                 FROM wishlist_folder_items fi
+                 JOIN wishlists w ON w.id = fi.wishlist_id
+                 WHERE fi.folder_id = wf.id),
+                '[]'::json
+              ) AS "productIds"
        FROM wishlist_folders wf
        WHERE wf.retailer_id = $1
        ORDER BY wf.created_at`,
