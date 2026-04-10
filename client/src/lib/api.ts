@@ -39,7 +39,7 @@ async function request<T = any>(
     headers,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !endpoint.startsWith("/auth/")) {
     clearToken();
     window.location.href = "/retailer/login";
     throw new Error("Session expired");
