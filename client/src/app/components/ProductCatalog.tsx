@@ -210,7 +210,7 @@ export function ProductCatalog() {
               Product Catalog
             </h1>
             <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-              {loading ? "Loading..." : `${totalProducts} products available`}
+              {`${totalProducts} products available`}
             </p>
           </div>
         </div>
@@ -327,8 +327,11 @@ export function ProductCatalog() {
         <div className="flex-1 min-w-0">
           {/* Results bar */}
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-              {loading ? "Loading..." : `Showing ${products.length} of ${totalProducts} products`}
+            <p className="text-xs flex items-center gap-1.5" style={{ color: "var(--sf-text-muted)" }}>
+              {`Showing ${products.length} of ${totalProducts} products`}
+              {loading && products.length > 0 && (
+                <span className="inline-block w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "var(--sf-divider)", borderTopColor: "var(--sf-teal)" }} />
+              )}
             </p>
             {activeFiltersCount > 0 && (
               <button onClick={clearFilters} className="text-xs flex items-center gap-1 cursor-pointer" style={{ color: "var(--sf-teal)", background: "none", border: "none" }}>
@@ -339,7 +342,8 @@ export function ProductCatalog() {
 
           {/* Grid */}
           <AnimatePresence mode="wait">
-            {loading ? (
+            {loading && products.length === 0 ? (
+              /* First load — full skeleton */
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="grid grid-cols-2 sm:grid-cols-3 gap-4"
               >
@@ -354,7 +358,7 @@ export function ProductCatalog() {
                   </div>
                 ))}
               </motion.div>
-            ) : products.length === 0 ? (
+            ) : !loading && products.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center py-24">
                 <Diamond className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)", opacity: 0.4 }} />
                 <p className="text-base font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>No products found</p>
@@ -367,7 +371,8 @@ export function ProductCatalog() {
               <motion.div
                 key={`${activeTab}-${activeCategory}-${viewMode}-${page}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
-                className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+                className="grid grid-cols-2 sm:grid-cols-3 gap-4 transition-opacity duration-300"
+                style={{ opacity: loading ? 0.45 : 1, pointerEvents: loading ? "none" : "auto" }}
               >
                 {products.map((product, i) => (
                   <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} />
