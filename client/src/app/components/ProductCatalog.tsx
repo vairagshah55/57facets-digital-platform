@@ -13,6 +13,7 @@ import {
   Diamond,
   Loader2,
   Package,
+  Heart,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -30,7 +31,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
-import { products as productsApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES & HELPERS
@@ -94,6 +95,7 @@ export function ProductCatalog() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -108,6 +110,10 @@ export function ProductCatalog() {
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
+    wishlistApi.list().then((data: any) => {
+      const items = Array.isArray(data) ? data : data.items ?? [];
+      setWishlistedIds(new Set(items.map((w: any) => String(w.id))));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -144,6 +150,27 @@ export function ProductCatalog() {
     fetchProducts();
     return () => { cancelled = true; };
   }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page]);
+
+  const toggleWishlist = useCallback(async (productId: string) => {
+    const isWishlisted = wishlistedIds.has(productId);
+    // Optimistic update
+    setWishlistedIds((prev) => {
+      const next = new Set(prev);
+      if (isWishlisted) next.delete(productId); else next.add(productId);
+      return next;
+    });
+    try {
+      if (isWishlisted) await wishlistApi.remove(productId);
+      else await wishlistApi.add(productId);
+    } catch {
+      // Revert
+      setWishlistedIds((prev) => {
+        const next = new Set(prev);
+        if (isWishlisted) next.add(productId); else next.delete(productId);
+        return next;
+      });
+    }
+  }, [wishlistedIds]);
 
   const displayCategories = useMemo(() => {
     const all: { name: string; image: string | null }[] = [{ name: "All", image: null }];
@@ -334,7 +361,7 @@ export function ProductCatalog() {
                 className="grid grid-cols-2 sm:grid-cols-3 gap-4"
               >
                 {products.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} />
+                  <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} />
                 ))}
               </motion.div>
             )}
@@ -477,7 +504,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
    PRODUCT CARD
    ═══════════════════════════════════════════════════════ */
 
-function ProductCard({ product, index, compact }: { product: Product; index: number; compact: boolean }) {
+function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: { product: Product; index: number; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void }) {
   const navigate = useNavigate();
   const [images, setImages] = useState<string[]>([product.image]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -485,7 +512,7 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
 
   const availColors: Record<string, { bg: string; text: string; label: string }> = {
     "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "Made to Order" },
+    "made-to-order": { bg: "rgba(245,158,11,0.15)", text: "#f59e0b", label: "Made to Order" },
     "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
   };
   const avail = availColors[product.availability];
@@ -556,15 +583,34 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
           </div>
         )}
 
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.isNew && (
+        {/* Top-left: NEW badge */}
+        {product.isNew && (
+          <div className="absolute top-2 left-2">
             <Badge className="text-[10px] px-1.5 py-0.5" style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>NEW</Badge>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Top-right: Wishlist heart */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleWishlist(); }}
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${wishlisted ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          style={{
+            backgroundColor: wishlisted ? "rgba(239,68,68,0.2)" : "var(--sf-backdrop)",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <Heart
+            className="w-4 h-4 transition-colors"
+            style={{ color: wishlisted ? "#ef4444" : "#fff" }}
+            fill={wishlisted ? "#ef4444" : "none"}
+          />
+        </button>
+
+        {/* Bottom-left: Availability badge */}
         {!compact && (
-          <div className="absolute top-2 right-2">
-            <Badge className="text-[10px] px-1.5 py-0.5" style={{ backgroundColor: avail.bg, color: avail.text, border: "none" }}>{avail.label}</Badge>
+          <div className="absolute bottom-2 left-2">
+            <Badge className="text-[10px] px-1.5 py-0.5 backdrop-blur-md" style={{ backgroundColor: avail.bg, color: avail.text, border: "none" }}>{avail.label}</Badge>
           </div>
         )}
       </div>
@@ -576,7 +622,12 @@ function ProductCard({ product, index, compact }: { product: Product; index: num
           </p>
         )}
         <p className={`font-medium truncate ${compact ? "text-xs" : "text-sm"} mb-1`} style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
-        <p className={`font-bold ${compact ? "text-xs" : "text-sm"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className={`font-bold ${compact ? "text-xs" : "text-sm"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
+          {compact && (
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: avail.text }} title={avail.label} />
+          )}
+        </div>
       </div>
     </motion.div>
   );
