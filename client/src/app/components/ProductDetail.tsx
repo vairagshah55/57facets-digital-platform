@@ -22,7 +22,6 @@ import {
   Shield,
   Award,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -313,14 +312,42 @@ export function ProductDetail() {
   if (loading) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <Loader2
-            className="w-10 h-10 animate-spin"
-            style={{ color: "var(--sf-teal)" }}
-          />
-          <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
-            Loading product details...
-          </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          {/* Left: Image skeleton */}
+          <div>
+            <div className="skeleton-shimmer aspect-square rounded-2xl mb-3" />
+            <div className="flex gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="skeleton-shimmer w-16 h-16 sm:w-20 sm:h-20 rounded-lg shrink-0" />
+              ))}
+            </div>
+          </div>
+          {/* Right: Info skeleton */}
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <div className="skeleton-shimmer h-3 w-24 rounded-md" />
+              <div className="skeleton-shimmer h-7 w-3/4 rounded-md" />
+              <div className="skeleton-shimmer h-4 w-1/2 rounded-md" />
+            </div>
+            <div className="skeleton-shimmer h-px w-full" />
+            <div className="skeleton-shimmer h-8 w-32 rounded-md" />
+            <div className="space-y-3 pt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="skeleton-shimmer w-9 h-9 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="skeleton-shimmer h-3 w-20 rounded-md" />
+                    <div className="skeleton-shimmer h-3.5 w-32 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="skeleton-shimmer h-px w-full" />
+            <div className="flex gap-3 pt-2">
+              <div className="skeleton-shimmer h-12 flex-1 rounded-xl" />
+              <div className="skeleton-shimmer h-12 w-12 rounded-xl" />
+            </div>
+          </div>
         </div>
       </main>
     );
