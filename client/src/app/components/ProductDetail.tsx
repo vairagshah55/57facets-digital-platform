@@ -38,7 +38,6 @@ import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
 import img5 from "../../assets/Images/5.jpg";
 import img7 from "../../assets/Images/7.jpg";
-import productVideo from "../../assets/Videos/5327599-hd_1280_720_30fps.mp4";
 
 /* ═══════════════════════════════════════════════════════
    CONSTANTS & TYPES
@@ -106,7 +105,7 @@ function mapApiProduct(raw: any): ProductData {
     availability: raw.availability || "in-stock",
     basePrice: Number(raw.base_price) || 0,
     images: apiImages.length > 0 ? apiImages : FALLBACK_IMAGES,
-    video: videoEntry ? imageUrl(videoEntry.image_url) : productVideo,
+    video: videoEntry ? imageUrl(videoEntry.image_url) : "",
     isNew: Boolean(raw.is_new),
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
     specs: {
@@ -362,7 +361,7 @@ export function ProductDetail() {
               style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
             >
               <AnimatePresence mode="wait">
-                {showVideo ? (
+                {showVideo && product.video ? (
                   <motion.video
                     key="video"
                     initial={{ opacity: 0 }}
@@ -438,7 +437,7 @@ export function ProductDetail() {
             </div>
 
             {/* Thumbnails */}
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--sf-glass-border) transparent" }}>
               {product.images.map((img, i) => (
                 <button
                   key={i}
@@ -455,35 +454,23 @@ export function ProductDetail() {
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
-              {/* Video thumb */}
-              <button
-                onClick={() => setShowVideo(true)}
-                className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all relative"
-                style={{
-                  borderColor: showVideo ? "var(--sf-teal)" : "var(--sf-divider)",
-                  opacity: showVideo ? 1 : 0.6,
-                  backgroundColor: "var(--sf-bg-surface-2)",
-                }}
-              >
-                <video src={product.video} muted className="w-full h-full object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <Play className="w-5 h-5" style={{ color: "var(--sf-text-primary)" }} fill="white" />
-                </div>
-              </button>
-              {/* 360° placeholder */}
-              <button
-                className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 flex flex-col items-center justify-center gap-1"
-                style={{
-                  borderColor: "var(--sf-divider)",
-                  backgroundColor: "var(--sf-bg-surface-2)",
-                  opacity: 0.6,
-                }}
-              >
-                <RotateCcw className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                <span className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>
-                  360°
-                </span>
-              </button>
+              {/* Video thumb — only if admin uploaded a video */}
+              {product.video && (
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all relative"
+                  style={{
+                    borderColor: showVideo ? "var(--sf-teal)" : "var(--sf-divider)",
+                    opacity: showVideo ? 1 : 0.6,
+                    backgroundColor: "var(--sf-bg-surface-2)",
+                  }}
+                >
+                  <video src={product.video} muted className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Play className="w-5 h-5" style={{ color: "var(--sf-text-primary)" }} fill="white" />
+                  </div>
+                </button>
+              )}
             </div>
           </motion.div>
 
