@@ -836,8 +836,6 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
 
 /* ── Product Grid ─────────────────────────────────────── */
 function ProductGrid({ products }: { products: Product[] }) {
-  const navigate = useNavigate();
-
   if (products.length === 0) {
     return <p className="text-sm py-4" style={{ color: "var(--sf-text-muted)" }}>No products to show.</p>;
   }
@@ -845,29 +843,7 @@ function ProductGrid({ products }: { products: Product[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
       {products.map((product, i) => (
-        <motion.div
-          key={`${product.id}-${i}`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.03 * i, duration: 0.3 }}
-          whileHover={{ y: -3 }}
-          className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
-          style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
-          onClick={() => navigate(`/retailer/product/${product.id}`)}
-        >
-          <div className="aspect-square overflow-hidden flex items-center justify-center" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-            ) : (
-              <ImageOff className="w-10 h-10" style={{ color: "var(--sf-text-muted)" }} />
-            )}
-          </div>
-          <div className="p-3">
-            <p className="text-[11px] mb-0.5 truncate" style={{ color: "var(--sf-text-muted)" }}>{product.category}</p>
-            <p className="text-sm font-medium truncate mb-1" style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
-            <p className="text-sm font-bold" style={{ color: "var(--sf-teal)" }}>{product.price}</p>
-          </div>
-        </motion.div>
+        <GalleryProductCard key={`${product.id}-${i}`} product={product} index={i} />
       ))}
     </div>
   );
