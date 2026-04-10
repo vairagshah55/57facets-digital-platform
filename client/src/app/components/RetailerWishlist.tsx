@@ -750,7 +750,7 @@ function WishlistCard({
           onClick={onToggleSelect}
           className="absolute top-2 left-2 z-10 w-6 h-6 rounded-md flex items-center justify-center border transition-colors"
           style={{
-            backgroundColor: selected ? "var(--sf-teal)" : "rgba(8, 10, 13, 0.6)",
+            backgroundColor: selected ? "var(--sf-teal)" : "var(--sf-backdrop)",
             borderColor: selected ? "var(--sf-teal)" : "var(--sf-divider)",
             color: "white",
             cursor: "pointer",
@@ -776,7 +776,7 @@ function WishlistCard({
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md"
-              style={{ backgroundColor: "rgba(8,10,13,0.6)", color: "#ef4444", border: "none", cursor: "pointer" }}
+              style={{ backgroundColor: "var(--sf-backdrop)", color: "#ef4444", border: "none", cursor: "pointer" }}
             >
               <Heart className="w-4 h-4" fill="#ef4444" />
             </button>

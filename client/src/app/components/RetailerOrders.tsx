@@ -177,8 +177,8 @@ const STATUS_CONFIG: Record<
   { label: string; color: string; bg: string; border: string; glow: string; icon: React.ReactNode }
 > = {
   pending:    { label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.09)", border: "rgba(245,158,11,0.28)", glow: "rgba(245,158,11,0.14)",   icon: <Clock className="w-3.5 h-3.5" /> },
-  confirmed:  { label: "Confirmed",  color: "#3880BE", bg: "rgba(56,128,190,0.09)", border: "rgba(56,128,190,0.28)", glow: "rgba(56,128,190,0.14)",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  processing: { label: "Processing", color: "#30B8BF", bg: "rgba(48,184,191,0.09)", border: "rgba(48,184,191,0.28)", glow: "rgba(48,184,191,0.14)",   icon: <Package className="w-3.5 h-3.5" /> },
+  confirmed:  { label: "Confirmed",  color: "var(--sf-blue-secondary)", bg: "rgba(56,128,190,0.09)", border: "rgba(56,128,190,0.28)", glow: "rgba(56,128,190,0.14)",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  processing: { label: "Processing", color: "var(--sf-teal)", bg: "rgba(48,184,191,0.09)", border: "rgba(48,184,191,0.28)", glow: "rgba(48,184,191,0.14)",   icon: <Package className="w-3.5 h-3.5" /> },
   shipped:    { label: "Shipped",    color: "#a855f7", bg: "rgba(168,85,247,0.09)", border: "rgba(168,85,247,0.28)", glow: "rgba(168,85,247,0.14)",   icon: <Truck className="w-3.5 h-3.5" /> },
   delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.09)",  border: "rgba(34,197,94,0.28)",  glow: "rgba(34,197,94,0.14)",    icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   cancelled:  { label: "Cancelled",  color: "#c2173b", bg: "rgba(194,23,59,0.09)",  border: "rgba(194,23,59,0.28)",  glow: "rgba(194,23,59,0.14)",    icon: <XCircle className="w-3.5 h-3.5" /> },
@@ -723,8 +723,8 @@ export function RetailerOrders() {
           <StatCard
             loading={loading}
             icon={<TrendingUp className="w-4 h-4" />}
-            iconColor="#30B8BF"
-            iconBg="rgba(48,184,191,0.12)"
+            iconColor="var(--sf-teal)"
+            iconBg="var(--sf-teal-glass)"
             label="Active Orders"
             value={String(stats.activeCount)}
           />

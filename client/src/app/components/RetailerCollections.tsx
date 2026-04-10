@@ -460,7 +460,7 @@ function CollectionCard({
         <div
           className="absolute inset-0"
           style={{
-            background: `${gradient}, linear-gradient(to top, rgba(8,10,13,0.85) 0%, transparent 60%)`,
+            background: `${gradient}, linear-gradient(to top, var(--sf-overlay-bg) 0%, transparent 60%)`,
           }}
         />
 
@@ -473,7 +473,7 @@ function CollectionCard({
         <div
           className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium backdrop-blur-md"
           style={{
-            backgroundColor: "rgba(8,10,13,0.5)",
+            backgroundColor: "var(--sf-backdrop)",
             color: "var(--sf-text-secondary)",
           }}
         >
