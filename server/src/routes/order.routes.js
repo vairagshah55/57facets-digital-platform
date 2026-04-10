@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { query, getClient } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
+const auditLog = require("../utils/auditLog");
 
 router.use(authenticate);
 
@@ -176,6 +177,9 @@ router.post("/", async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "order.placed", entityType: "order", entityId: order.id, details: { order_number: orderNumber, items: items.length, total } });
+
     res.status(201).json(order);
   } catch (err) {
     await client.query("ROLLBACK");

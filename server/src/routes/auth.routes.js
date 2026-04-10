@@ -2,6 +2,7 @@ const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const { query } = require("../config/db");
 const AppError = require("../utils/AppError");
+const auditLog = require("../utils/auditLog");
 
 // ── POST /api/auth/request-otp ─────────────────────
 // Retailer sends phone number → generate OTP
@@ -87,6 +88,9 @@ router.post("/verify-otp", async (req, res, next) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
+
+    // Audit log
+    auditLog({ actorType: "retailer", actorId: retailer.id, action: "login", details: { phone, ip: req.ip } });
 
     res.json({
       token,

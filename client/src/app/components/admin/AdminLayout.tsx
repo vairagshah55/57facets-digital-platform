@@ -2,7 +2,7 @@ import { useNavigate, useLocation, Outlet } from "react-router";
 import {
   LogOut, Menu, LayoutDashboard, Package, Users,
   ShoppingCart, Layers, Bell, CheckCheck, Pin, PinOff,
-  ChevronRight, X,
+  ChevronRight, X, Activity,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { label: "Orders",      path: "/admin/orders",      icon: ShoppingCart,    color: "#3b82f6"         },
   { label: "Retailers",   path: "/admin/retailers",   icon: Users,           color: "#22c55e"         },
   { label: "Collections", path: "/admin/collections", icon: Layers,          color: "#f59e0b"         },
+  { label: "Audit Log",   path: "/admin/audit",       icon: Activity,        color: "#f97316"         },
 ];
 
 function initials(name: string) {

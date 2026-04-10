@@ -197,3 +197,12 @@ export const adminOrders = {
   getEditLogs: (id: string) =>
     request(`/orders/${id}/edit-logs`),
 };
+
+// ── Audit Logs ───────────────────────────────────
+export const adminAudit = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/audit${qs}`);
+  },
+  stats: () => request("/audit/stats"),
+};

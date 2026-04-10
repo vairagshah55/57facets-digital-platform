@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
+const auditLog = require("../utils/auditLog");
 
 router.use(authenticate);
 
@@ -41,6 +42,9 @@ router.post("/", async (req, res, next) => {
       [req.retailer.id, productId]
     );
 
+    if (rows.length > 0) {
+      auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "wishlist.added", entityType: "product", entityId: productId });
+    }
     res.status(201).json({ added: rows.length > 0, wishlistId: rows[0]?.id });
   } catch (err) {
     next(err);
@@ -54,6 +58,7 @@ router.delete("/:productId", async (req, res, next) => {
       "DELETE FROM wishlists WHERE retailer_id = $1 AND product_id = $2",
       [req.retailer.id, req.params.productId]
     );
+    auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "wishlist.removed", entityType: "product", entityId: req.params.productId });
     res.json({ removed: true });
   } catch (err) {
     next(err);

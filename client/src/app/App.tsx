@@ -10,6 +10,7 @@ import { AdminProducts } from "./components/admin/AdminProducts";
 import { AdminProductWizard } from "./components/admin/AdminProductWizard";
 import { AdminOrders } from "./components/admin/AdminOrders";
 import { AdminNotifications } from "./components/admin/AdminNotifications";
+import { AdminAuditLog } from "./components/admin/AdminAuditLog";
 import { RetailerNotifications } from "./components/RetailerNotifications";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
@@ -156,6 +157,7 @@ export default function App() {
           <Route path="products/:id/edit" element={<AdminProductWizard />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="notifications" element={<AdminNotifications />} />
+          <Route path="audit" element={<AdminAuditLog />} />
         </Route>
       </Routes>
       <Toaster position="bottom-right" richColors closeButton />
