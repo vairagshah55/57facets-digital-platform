@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Navigate, Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, ShieldCheck, ArrowRight, ArrowLeft, Loader2, Timer } from "lucide-react";
 import { auth as authApi } from "../../lib/api";
@@ -22,7 +22,7 @@ const RESEND_COOLDOWN = 30; // seconds
 
 export function RetailerLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, retailer, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -104,6 +104,10 @@ export function RetailerLogin() {
     setResendTimer(0);
   }, []);
 
+  // Already logged in — redirect after all hooks
+  if (authLoading) return null;
+  if (retailer) return <Navigate to="/retailer/catalog" replace />;
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhone(value);
@@ -136,6 +140,29 @@ export function RetailerLogin() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10"
       >
+        {/* Back to website — sits flush above the card */}
+        <Link
+          to="/"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            marginBottom: "12px",
+            fontSize: "12px",
+            fontWeight: 500,
+            color: "var(--sf-text-muted)",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--sf-teal)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--sf-text-muted)")}
+        >
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <path d="M6 10.5L2.5 7L6 3.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back to 57 Facets
+        </Link>
+
         <Card
           className="border-[var(--sf-divider)] backdrop-blur-sm"
           style={{ backgroundColor: "var(--sf-bg-surface-1)" }}

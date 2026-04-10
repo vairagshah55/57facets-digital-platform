@@ -75,15 +75,19 @@ export function HeroSection() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [textVisible, setTextVisible] = useState(false);
   const [ctaVisible, setCtaVisible] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
+  // Fade in text on mount with a stagger
   useEffect(() => {
-    const handleScroll = () => {
-      const threshold = window.innerHeight * 0.05;
-      setTextVisible(window.scrollY > threshold);
-      setCtaVisible(window.scrollY > window.innerHeight * 0.08);
-    };
+    const t1 = setTimeout(() => setTextVisible(true), 600);
+    const t2 = setTimeout(() => setCtaVisible(true), 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  // Track scroll only to hide the scroll indicator
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.05);
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -323,7 +327,7 @@ export function HeroSection() {
             flexDirection: "column" as const,
             alignItems: "center",
             gap: "8px",
-            opacity: textVisible ? 0 : 1,
+            opacity: scrolled ? 0 : 1,
             transition: "opacity 0.5s ease",
             pointerEvents: "none",
           }}

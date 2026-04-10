@@ -133,7 +133,7 @@ export function RetailerLayout() {
 function RetailerHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { retailer } = useAuth();
+  const { retailer, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -471,7 +471,7 @@ function RetailerHeader() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/retailer/login")}
+              onClick={() => { logout(); navigate("/retailer/login"); }}
               title="Logout"
               className="h-9 w-9 rounded-lg"
               style={{ color: "var(--sf-text-muted)" }}
