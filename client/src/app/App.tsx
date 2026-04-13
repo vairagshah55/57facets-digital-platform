@@ -77,8 +77,8 @@ function WhatsAppButton() {
   const [hovered, setHovered] = useState(false);
   const location = useLocation();
 
-  // Hide on admin and retailer routes
-  if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/retailer")) {
+  // Hide only on admin routes
+  if (location.pathname.startsWith("/admin")) {
     return null;
   }
 
