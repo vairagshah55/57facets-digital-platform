@@ -334,9 +334,6 @@ export function RetailerDashboard() {
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
               <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} />
             </motion.div>
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
-              <AnnouncementsCard announcements={ANNOUNCEMENTS} />
-            </motion.div>
           </div>
         </>
       )}
