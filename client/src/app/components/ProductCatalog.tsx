@@ -13,6 +13,8 @@ import {
   Diamond,
   Package,
   Heart,
+  ShoppingCart,
+  Check,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -31,6 +33,7 @@ import {
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
 import { products as productsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
+import { useCart } from "../../context/CartContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES & HELPERS
@@ -520,9 +523,36 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 
 function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: { product: Product; index: number; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void }) {
   const navigate = useNavigate();
+  const { addItem, items: cartItems } = useCart();
   const [images, setImages] = useState<string[]>([product.image]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [fetched, setFetched] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const alreadyInCart = cartItems.some((i) => i.productId === String(product.id));
+
+  function handleAddToCart(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (alreadyInCart || addedToCart) return;
+    addItem({
+      productId: String(product.id),
+      productName: product.name,
+      productSku: product.sku,
+      productImage: product.image,
+      quantity: 1,
+      unitPrice: product.price,
+      carat: product.carat,
+      metalType: null,
+      goldColour: null,
+      diamondShape: null,
+      diamondShade: null,
+      diamondQuality: null,
+      colorStoneName: null,
+      colorStoneQuality: null,
+      note: null,
+    });
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  }
 
   const availColors: Record<string, { bg: string; text: string; label: string }> = {
     "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
@@ -621,12 +651,6 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
           />
         </button>
 
-        {/* Bottom-left: Availability badge */}
-        {!compact && (
-          <div className="absolute bottom-2 left-2">
-            <Badge className="text-[10px] px-1.5 py-0.5 backdrop-blur-md" style={{ backgroundColor: avail.bg, color: avail.text, border: "none" }}>{avail.label}</Badge>
-          </div>
-        )}
       </div>
 
       <div className={compact ? "p-2" : "p-3"}>
@@ -638,12 +662,28 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
             {product.sku}
           </p>
         )}
-        <div className="flex items-center justify-between gap-2">
-          <p className={`font-bold ${compact ? "text-xs" : "text-sm"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
-          {compact && (
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: avail.text }} title={avail.label} />
-          )}
-        </div>
+        <p className={`font-bold ${compact ? "text-xs" : "text-sm"} ${compact ? "" : "mb-2.5"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
+        {!compact && (
+          <button
+            onClick={handleAddToCart}
+            className="w-full h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+            style={{
+              backgroundColor: alreadyInCart || addedToCart ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
+              color: alreadyInCart || addedToCart ? "var(--sf-text-muted)" : "#fff",
+              border: alreadyInCart || addedToCart ? "1px solid var(--sf-divider)" : "none",
+              cursor: alreadyInCart || addedToCart ? "default" : "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => { if (!alreadyInCart && !addedToCart) e.currentTarget.style.opacity = "0.82"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            {alreadyInCart || addedToCart ? (
+              <><Check className="w-3.5 h-3.5" /> In Cart</>
+            ) : (
+              <><ShoppingCart className="w-3.5 h-3.5" /> Add to Cart</>
+            )}
+          </button>
+        )}
       </div>
     </motion.div>
   );
