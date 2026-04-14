@@ -20,7 +20,7 @@ const leaders = [
   },
   {
     name: "Anupreksha Jain",
-    role: "Chief Operating Officer",
+    role: "Global Business Head",
     index: "02",
     bio: [
       "Ms. Anupreksha Jain, an MBA from Flame University, Pune, has been an integral part of the business for the last 15 years. She manages the operational and strategic aspects with precision and foresight.",
