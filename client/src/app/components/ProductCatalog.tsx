@@ -44,7 +44,7 @@ type ApiProduct = {
 };
 
 type Product = {
-  id: number; name: string; price: number; priceLabel: string;
+  id: number; name: string; sku: string; price: number; priceLabel: string;
   category: string; carat: number;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
   image: string; isNew: boolean;
@@ -63,7 +63,7 @@ function formatPrice(n: number): string { return "₹" + n.toLocaleString("en-IN
 function mapProduct(p: ApiProduct): Product {
   const price = Number(p.base_price) || 0;
   return {
-    id: p.id, name: p.name, price, priceLabel: formatPrice(price),
+    id: p.id, name: p.name, sku: p.sku || "", price, priceLabel: formatPrice(price),
     category: p.category, carat: p.carat ?? 0, availability: p.availability,
     image: p.image ? imageUrl(p.image) : PLACEHOLDER_IMAGE, isNew: p.is_new,
   };
@@ -630,12 +630,14 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
       </div>
 
       <div className={compact ? "p-2" : "p-3"}>
-        {!compact && (
-          <p className="text-[11px] mb-0.5" style={{ color: "var(--sf-text-muted)" }}>
-            {product.category}{product.carat > 0 && ` · ${product.carat} ct`}
+        <p className={`font-semibold leading-snug ${compact ? "text-xs truncate" : "text-sm line-clamp-2"} mb-0.5`} style={{ color: "var(--sf-text-primary)" }}>
+          {product.name}
+        </p>
+        {product.sku && (
+          <p className="text-[10px] mb-2 truncate" style={{ color: "var(--sf-text-muted)", fontFamily: "monospace" }}>
+            {product.sku}
           </p>
         )}
-        <p className={`font-medium truncate ${compact ? "text-xs" : "text-sm"} mb-1`} style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
         <div className="flex items-center justify-between gap-2">
           <p className={`font-bold ${compact ? "text-xs" : "text-sm"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
           {compact && (

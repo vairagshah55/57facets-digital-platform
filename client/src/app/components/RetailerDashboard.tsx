@@ -43,7 +43,7 @@ import { useAuth } from "../../context/AuthContext";
    ═══════════════════════════════════════════════════════ */
 
 type Category = { name: string; image: string | null };
-type Product = { id: string | number; name: string; price: string; category: string; image: string | null };
+type Product = { id: string | number; name: string; sku: string; price: string; category: string; image: string | null };
 type Announcement = { id: number; title: string; date: string; type: "new" | "offer" | "info" };
 type OrderSummary = { totalOrders: number; pendingOrders: number; completedOrders: number; totalSpent: string };
 type LastOrder = { id: string; date: string; items: number; total: string; status: string };
@@ -125,6 +125,7 @@ export function RetailerDashboard() {
         const mapped = ((data as any).products || []).map((p: any) => ({
           id: p.id || p._id,
           name: p.name,
+          sku: p.sku || "",
           price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
           category: p.category || "",
           image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
@@ -162,7 +163,7 @@ export function RetailerDashboard() {
 
         if (arrivalsRes.status === "fulfilled")
           setNewArrivals((arrivalsRes.value as any[]).map((p: any) => ({
-            id: p.id || p._id, name: p.name,
+            id: p.id || p._id, name: p.name, sku: p.sku || "",
             price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
             category: p.category || "",
             image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
@@ -170,7 +171,7 @@ export function RetailerDashboard() {
 
         if (viewedRes.status === "fulfilled")
           setRecentlyViewed((viewedRes.value as any[]).map((p: any) => ({
-            id: p.id || p._id, name: p.name,
+            id: p.id || p._id, name: p.name, sku: p.sku || "",
             price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
             category: p.category || "",
             image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
@@ -329,14 +330,11 @@ export function RetailerDashboard() {
           )}
 
           {/* ═══ Overview + Active Orders + Announcements ═══ */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
-              <TodaysOrderCard summary={orderSummary} />
-            </motion.div>
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
               <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} />
             </motion.div>
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
               <AnnouncementsCard announcements={ANNOUNCEMENTS} />
             </motion.div>
           </div>
@@ -826,8 +824,14 @@ function GalleryProductCard({ product, index }: { product: Product; index: numbe
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-[11px] mb-0.5 truncate" style={{ color: "var(--sf-text-muted)" }}>{product.category}</p>
-        <p className="text-sm font-medium truncate mb-1" style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
+        <p className="text-sm font-semibold leading-snug line-clamp-2 mb-0.5" style={{ color: "var(--sf-text-primary)" }}>
+          {product.name}
+        </p>
+        {product.sku && (
+          <p className="text-[10px] mb-2 truncate" style={{ color: "var(--sf-text-muted)", fontFamily: "monospace" }}>
+            {product.sku}
+          </p>
+        )}
         <p className="text-sm font-bold" style={{ color: "var(--sf-teal)" }}>{product.price}</p>
       </div>
     </motion.div>
