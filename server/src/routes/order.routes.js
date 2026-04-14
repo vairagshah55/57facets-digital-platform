@@ -528,7 +528,15 @@ router.get("/summary/stats", async (req, res, next) => {
       [req.retailer.id]
     );
 
-    // Category-wise buying (total pieces per category)
+    // Category-wise buying (total pieces per category, with optional time filter)
+    const categoryPeriod = req.query.categoryPeriod; // "10d","3m","6m","1y","all"
+    let categoryDateFilter = "";
+    if (categoryPeriod === "1d") categoryDateFilter = "AND o.created_at >= NOW() - INTERVAL '1 day'";
+    else if (categoryPeriod === "3m") categoryDateFilter = "AND o.created_at >= NOW() - INTERVAL '3 months'";
+    else if (categoryPeriod === "6m") categoryDateFilter = "AND o.created_at >= NOW() - INTERVAL '6 months'";
+    else if (categoryPeriod === "1y") categoryDateFilter = "AND o.created_at >= NOW() - INTERVAL '1 year'";
+    // "all" or missing = no date filter
+
     const { rows: categoryBreakdown } = await query(
       `SELECT COALESCE(c.name, 'Other') AS category,
               SUM(oi.quantity) AS quantity
@@ -537,6 +545,7 @@ router.get("/summary/stats", async (req, res, next) => {
        LEFT JOIN products p ON p.id = oi.product_id
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE o.retailer_id = $1 AND o.status != 'cancelled'
+       ${categoryDateFilter}
        GROUP BY c.name
        ORDER BY quantity DESC`,
       [req.retailer.id]

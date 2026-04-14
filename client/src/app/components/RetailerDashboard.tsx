@@ -360,7 +360,53 @@ const CATEGORY_COLORS = [
   "#06b6d4", "#ec4899", "#f97316", "#6366f1", "#14b8a6",
 ];
 
-function CategoryBreakdownCard({ data }: { data: CategoryBreakdown[] }) {
+const CATEGORY_PERIODS = [
+  { key: "1d", label: "Yesterday" },
+  { key: "3m", label: "3 Months" },
+  { key: "6m", label: "6 Months" },
+  { key: "1y", label: "1 Year" },
+  { key: "all", label: "All Time" },
+] as const;
+
+type CategoryPeriod = typeof CATEGORY_PERIODS[number]["key"];
+
+function CategoryBreakdownCard({ data: initialData }: { data: CategoryBreakdown[] }) {
+  const [period, setPeriod] = useState<CategoryPeriod>("all");
+  const [data, setData] = useState<CategoryBreakdown[]>(initialData);
+  const [loading, setLoading] = useState(false);
+
+  // Keep in sync when parent re-fetches
+  useEffect(() => { setData(initialData); }, [initialData]);
+
+  // Only fetch from server for time-scoped filters; "all" uses initialData
+  useEffect(() => {
+    if (period === "all") {
+      setData(initialData);
+      return;
+    }
+    let cancelled = false;
+    async function fetchFiltered() {
+      setLoading(true);
+      try {
+        const res = await ordersApi.stats({ categoryPeriod: period }) as any;
+        if (!cancelled) {
+          setData(
+            (res.categoryBreakdown || []).map((c: any) => ({
+              category: c.category,
+              quantity: parseInt(c.quantity) || 0,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Category fetch error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchFiltered();
+    return () => { cancelled = true; };
+  }, [period, initialData]);
+
   const totalPcs = data.reduce((sum, c) => sum + c.quantity, 0);
 
   const chartData = useMemo(() =>
@@ -388,12 +434,35 @@ function CategoryBreakdownCard({ data }: { data: CategoryBreakdown[] }) {
               </p>
             </div>
           </div>
+
+          {/* Period filter */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+            {CATEGORY_PERIODS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className="px-2 sm:px-2.5 py-1 text-[10px] font-medium transition-colors"
+                style={{
+                  backgroundColor: period === p.key ? "#8b5cf6" : "transparent",
+                  color: period === p.key ? "#fff" : "var(--sf-text-muted)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {data.length === 0 ? (
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center py-8">
+            <Skeleton className="h-[200px] w-full rounded-xl" />
+          </div>
+        ) : data.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-8">
             <BarChart3 className="w-8 h-8 mb-2" style={{ color: "rgba(139,92,246,0.25)" }} />
-            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>No order data yet</p>
+            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>No order data for this period</p>
           </div>
         ) : (
           <div className="flex-1 flex flex-col">

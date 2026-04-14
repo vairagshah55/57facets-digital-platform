@@ -168,7 +168,10 @@ export const orders = {
       method: "POST",
       body: JSON.stringify({ items, note }),
     }),
-  stats: () => request("/orders/summary/stats"),
+  stats: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/orders/summary/stats${qs}`);
+  },
   checkProduct: (productId: string) => request(`/orders/check-product/${productId}`),
   activeByProducts: (ids: string[]) => request(`/orders/active-by-products?ids=${ids.join(",")}`),
   update: (id: string, data: { items: OrderUpdateItem[]; note?: string }) =>
