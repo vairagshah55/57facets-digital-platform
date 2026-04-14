@@ -192,6 +192,11 @@ export function ProductDetail() {
   // Is this product already in the current (not yet placed) cart?
   const alreadyInCart = cartItems.some((i) => i.productId === id);
 
+  // ── Scroll to top on mount ─────────────────────────
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   // ── Fetch product on mount ─────────────────────────
   useEffect(() => {
     if (!id) {
