@@ -221,7 +221,7 @@ export function AboutSection() {
             }}
           >
             {[
-              "For over three decades, 57 Facets has stood as a symbol of trust, legacy, and excellence in the world of fine diamond jewellery. Based in Mumbai, we proudly supply retailers across India and international markets, offering jewellery that blends modern design innovation with exceptional craftsmanship and integrity. We have our offices in Mumbai and St. Louis (USA).",
+              "For over three decades, 57 Facets has stood as a symbol of trust, legacy, and excellence in the world of fine diamond jewellery. Based in Mumbai, we proudly supply retailers across India and international markets, offering jewellery that blends modern design innovation with exceptional craftsmanship and integrity. We have our offices in Mumbai and USA.",
               "From timeless solitaires to contemporary statement pieces, every jewel is created to global export standards, with uncompromising finishing, transparency in pricing, and reliable logistics. Our long-standing relationships with reputed jewellers are built not just on diamonds, but on the values of honesty, consistency, and mutual respect.",
               "We carry forward a vision that balances heritage with innovation, ensuring that every client experiences not just jewellery, but a relationship built on transparency, values, and brilliance. At 57 Facets, we don't just deliver jewellery — we deliver trust, long-term partnerships, and brilliance that lasts generations.",
             ].map((text, i) => (
