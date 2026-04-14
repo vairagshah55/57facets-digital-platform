@@ -62,6 +62,37 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// ── GET /api/orders/active-by-products ────────────
+// Bulk check: returns active order (first) per productId for a list of ids
+// Query param: ?ids=uuid1,uuid2,uuid3
+// MUST be registered before /:id to avoid Express matching "active-by-products" as an id
+router.get("/active-by-products", async (req, res, next) => {
+  try {
+    const ids = (req.query.ids || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) return res.json({});
+
+    const { rows } = await query(
+      `SELECT DISTINCT ON (oi.product_id)
+              oi.product_id, o.order_number, o.status
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.retailer_id = $1
+         AND oi.product_id = ANY($2::uuid[])
+         AND o.status NOT IN ('delivered', 'cancelled')
+       ORDER BY oi.product_id, o.created_at DESC`,
+      [req.retailer.id, ids]
+    );
+
+    const result = {};
+    for (const row of rows) {
+      result[row.product_id] = { order_number: row.order_number, status: row.status };
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/orders/:id ────────────────────────────
 // Order detail with items + tracking
 router.get("/:id", async (req, res, next) => {
@@ -124,10 +155,13 @@ router.post("/", async (req, res, next) => {
     let total = 0;
     for (const item of items) {
       const { rows: products } = await client.query(
-        "SELECT id FROM products WHERE id = $1",
+        "SELECT id, availability FROM products WHERE id = $1",
         [item.productId]
       );
       if (products.length === 0) throw new AppError(`Product ${item.productId} not found`);
+      if (products[0].availability === "out-of-stock") {
+        throw new AppError(`Product ${item.productId} is currently unavailable`, 400);
+      }
       const unitPrice = parseFloat(item.unitPrice) || 0;
       const qty = parseInt(item.quantity) || 1;
       total += unitPrice * qty;
@@ -331,11 +365,14 @@ router.put("/:id", async (req, res, next) => {
       }
 
       const { rows: products } = await client.query(
-        `SELECT id, base_price, carat, metal_type, diamond_shape, diamond_color, diamond_clarity
+        `SELECT id, base_price, carat, metal_type, diamond_shape, diamond_color, diamond_clarity, availability
          FROM products WHERE id = $1 AND is_active = true`,
         [item.productId]
       );
       if (!products.length) throw new AppError("Product not found", 404);
+      if (products[0].availability === "out-of-stock") {
+        throw new AppError("Product is currently unavailable", 400);
+      }
 
       const p = products[0];
       const unitPrice =

@@ -84,10 +84,10 @@ const AVAILABILITY_OPTIONS = [
   { value: "out-of-stock",   label: "Out of Stock"   },
 ] as const;
 
-const AVAILABILITY_STYLE: Record<string, { bg: string; text: string }> = {
-  "in-stock":      { bg: "rgba(34,197,94,0.12)",   text: "#22c55e" },
-  "made-to-order": { bg: "rgba(245,158,11,0.12)",  text: "#f59e0b" },
-  "out-of-stock":  { bg: "rgba(239,68,68,0.12)",   text: "#ef4444" },
+const AVAILABILITY_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  "in-stock":      { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)" },
+  "made-to-order": { bg: "var(--sf-status-mto-bg)",      text: "var(--sf-status-mto-text)",      border: "var(--sf-status-mto-border)"      },
+  "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)"      },
 };
 
 function formatPrice(n: number) {
@@ -579,7 +579,7 @@ export function AdminProducts() {
                     const s = AVAILABILITY_STYLE[p.availability] ?? AVAILABILITY_STYLE["out-of-stock"];
                     const label = AVAILABILITY_OPTIONS.find(o => o.value === p.availability)?.label ?? p.availability;
                     return (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: s.bg, color: s.text }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: s.bg, color: s.text, border: `1px solid ${s.border}` }}>
                         {label}
                       </span>
                     );

@@ -170,6 +170,7 @@ export const orders = {
     }),
   stats: () => request("/orders/summary/stats"),
   checkProduct: (productId: string) => request(`/orders/check-product/${productId}`),
+  activeByProducts: (ids: string[]) => request(`/orders/active-by-products?ids=${ids.join(",")}`),
   update: (id: string, data: { items: OrderUpdateItem[]; note?: string }) =>
     request(`/orders/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 };

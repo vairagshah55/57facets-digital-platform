@@ -15,6 +15,7 @@ import {
   Heart,
   ShoppingCart,
   Check,
+  Lock,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -32,7 +33,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
-import { products as productsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 
 /* ═══════════════════════════════════════════════════════
@@ -98,6 +99,7 @@ export function ProductCatalog() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  const [activeOrders, setActiveOrders] = useState<Record<string, { order_number: string; status: string }>>({});
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -144,6 +146,14 @@ export function ProductCatalog() {
           if (!cancelled) {
             const mapped = ((data.products || []) as ApiProduct[]).map(mapProduct);
             setProducts(mapped); setTotalProducts(data.total ?? mapped.length); setTotalPages(data.totalPages ?? 1);
+            if (mapped.length > 0) {
+              try {
+                const orderMap = await ordersApi.activeByProducts(mapped.map((p) => String(p.id)));
+                if (!cancelled) setActiveOrders(orderMap ?? {});
+              } catch { /* ignore */ }
+            } else {
+              setActiveOrders({});
+            }
           }
         }
       } catch { if (!cancelled) { setProducts([]); setTotalProducts(0); setTotalPages(1); } }
@@ -378,7 +388,7 @@ export function ProductCatalog() {
                 style={{ opacity: loading ? 0.45 : 1, pointerEvents: loading ? "none" : "auto" }}
               >
                 {products.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} />
+                  <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} existingOrder={activeOrders[String(product.id)] ?? null} />
                 ))}
               </motion.div>
             )}
@@ -521,7 +531,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
    PRODUCT CARD
    ═══════════════════════════════════════════════════════ */
 
-function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: { product: Product; index: number; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void }) {
+function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, existingOrder }: { product: Product; index: number; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void; existingOrder: { order_number: string; status: string } | null }) {
   const navigate = useNavigate();
   const { addItem, items: cartItems } = useCart();
   const [images, setImages] = useState<string[]>([product.image]);
@@ -530,9 +540,11 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
   const [addedToCart, setAddedToCart] = useState(false);
   const alreadyInCart = cartItems.some((i) => i.productId === String(product.id));
 
+  const isLocked = product.availability === "out-of-stock";
+
   function handleAddToCart(e: React.MouseEvent) {
     e.stopPropagation();
-    if (alreadyInCart || addedToCart) return;
+    if (isLocked || alreadyInCart || addedToCart) return;
     addItem({
       productId: String(product.id),
       productName: product.name,
@@ -554,12 +566,12 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
     setTimeout(() => setAddedToCart(false), 2000);
   }
 
-  const availColors: Record<string, { bg: string; text: string; label: string }> = {
-    "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "rgba(245,158,11,0.15)", text: "#f59e0b", label: "Made to Order" },
-    "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
+  const availColors: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    "in-stock":      { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
+    "made-to-order": { bg: "var(--sf-status-mto-bg)",      text: "var(--sf-status-mto-text)",      border: "var(--sf-status-mto-border)",      label: "Made to Order" },
+    "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)",      label: "Out of Stock" },
   };
-  const avail = availColors[product.availability];
+  const avail = availColors[product.availability] ?? availColors["in-stock"];
 
   async function loadImages() {
     if (fetched) return;
@@ -634,6 +646,22 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
           </div>
         )}
 
+        {/* Bottom-left: availability badge */}
+        {!compact && (
+          <Badge
+            className="absolute bottom-2 left-2 text-[10px] font-semibold backdrop-blur-md"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.55)",
+              color: avail.text,
+              border: "none",
+              borderLeft: `3px solid ${avail.border}`,
+              boxShadow: "0 1px 6px rgba(0,0,0,0.4)",
+            }}
+          >
+            {avail.label}
+          </Badge>
+        )}
+
         {/* Top-right: Wishlist heart */}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleWishlist(); }}
@@ -665,19 +693,24 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist }: 
         <p className={`font-bold ${compact ? "text-xs" : "text-sm"} ${compact ? "" : "mb-2.5"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
         {!compact && (
           <button
-            onClick={handleAddToCart}
+            onClick={isLocked || !!existingOrder ? undefined : handleAddToCart}
             className="w-full h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
             style={{
-              backgroundColor: alreadyInCart || addedToCart ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
-              color: alreadyInCart || addedToCart ? "var(--sf-text-muted)" : "#fff",
-              border: alreadyInCart || addedToCart ? "1px solid var(--sf-divider)" : "none",
-              cursor: alreadyInCart || addedToCart ? "default" : "pointer",
+              backgroundColor: isLocked || existingOrder || alreadyInCart || addedToCart ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
+              color: isLocked || existingOrder || alreadyInCart || addedToCart ? "var(--sf-text-muted)" : "#fff",
+              border: isLocked || existingOrder || alreadyInCart || addedToCart ? "1px solid var(--sf-divider)" : "none",
+              cursor: isLocked || existingOrder || alreadyInCart || addedToCart ? "default" : "pointer",
               transition: "all 0.2s ease",
             }}
-            onMouseEnter={(e) => { if (!alreadyInCart && !addedToCart) e.currentTarget.style.opacity = "0.82"; }}
+            disabled={isLocked || !!existingOrder}
+            onMouseEnter={(e) => { if (!isLocked && !existingOrder && !alreadyInCart && !addedToCart) e.currentTarget.style.opacity = "0.82"; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
-            {alreadyInCart || addedToCart ? (
+            {isLocked ? (
+              <><Lock className="w-3.5 h-3.5" /> Unavailable</>
+            ) : existingOrder ? (
+              <><Check className="w-3.5 h-3.5" /> {existingOrder.status}</>
+            ) : alreadyInCart || addedToCart ? (
               <><Check className="w-3.5 h-3.5" /> In Cart</>
             ) : (
               <><ShoppingCart className="w-3.5 h-3.5" /> Add to Cart</>

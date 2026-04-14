@@ -77,6 +77,17 @@
   --sf-amber-subtle: rgba(245,158,11,0.1);
   --sf-amber-border: rgba(245,158,11,0.25);
   --sf-amber-bg: rgba(245,158,11,0.06);
+
+  /* Availability status tokens — dark mode */
+  --sf-status-in-stock-bg:     rgba(74,222,128,0.12);
+  --sf-status-in-stock-text:   #4ade80;
+  --sf-status-in-stock-border: rgba(74,222,128,0.30);
+  --sf-status-mto-bg:          rgba(251,146,60,0.12);
+  --sf-status-mto-text:        #fb923c;
+  --sf-status-mto-border:      rgba(251,146,60,0.30);
+  --sf-status-oos-bg:          rgba(248,113,113,0.12);
+  --sf-status-oos-text:        #f87171;
+  --sf-status-oos-border:      rgba(248,113,113,0.30);
 }
 
 /* ── Retailer Portal Light Theme ──────────────────────── */
@@ -118,6 +129,17 @@
   --sf-amber-subtle: rgba(180,83,9,0.1);
   --sf-amber-border: rgba(180,83,9,0.3);
   --sf-amber-bg: rgba(180,83,9,0.06);
+
+  /* Availability status tokens — light mode (darker for contrast on white) */
+  --sf-status-in-stock-bg:     rgba(22,163,74,0.10);
+  --sf-status-in-stock-text:   #15803d;
+  --sf-status-in-stock-border: rgba(22,163,74,0.35);
+  --sf-status-mto-bg:          rgba(234,88,12,0.10);
+  --sf-status-mto-text:        #c2410c;
+  --sf-status-mto-border:      rgba(234,88,12,0.35);
+  --sf-status-oos-bg:          rgba(220,38,38,0.10);
+  --sf-status-oos-text:        #b91c1c;
+  --sf-status-oos-border:      rgba(220,38,38,0.35);
 
   /* shadcn/ui core tokens — used by Tailwind classes & components */
   --background: #F5F7FA;

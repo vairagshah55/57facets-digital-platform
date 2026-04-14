@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  Lock,
   Info,
   Diamond,
   Gem,
@@ -276,7 +277,7 @@ export function ProductDetail() {
   }, [product, selectedCarat, quantity]);
 
   const handleAddToCart = useCallback(() => {
-    if (!product) return;
+    if (!product || product.availability === "out-of-stock") return;
     addItem({
       productId: product.id,
       productName: product.name,
@@ -1009,7 +1010,21 @@ export function ProductDetail() {
 
             {/* ── Action Buttons ───────────────────────── */}
             <div className="flex gap-3 mb-8">
-              {existingOrder ? (
+              {product.availability === "out-of-stock" ? (
+                /* Product is locked / out-of-stock */
+                <Button
+                  className="flex-1 h-12 text-base font-semibold gap-2"
+                  disabled
+                  style={{
+                    backgroundColor: "var(--sf-bg-surface-2)",
+                    color: "var(--sf-text-muted)",
+                    border: "1px solid var(--sf-divider)",
+                    cursor: "not-allowed",
+                  }}
+                >
+                  <Lock className="w-5 h-5" /> Currently Unavailable
+                </Button>
+              ) : existingOrder ? (
                 /* Active order exists → block re-ordering */
                 <Button
                   className="flex-1 h-12 text-base font-semibold gap-2"
@@ -1554,16 +1569,16 @@ export function ProductDetail() {
    ═══════════════════════════════════════════════════════ */
 
 function AvailabilityBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "Made to Order" },
-    "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
+  const map: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    "in-stock":      { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
+    "made-to-order": { bg: "var(--sf-status-mto-bg)",      text: "var(--sf-status-mto-text)",      border: "var(--sf-status-mto-border)",      label: "Made to Order" },
+    "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)",      label: "Out of Stock" },
   };
   const s = map[status] || map["in-stock"];
   return (
     <Badge
-      className="text-xs"
-      style={{ backgroundColor: s.bg, color: s.text, border: "none" }}
+      className="text-xs font-medium"
+      style={{ backgroundColor: s.bg, color: s.text, border: `1px solid ${s.border}` }}
     >
       {s.label}
     </Badge>

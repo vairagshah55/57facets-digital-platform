@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { toast } from "sonner";
+import { useCart } from "../../context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
@@ -10,6 +12,7 @@ import {
   ShoppingCart,
   X,
   Check,
+  Lock,
   MoreVertical,
   ChevronRight,
   Plus,
@@ -41,7 +44,7 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 
-import { wishlist as wishlistApi, imageUrl } from "../../lib/api";
+import { wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    HELPERS
@@ -118,9 +121,11 @@ function formatDate(dateStr: string): string {
 
 export function RetailerWishlist() {
   const navigate = useNavigate();
+  const { addItem, items: cartItems } = useCart();
 
   const [products, setProducts] = useState<WishlistProduct[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [activeOrders, setActiveOrders] = useState<Record<string, { order_number: string; status: string }>>({});
   const [loading, setLoading] = useState(true);
   const [activeFolder, setActiveFolder] = useState<string | null>(null); // null = "All Saved"
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -134,7 +139,7 @@ export function RetailerWishlist() {
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
 
-  // Fetch wishlist items and folders on mount
+  // Fetch wishlist items, folders, and active orders on mount
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
@@ -144,9 +149,18 @@ export function RetailerWishlist() {
           wishlistApi.list(),
           wishlistApi.folders(),
         ]);
-        if (!cancelled) {
-          setProducts(Array.isArray(itemsData) ? itemsData : itemsData.items ?? []);
-          setFolders(mapFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []));
+        if (cancelled) return;
+
+        const items: WishlistProduct[] = Array.isArray(itemsData) ? itemsData : itemsData.items ?? [];
+        setProducts(items);
+        setFolders(mapFolders(Array.isArray(foldersData) ? foldersData : foldersData.folders ?? []));
+
+        // Bulk-check active orders for all wishlist products
+        if (items.length > 0) {
+          try {
+            const orderMap = await ordersApi.activeByProducts(items.map((p) => p.id));
+            if (!cancelled) setActiveOrders(orderMap ?? {});
+          } catch { /* ignore — worst case shows Add to Cart */ }
         }
       } catch {
         // silently handle — empty state will show
@@ -293,10 +307,40 @@ export function RetailerWishlist() {
   );
 
   const orderSelected = useCallback(() => {
-    alert(`Order request submitted for ${selectedIds.size} item(s)!`);
+    const selected = products.filter((p) => selectedIds.has(p.id));
+    const locked = selected.filter((p) => p.availability === "out-of-stock");
+    const toAdd = selected.filter((p) => p.availability !== "out-of-stock" && !cartItems.some((c) => c.productId === p.id));
+    const alreadyIn = selected.length - locked.length - toAdd.length;
+
+    toAdd.forEach((p) => addItem({
+      productId: p.id,
+      productName: p.name,
+      productSku: p.sku ?? "",
+      productImage: p.image ?? "",
+      quantity: 1,
+      unitPrice: p.base_price,
+      carat: p.carat ?? 0,
+      metalType: null, goldColour: null, diamondShape: null,
+      diamondShade: null, diamondQuality: null,
+      colorStoneName: null, colorStoneQuality: null, note: null,
+    }));
+
+    if (toAdd.length > 0) {
+      const parts = [];
+      if (alreadyIn > 0) parts.push(`${alreadyIn} already in cart`);
+      if (locked.length > 0) parts.push(`${locked.length} unavailable`);
+      toast.success(`${toAdd.length} item${toAdd.length > 1 ? "s" : ""} added to cart`, {
+        description: parts.length > 0 ? parts.join(" · ") : "Your items are ready for checkout.",
+      });
+    } else if (locked.length === selected.length) {
+      toast.error("Cannot add to cart", { description: "All selected items are unavailable." });
+    } else {
+      toast("Already in cart", { description: "All selected items are already in your cart." });
+    }
+
     setSelectionMode(false);
     setSelectedIds(new Set());
-  }, [selectedIds]);
+  }, [selectedIds, products, cartItems, addItem]);
 
   if (loading) {
     return (
@@ -539,18 +583,25 @@ export function RetailerWishlist() {
                         <FolderPlus className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Move to folder</span>
                       </Button>
-                      <Button
-                        className="h-8 text-xs gap-1"
-                        style={{
-                          backgroundColor: selectedIds.size > 0 ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
-                          color: selectedIds.size > 0 ? "var(--sf-bg-base)" : "var(--sf-text-muted)",
-                        }}
-                        disabled={selectedIds.size === 0}
-                        onClick={orderSelected}
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        Order{selectedIds.size > 0 && ` (${selectedIds.size})`}
-                      </Button>
+                      {(() => {
+                        const selected = products.filter((p) => selectedIds.has(p.id));
+                        const allLocked = selected.length > 0 && selected.every((p) => p.availability === "out-of-stock");
+                        const isDisabled = selectedIds.size === 0 || allLocked;
+                        return (
+                          <Button
+                            className="h-8 text-xs gap-1"
+                            style={{
+                              backgroundColor: isDisabled ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
+                              color: isDisabled ? "var(--sf-text-muted)" : "var(--sf-bg-base)",
+                            }}
+                            disabled={isDisabled}
+                            onClick={orderSelected}
+                          >
+                            {allLocked ? <Lock className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                            {allLocked ? "Unavailable" : `Add to Cart${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+                          </Button>
+                        );
+                      })()}
                       <Button
                         variant="ghost"
                         className="h-8 text-xs gap-1"
@@ -601,9 +652,8 @@ export function RetailerWishlist() {
                     onToggleSelect={() => toggleSelect(product.id)}
                     onRemove={() => removeProduct(product.id)}
                     onView={() => navigate(`/retailer/product/${product.id}`)}
-                    onOrder={() => {
-                      alert(`Order request submitted for: ${product.name}`);
-                    }}
+                    existingOrder={activeOrders[product.id] ?? null}
+                    onOrder={() => {}}
                   />
                 ))}
               </div>
@@ -763,6 +813,7 @@ function WishlistCard({
   onToggleSelect,
   onRemove,
   onView,
+  existingOrder,
   onOrder,
 }: {
   product: WishlistProduct;
@@ -772,12 +823,37 @@ function WishlistCard({
   onToggleSelect: () => void;
   onRemove: () => void;
   onView: () => void;
+  existingOrder: { order_number: string; status: string } | null;
   onOrder: () => void;
 }) {
-  const availColors: Record<string, { bg: string; text: string; label: string }> = {
-    "in-stock": { bg: "rgba(34,197,94,0.15)", text: "#22c55e", label: "In Stock" },
-    "made-to-order": { bg: "rgba(48,184,191,0.15)", text: "var(--sf-teal)", label: "Made to Order" },
-    "out-of-stock": { bg: "rgba(194,23,59,0.15)", text: "var(--destructive)", label: "Out of Stock" },
+  const { addItem, items: cartItems } = useCart();
+  const alreadyInCart = cartItems.some((c) => c.productId === product.id);
+
+  const isLocked = product.availability === "out-of-stock";
+
+  function handleAddToCart(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (alreadyInCart || isLocked) return;
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      productSku: product.sku ?? "",
+      productImage: product.image ?? "",
+      quantity: 1,
+      unitPrice: product.base_price,
+      carat: product.carat ?? 0,
+      metalType: null, goldColour: null, diamondShape: null,
+      diamondShade: null, diamondQuality: null,
+      colorStoneName: null, colorStoneQuality: null, note: null,
+    });
+    toast.success("Added to cart", { description: product.name });
+    onOrder();
+  }
+
+  const availColors: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    "in-stock":      { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
+    "made-to-order": { bg: "var(--sf-status-mto-bg)",      text: "var(--sf-status-mto-text)",      border: "var(--sf-status-mto-border)",      label: "Made to Order" },
+    "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)",      label: "Out of Stock" },
   };
   const avail = availColors[product.availability] || availColors["in-stock"];
   const imgSrc = product.image ? imageUrl(product.image) : PLACEHOLDER_IMAGE;
@@ -836,8 +912,14 @@ function WishlistCard({
         )}
         {/* Availability badge */}
         <Badge
-          className="absolute bottom-2 left-2 text-[10px] backdrop-blur-md"
-          style={{ backgroundColor: avail.bg, color: avail.text, border: "none" }}
+          className="absolute bottom-2 left-2 text-[10px] font-semibold backdrop-blur-md"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.55)",
+            color: avail.text,
+            border: "none",
+            borderLeft: `3px solid ${avail.border}`,
+            boxShadow: "0 1px 6px rgba(0,0,0,0.4)",
+          }}
         >
           {avail.label}
         </Badge>
@@ -864,11 +946,24 @@ function WishlistCard({
               variant="ghost"
               size="sm"
               className="h-7 text-[10px] gap-1 px-2"
-              style={{ color: "var(--sf-teal)" }}
-              onClick={(e) => { e.stopPropagation(); onOrder(); }}
+              style={{
+                color: isLocked || existingOrder || alreadyInCart
+                  ? "var(--sf-text-muted)"
+                  : "var(--sf-teal)",
+                cursor: isLocked || existingOrder || alreadyInCart ? "default" : "pointer",
+              }}
+              onClick={isLocked || existingOrder ? undefined : handleAddToCart}
+              disabled={isLocked || !!existingOrder || alreadyInCart}
             >
-              <ShoppingCart className="w-3 h-3" />
-              Order
+              {isLocked ? (
+                <><Lock className="w-3 h-3" /> Unavailable</>
+              ) : existingOrder ? (
+                <><Check className="w-3 h-3" /> {existingOrder.status}</>
+              ) : alreadyInCart ? (
+                <><Check className="w-3 h-3" /> In Cart</>
+              ) : (
+                <><ShoppingCart className="w-3 h-3" /> Add to Cart</>
+              )}
             </Button>
           )}
         </div>
