@@ -1,58 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
+import {
+  BarChart,
+  Bar,
+  Cell,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import {
   Clock,
   TrendingUp,
   ShoppingCart,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  Megaphone,
-  Eye,
-  ImageOff,
-  Filter,
-  Loader2,
   Package,
-
   Layers,
   CreditCard,
   Truck,
   CheckCircle2,
   XCircle,
   ArrowRight,
+  IndianRupee,
+  ClipboardList,
+  BarChart3,
+  LineChart,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
-import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "./ui/select";
-import { products as productsApi, orders as ordersApi, imageUrl } from "../../lib/api";
+import { orders as ordersApi } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════ */
 
-type Category = { name: string; image: string | null };
-type Product = { id: string | number; name: string; sku: string; price: string; category: string; image: string | null };
-type Announcement = { id: number; title: string; date: string; type: "new" | "offer" | "info" };
-type OrderSummary = { totalOrders: number; pendingOrders: number; completedOrders: number; totalSpent: string };
-type LastOrder = { id: string; date: string; items: number; total: string; status: string };
+type DashboardSummary = {
+  total_orders: number;
+  pending: number;
+  confirmed: number;
+  processing: number;
+  shipped: number;
+  delivered: number;
+  cancelled: number;
+  total_value: number;
+};
 
-const ANNOUNCEMENTS: Announcement[] = [
-  { id: 1, title: "New Summer Collection Launching Soon", date: "Mar 28, 2026", type: "new" },
-  { id: 2, title: "Special discount on bulk orders — 15% off", date: "Mar 25, 2026", type: "offer" },
-  { id: 3, title: "Showroom visit slots now open for April", date: "Mar 22, 2026", type: "info" },
-];
+type CategoryBreakdown = { category: string; quantity: number };
+type MonthlyTrend = { month: string; orders: number; value: number; pcs: number };
+type RecentOrder = { id: string; number: string; status: string; total: string; date: string; items: number };
 
 /* ═══════════════════════════════════════════════════════
    HELPERS
@@ -65,6 +67,12 @@ function formatCurrency(amount: number): string {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[parseInt(m) - 1]} ${y.slice(2)}`;
 }
 
 const fadeUp = {
@@ -84,117 +92,50 @@ export function RetailerDashboard() {
   const isFirstTime = retailer?.firstLogin ?? false;
   const retailerName = retailer?.companyName || retailer?.name || "Retailer";
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
-  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
-  const [, setLastOrder] = useState<LastOrder | null>(null);
-  const [recentOrders, setRecentOrders] = useState<{ id: string; number: string; status: string; total: string; date: string; items: number }[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
-  const [totalCategoryProducts, setTotalCategoryProducts] = useState(0);
-  const [categoryPage, setCategoryPage] = useState(1);
-  const [loadingCategoryProducts, setLoadingCategoryProducts] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const CATEGORY_PAGE_SIZE = 8;
-
-  /* Reset page when category changes */
-  useEffect(() => {
-    setCategoryPage(1);
-    setCategoryProducts([]);
-  }, [selectedCategory]);
-
-  /* Fetch category products */
-  useEffect(() => {
-    if (categories.length === 0) return;
-    let cancelled = false;
-    async function fetchCategoryProducts() {
-      const isFirstPage = categoryPage === 1;
-      if (isFirstPage) setLoadingCategoryProducts(true);
-      else setLoadingMore(true);
-      try {
-        const params: Record<string, string> = {
-          limit: String(CATEGORY_PAGE_SIZE),
-          page: String(categoryPage),
-        };
-        if (selectedCategory !== "All") params.category = selectedCategory;
-        const data = await productsApi.list(params);
-        if (cancelled) return;
-        const mapped = ((data as any).products || []).map((p: any) => ({
-          id: p.id || p._id,
-          name: p.name,
-          sku: p.sku || "",
-          price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
-          category: p.category || "",
-          image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
-        }));
-        setTotalCategoryProducts((data as any).total ?? mapped.length);
-        if (isFirstPage) setCategoryProducts(mapped);
-        else setCategoryProducts((prev) => [...prev, ...mapped]);
-      } catch (err) {
-        console.error("Category products fetch error:", err);
-      } finally {
-        if (!cancelled) { setLoadingCategoryProducts(false); setLoadingMore(false); }
-      }
-    }
-    fetchCategoryProducts();
-    return () => { cancelled = true; };
-  }, [selectedCategory, categoryPage, categories]);
-
-  /* Fetch dashboard data */
   useEffect(() => {
     let cancelled = false;
     async function fetchDashboard() {
       setLoadingData(true);
       try {
-        const [categoriesRes, arrivalsRes, viewedRes, statsRes, ordersRes] = await Promise.allSettled([
-          productsApi.categories(),
-          productsApi.newArrivals(),
-          productsApi.recentlyViewed(),
+        const [statsRes, ordersRes] = await Promise.allSettled([
           ordersApi.stats(),
           ordersApi.list({ limit: "5", page: "1" }),
         ]);
         if (cancelled) return;
 
-        if (categoriesRes.status === "fulfilled")
-          setCategories((categoriesRes.value as any[]).map((c: any) => ({ name: c.name, image: c.image_url ? imageUrl(c.image_url) : null })));
-
-        if (arrivalsRes.status === "fulfilled")
-          setNewArrivals((arrivalsRes.value as any[]).map((p: any) => ({
-            id: p.id || p._id, name: p.name, sku: p.sku || "",
-            price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
-            category: p.category || "",
-            image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
-          })));
-
-        if (viewedRes.status === "fulfilled")
-          setRecentlyViewed((viewedRes.value as any[]).map((p: any) => ({
-            id: p.id || p._id, name: p.name, sku: p.sku || "",
-            price: typeof p.price === "number" ? formatCurrency(p.price) : p.price,
-            category: p.category || "",
-            image: p.image ? imageUrl(p.image) : (p.images?.[0] ? imageUrl(p.images[0]) : null),
-          })));
-
         if (statsRes.status === "fulfilled") {
           const stats = statsRes.value as any;
           const s = stats.summary;
-          setOrderSummary({
-            totalOrders: s.total_orders ?? 0,
-            pendingOrders: s.pending ?? 0,
-            completedOrders: s.completed ?? 0,
-            totalSpent: typeof s.total_spent === "number" ? formatCurrency(s.total_spent) : s.total_spent ?? "₹0",
+          setSummary({
+            total_orders: parseInt(s.total_orders) || 0,
+            pending: parseInt(s.pending) || 0,
+            confirmed: parseInt(s.confirmed) || 0,
+            processing: parseInt(s.processing) || 0,
+            shipped: parseInt(s.shipped) || 0,
+            delivered: parseInt(s.delivered) || 0,
+            cancelled: parseInt(s.cancelled) || 0,
+            total_value: parseFloat(s.total_value) || 0,
           });
-          if (stats.lastOrder) {
-            const lo = stats.lastOrder;
-            setLastOrder({
-              id: lo.order_number, date: formatDate(lo.created_at),
-              items: lo.item_count ?? 0,
-              total: typeof lo.total === "number" ? formatCurrency(lo.total) : lo.total,
-              status: lo.status,
-            });
-          }
+          setCategoryBreakdown(
+            (stats.categoryBreakdown || []).map((c: any) => ({
+              category: c.category,
+              quantity: parseInt(c.quantity) || 0,
+            }))
+          );
+          setMonthlyTrends(
+            (stats.monthlyTrends || []).map((t: any) => ({
+              month: t.month,
+              orders: parseInt(t.orders) || 0,
+              value: parseFloat(t.value) || 0,
+              pcs: parseInt(t.pcs) || 0,
+            }))
+          );
         }
 
         if (ordersRes.status === "fulfilled") {
@@ -211,8 +152,11 @@ export function RetailerDashboard() {
             }))
           );
         }
-      } catch (err) { console.error("Dashboard fetch error:", err); }
-      finally { if (!cancelled) setLoadingData(false); }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        if (!cancelled) setLoadingData(false);
+      }
     }
     fetchDashboard();
     return () => { cancelled = true; };
@@ -223,10 +167,14 @@ export function RetailerDashboard() {
     return (
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Skeleton className="h-20 w-full rounded-2xl mb-6" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
-        <Skeleton className="h-96 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+        <Skeleton className="h-80 rounded-2xl" />
       </main>
     );
   }
@@ -243,7 +191,6 @@ export function RetailerDashboard() {
             border: "1px solid var(--sf-divider)",
           }}
         >
-          {/* Decorative accent */}
           <div
             className="absolute top-0 right-0 w-64 h-64 rounded-full"
             style={{
@@ -263,7 +210,7 @@ export function RetailerDashboard() {
               <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>
                 {isFirstTime
                   ? "Explore our collection and place your first order"
-                  : "Here's your business overview for today"}
+                  : "Here's your business overview"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -291,97 +238,74 @@ export function RetailerDashboard() {
         </div>
       </motion.div>
 
-      {!isFirstTime && (
+      {!isFirstTime && summary && (
         <>
-          {/* ═══ Quick Stats ═══ */}
-          {orderSummary && (
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }} className="mb-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <QuickStatCard
-                  icon={<ShoppingCart />}
-                  label="Total Orders"
-                  value={String(orderSummary.totalOrders)}
-                  accent="var(--sf-teal)"
-                  index={0}
-                />
-                <QuickStatCard
-                  icon={<Clock />}
-                  label="Pending"
-                  value={String(orderSummary.pendingOrders)}
-                  accent="#f59e0b"
-                  index={1}
-                />
-                <QuickStatCard
-                  icon={<TrendingUp />}
-                  label="Completed"
-                  value={String(orderSummary.completedOrders)}
-                  accent="#22c55e"
-                  index={2}
-                />
-                <QuickStatCard
-                  icon={<CreditCard />}
-                  label="Total Spent"
-                  value={orderSummary.totalSpent}
-                  accent="var(--sf-blue-secondary)"
-                  index={3}
-                />
-              </div>
-            </motion.div>
-          )}
+          {/* ═══ Section 1: Orders Summary Cards ═══ */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.06 }} className="mb-8">
+            <SectionHeader icon={<ClipboardList />} title="Orders Overview" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <OrderStatCard
+                icon={<ShoppingCart />}
+                label="Total Orders"
+                value={String(summary.total_orders)}
+                accent="var(--sf-teal)"
+                index={0}
+              />
+              <OrderStatCard
+                icon={<Package />}
+                label="Order Placed"
+                value={String(summary.pending + summary.confirmed)}
+                accent="#8b5cf6"
+                index={1}
+              />
+              <OrderStatCard
+                icon={<Clock />}
+                label="Pending"
+                value={String(summary.processing)}
+                accent="#f59e0b"
+                index={2}
+              />
+              <OrderStatCard
+                icon={<Truck />}
+                label="Dispatched"
+                value={String(summary.shipped)}
+                accent="#06b6d4"
+                index={3}
+              />
+              <OrderStatCard
+                icon={<CheckCircle2 />}
+                label="Delivered"
+                value={String(summary.delivered)}
+                accent="#22c55e"
+                index={4}
+              />
+              <OrderStatCard
+                icon={<IndianRupee />}
+                label="Total Value"
+                value={formatCurrency(summary.total_value)}
+                accent="var(--sf-blue-secondary)"
+                index={5}
+              />
+            </div>
+          </motion.div>
 
-          {/* ═══ Overview + Active Orders + Announcements ═══ */}
+          {/* ═══ Section 2 & 3: Category Breakdown + Active Orders ═══ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
+              <CategoryBreakdownCard data={categoryBreakdown} />
+            </motion.div>
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
               <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} />
             </motion.div>
           </div>
+
+          {/* ═══ Section 4: Insights ═══ */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }}>
+            <InsightsCard data={monthlyTrends} />
+          </motion.div>
         </>
       )}
 
-      {/* ═══ Browse by Category ═══ */}
-      <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: isFirstTime ? 0.08 : 0.2 }} className="mb-8">
-        <CategoryBrowseSection
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          products={categoryProducts}
-          total={totalCategoryProducts}
-          loading={loadingCategoryProducts}
-          loadingMore={loadingMore}
-          onLoadMore={() => setCategoryPage((p) => p + 1)}
-          onViewAll={() => navigate(
-            selectedCategory === "All" ? "/retailer/catalog" : `/retailer/catalog?category=${encodeURIComponent(selectedCategory)}`
-          )}
-        />
-      </motion.div>
-
-      {/* ═══ New Arrivals ═══ */}
-      {newArrivals.length > 0 && (
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: isFirstTime ? 0.16 : 0.28 }} className="mb-8">
-          <SectionBar
-            icon={<Sparkles />}
-            title="New Arrivals"
-            subtitle={`${newArrivals.length} new pieces`}
-            actionLabel="View All"
-            onAction={() => navigate("/retailer/catalog?tab=new")}
-          />
-          <ProductGrid products={newArrivals} />
-        </motion.div>
-      )}
-
-      {/* ═══ Recently Viewed ═══ */}
-      {!isFirstTime && recentlyViewed.length > 0 && (
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.36 }} className="mb-8">
-          <SectionBar
-            icon={<Eye />}
-            title="Recently Viewed"
-            subtitle={`${recentlyViewed.length} items`}
-            actionLabel="View All"
-            onAction={() => navigate("/retailer/catalog?tab=viewed")}
-          />
-          <ProductGrid products={recentlyViewed} />
-        </motion.div>
-      )}
     </main>
   );
 }
@@ -390,8 +314,20 @@ export function RetailerDashboard() {
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════ */
 
-/* ── Quick Stat Card ──────────────────────────────────── */
-function QuickStatCard({ icon, label, value, accent, index }: {
+/* ── Section Header ───────────────────────────────── */
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="[&>svg]:w-4 [&>svg]:h-4" style={{ color: "var(--sf-teal)" }}>{icon}</span>
+      <h2 className="text-sm font-semibold tracking-wide uppercase" style={{ color: "var(--sf-text-muted)" }}>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+/* ── Order Stat Card ──────────────────────────────── */
+function OrderStatCard({ icon, label, value, accent, index }: {
   icon: React.ReactNode; label: string; value: string; accent: string; index: number;
 }) {
   return (
@@ -400,17 +336,17 @@ function QuickStatCard({ icon, label, value, accent, index }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 + index * 0.04, duration: 0.35 }}
     >
-      <Card className="border-[var(--sf-divider)] overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-        <CardContent className="p-4 flex items-center gap-3.5">
+      <Card className="border-[var(--sf-divider)] overflow-hidden h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
+        <CardContent className="p-4 flex flex-col items-center text-center gap-2.5">
           <div
-            className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 [&>svg]:w-5 [&>svg]:h-5"
+            className="flex items-center justify-center w-10 h-10 rounded-xl [&>svg]:w-5 [&>svg]:h-5"
             style={{ backgroundColor: `${accent}18`, color: accent }}
           >
             {icon}
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium mb-0.5" style={{ color: "var(--sf-text-muted)" }}>{label}</p>
-            <p className="text-lg sm:text-xl font-bold leading-none truncate" style={{ color: "var(--sf-text-primary)" }}>{value}</p>
+          <div>
+            <p className="text-lg sm:text-xl font-bold leading-none mb-1" style={{ color: "var(--sf-text-primary)" }}>{value}</p>
+            <p className="text-[11px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{label}</p>
           </div>
         </CardContent>
       </Card>
@@ -418,97 +354,115 @@ function QuickStatCard({ icon, label, value, accent, index }: {
   );
 }
 
-/* ── Section Bar ──────────────────────────────────────── */
-function SectionBar({ icon, title, subtitle, actionLabel, onAction }: {
-  icon: React.ReactNode; title: string; subtitle?: string; actionLabel?: string; onAction?: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2.5">
-        <div
-          className="flex items-center justify-center w-8 h-8 rounded-lg [&>svg]:w-4 [&>svg]:h-4"
-          style={{ backgroundColor: "var(--sf-teal-glass)", color: "var(--sf-teal)" }}
-        >
-          {icon}
-        </div>
-        <div>
-          <h2 className="text-base font-semibold leading-tight" style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}>
-            {title}
-          </h2>
-          {subtitle && <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{subtitle}</p>}
-        </div>
-      </div>
-      {actionLabel && (
-        <Button variant="ghost" className="text-xs gap-1 px-2 h-8" style={{ color: "var(--sf-teal)" }} onClick={onAction}>
-          {actionLabel}
-          <ChevronRight className="w-3.5 h-3.5" />
-        </Button>
-      )}
-    </div>
+/* ── Category Breakdown Card ──────────────────────── */
+const CATEGORY_COLORS = [
+  "var(--sf-teal)", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444",
+  "#06b6d4", "#ec4899", "#f97316", "#6366f1", "#14b8a6",
+];
+
+function CategoryBreakdownCard({ data }: { data: CategoryBreakdown[] }) {
+  const totalPcs = data.reduce((sum, c) => sum + c.quantity, 0);
+
+  const chartData = useMemo(() =>
+    data.map((c, i) => ({
+      ...c,
+      fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+    })),
+    [data]
   );
-}
-
-
-/* ── Announcements Card ───────────────────────────────── */
-function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
-  const typeConfig: Record<string, { bg: string; text: string; label: string }> = {
-    new: { bg: "var(--sf-teal-glass)", text: "var(--sf-teal)", label: "New" },
-    offer: { bg: "rgba(34,197,94,0.12)", text: "#22c55e", label: "Offer" },
-    info: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Info" },
-  };
 
   return (
     <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
-            <Megaphone className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+      <CardContent className="p-5 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(139,92,246,0.12)" }}>
+              <BarChart3 className="w-4 h-4" style={{ color: "#8b5cf6" }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>
+                Category-wise Buying
+              </h3>
+              <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                {totalPcs} total pcs ordered
+              </p>
+            </div>
           </div>
-          <h3 className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Announcements</h3>
         </div>
-        <ScrollArea className="max-h-[180px]">
-          <div className="space-y-0">
-            {announcements.map((a, i) => {
-              const cfg = typeConfig[a.type] || typeConfig.info;
-              return (
-                <div key={a.id}>
-                  <div className="flex items-start gap-3 py-2.5">
-                    <div
-                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: cfg.bg }}
-                    >
-                      <Megaphone className="w-3.5 h-3.5" style={{ color: cfg.text }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate leading-snug" style={{ color: "var(--sf-text-primary)" }}>{a.title}</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{a.date}</p>
-                    </div>
-                    <Badge className="text-[10px] capitalize shrink-0 mt-0.5" style={{ backgroundColor: cfg.bg, color: cfg.text, border: "none" }}>
-                      {cfg.label}
-                    </Badge>
-                  </div>
-                  {i < announcements.length - 1 && <Separator style={{ backgroundColor: "var(--sf-divider)" }} />}
-                </div>
-              );
-            })}
+
+        {data.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-8">
+            <BarChart3 className="w-8 h-8 mb-2" style={{ color: "rgba(139,92,246,0.25)" }} />
+            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>No order data yet</p>
           </div>
-        </ScrollArea>
+        ) : (
+          <div className="flex-1 flex flex-col">
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--sf-divider)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    tick={{ fontSize: 11, fill: "var(--sf-text-primary)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: "var(--sf-bg-surface-2)",
+                      border: "1px solid var(--sf-divider)",
+                      borderRadius: 10,
+                      fontSize: 12,
+                      color: "var(--sf-text-primary)",
+                    }}
+                    labelStyle={{ color: "var(--sf-text-primary)", fontWeight: 600 }}
+                    itemStyle={{ color: "var(--sf-text-primary)" }}
+                    formatter={(val: number) => [`${val} pcs`, "Quantity"]}
+                  />
+                  <Bar dataKey="quantity" radius={[0, 6, 6, 0]} barSize={20}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend pills */}
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+              {chartData.map((c, i) => (
+                <span
+                  key={c.category}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}18`, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                  {c.category}: {c.quantity} pcs
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-/* ── Today's Order Card ───────────────────────────────── */
+/* ── Active Orders Card ──────────────────────────── */
 const ORDER_STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   pending:    { label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.12)", icon: <Clock className="w-3 h-3" /> },
+  confirmed:  { label: "Confirmed",  color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", icon: <CheckCircle2 className="w-3 h-3" /> },
   processing: { label: "Processing", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", icon: <Package className="w-3 h-3" /> },
-  shipped:    { label: "Shipped",    color: "#06b6d4", bg: "rgba(6,182,212,0.12)",  icon: <Truck className="w-3 h-3" /> },
+  shipped:    { label: "Dispatched", color: "#06b6d4", bg: "rgba(6,182,212,0.12)",  icon: <Truck className="w-3 h-3" /> },
   delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.12)",  icon: <CheckCircle2 className="w-3 h-3" /> },
   cancelled:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3 h-3" /> },
 };
 
 function ActiveOrdersCard({ orders, onViewAll }: {
-  orders: { id: string; number: string; status: string; total: string; date: string; items: number }[];
+  orders: RecentOrder[];
   onViewAll: () => void;
 }) {
   const activeOrders = orders.filter((o) => !["delivered", "cancelled"].includes(o.status));
@@ -517,8 +471,8 @@ function ActiveOrdersCard({ orders, onViewAll }: {
       <CardContent className="p-5 flex flex-col h-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(139,92,246,0.12)" }}>
-              <Package className="w-4 h-4" style={{ color: "#8b5cf6" }} />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(6,182,212,0.12)" }}>
+              <Layers className="w-4 h-4" style={{ color: "#06b6d4" }} />
             </div>
             <div>
               <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Active Orders</h3>
@@ -538,7 +492,7 @@ function ActiveOrdersCard({ orders, onViewAll }: {
           </div>
         ) : (
           <div className="space-y-2 flex-1">
-            {activeOrders.slice(0, 4).map((o) => {
+            {activeOrders.slice(0, 5).map((o) => {
               const cfg = ORDER_STATUS_CFG[o.status] || ORDER_STATUS_CFG.pending;
               return (
                 <div key={o.id} className="flex items-center gap-3 p-2.5 rounded-xl"
@@ -569,283 +523,140 @@ function ActiveOrdersCard({ orders, onViewAll }: {
   );
 }
 
-function TodaysOrderCard({ summary }: {
-  summary: OrderSummary | null;
-}) {
-  const stats = [
-    { label: "Orders", value: String(summary?.totalOrders ?? 0), icon: <ShoppingCart />, accent: "var(--sf-teal)" },
-    { label: "Pending", value: String(summary?.pendingOrders ?? 0), icon: <Clock />, accent: "#f59e0b" },
-    { label: "Completed", value: String(summary?.completedOrders ?? 0), icon: <TrendingUp />, accent: "#22c55e" },
-    { label: "Total Spent", value: summary?.totalSpent ?? "₹0", icon: <CreditCard />, accent: "var(--sf-blue-secondary)" },
-  ];
+/* ── Insights Card ────────────────────────────────── */
+function InsightsCard({ data }: { data: MonthlyTrend[] }) {
+  const [metric, setMetric] = useState<"pcs" | "value" | "orders">("pcs");
 
-  return (
-    <Card className="border-[var(--sf-divider)] h-full" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
-            <Layers className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Today's Overview</h3>
-            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Order summary</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl p-3"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)" }}
-            >
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="[&>svg]:w-3.5 [&>svg]:h-3.5" style={{ color: s.accent }}>{s.icon}</span>
-                <span className="text-[11px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{s.label}</span>
-              </div>
-              <p className="text-lg font-bold leading-none" style={{ color: "var(--sf-text-primary)" }}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+  const chartData = useMemo(() =>
+    data.map((d) => ({
+      ...d,
+      label: formatMonthLabel(d.month),
+    })),
+    [data]
   );
-}
 
-/* ── Category Browse Section ──────────────────────────── */
-function CategoryBrowseSection({
-  categories, selectedCategory, onCategoryChange, products, total, loading, loadingMore, onLoadMore, onViewAll,
-}: {
-  categories: Category[]; selectedCategory: string; onCategoryChange: (val: string) => void;
-  products: Product[]; total: number; loading: boolean; loadingMore: boolean; onLoadMore: () => void; onViewAll: () => void;
-}) {
-  const hasMore = products.length < total;
+  const metricConfig = {
+    pcs:    { label: "Pieces", color: "#30B8BF", formatter: (v: number) => `${v} pcs`, dotLabel: (v: number) => `${v}` },
+    value:  { label: "Value (₹)", color: "#8b5cf6", formatter: (v: number) => formatCurrency(v), dotLabel: (v: number) => `₹${(v / 1000).toFixed(0)}k` },
+    orders: { label: "Orders", color: "#f59e0b", formatter: (v: number) => `${v} orders`, dotLabel: (v: number) => `${v}` },
+  };
+
+  const cfg = metricConfig[metric];
 
   return (
-    <Card className="border-[var(--sf-divider)] overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
-            <Filter className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold leading-tight" style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}>
-              Browse by Category
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-              {selectedCategory === "All" ? "All products" : selectedCategory}
-              {!loading && ` · Showing ${products.length} of ${total}`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={selectedCategory} onValueChange={onCategoryChange}>
-            <SelectTrigger className="h-9 w-[170px] text-sm rounded-lg" style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}>
-              <Package className="w-3.5 h-3.5 mr-1.5 shrink-0" style={{ color: "var(--sf-teal)" }} />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
-              <SelectItem value="All">All Categories</SelectItem>
-              {categories.map((cat) => <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button variant="ghost" className="text-xs gap-1 px-3 h-9 shrink-0" style={{ color: "var(--sf-teal)" }} onClick={onViewAll}>
-            View All <ChevronRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Category pills */}
-      <div className="flex items-center gap-2 px-5 py-3 overflow-x-auto" style={{ borderBottom: "1px solid var(--sf-divider)", scrollbarWidth: "none" }}>
-        {["All", ...categories.map((c) => c.name)].map((cat) => {
-          const isActive = cat === selectedCategory;
-          return (
-            <button
-              key={cat}
-              onClick={() => onCategoryChange(cat)}
-              className="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer"
-              style={{
-                background: isActive ? "var(--sf-teal-glass)" : "var(--sf-bg-surface-2)",
-                border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid var(--sf-divider)",
-                color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)",
-              }}
-            >
-              {cat === "All" ? "All" : cat}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Grid */}
+    <Card className="border-[var(--sf-divider)]" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
       <CardContent className="p-5">
-        {loading ? (
-          <div className="flex flex-col items-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin mb-2" style={{ color: "var(--sf-teal)" }} />
-            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Loading products...</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
+              <TrendingUp className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>
+                Buying Insights
+              </h3>
+              <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                Your buying pattern over the last 6 months
+              </p>
+            </div>
           </div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center py-16">
-            <Package className="w-10 h-10 mb-3" style={{ color: "var(--sf-text-muted)", opacity: 0.4 }} />
-            <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>No products found.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((p, i) => (
-              <GalleryProductCard key={`${p.id}-${i}`} product={p} index={i} />
+
+          {/* Metric toggle */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+            {(["pcs", "value", "orders"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className="px-3 py-1.5 text-[11px] font-medium transition-colors"
+                style={{
+                  backgroundColor: metric === m ? metricConfig[m].color : "transparent",
+                  color: metric === m ? "#fff" : "var(--sf-text-muted)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {metricConfig[m].label}
+              </button>
             ))}
           </div>
-        )}
+        </div>
 
-        {/* Load More / View All */}
-        {!loading && products.length > 0 && (
-          <div className="flex items-center justify-center gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-            {hasMore && (
-              <Button
-                variant="outline"
-                className="text-sm gap-1.5 h-9 px-5 rounded-lg"
-                style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
-                disabled={loadingMore}
-                onClick={onLoadMore}
-              >
-                {loadingMore ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</>
-                ) : (
-                  <>Load More</>
-                )}
-              </Button>
-            )}
-            <Button
-              className="text-sm gap-1.5 h-9 px-5 rounded-lg"
-              style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
-              onClick={onViewAll}
-            >
-              View All in Catalog <ChevronRight className="w-4 h-4" />
-            </Button>
-            {!hasMore && products.length > 0 && (
-              <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                All {total} items loaded
-              </span>
-            )}
+        {data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <LineChart className="w-10 h-10 mb-3" style={{ color: "rgba(48,184,191,0.25)" }} />
+            <p className="text-sm font-medium mb-1" style={{ color: "var(--sf-text-muted)" }}>No data yet</p>
+            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Insights will appear once you place orders</p>
+          </div>
+        ) : (
+          <div className="h-[260px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ left: 8, right: 8, top: 24, bottom: 4 }}>
+                <defs>
+                  {(["pcs", "value", "orders"] as const).map((m) => (
+                    <linearGradient key={m} id={`gradient-${m}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={metricConfig[m].color} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={metricConfig[m].color} stopOpacity={0.03} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--sf-divider)" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={50}
+                  tickFormatter={(v) => metric === "value" ? `₹${(v / 1000).toFixed(0)}k` : String(v)}
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: "var(--sf-bg-surface-2)",
+                    border: "1px solid var(--sf-divider)",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: "var(--sf-text-primary)",
+                  }}
+                  labelStyle={{ color: "var(--sf-text-primary)", fontWeight: 600 }}
+                  itemStyle={{ color: "var(--sf-text-primary)" }}
+                  formatter={(val: number) => [cfg.formatter(val), cfg.label]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey={metric}
+                  stroke={cfg.color}
+                  strokeWidth={2.5}
+                  fill={`url(#gradient-${metric})`}
+                  activeDot={{ r: 6, fill: cfg.color, stroke: "#fff", strokeWidth: 2 }}
+                  dot={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    const val = payload[metric];
+                    return (
+                      <g key={`dot-${cx}-${cy}`}>
+                        <circle cx={cx} cy={cy} r={4} fill={cfg.color} stroke="#1a1f2e" strokeWidth={2} />
+                        <text
+                          x={cx}
+                          y={cy - 14}
+                          textAnchor="middle"
+                          fill={cfg.color}
+                          fontSize={11}
+                          fontWeight={700}
+                        >
+                          {cfg.dotLabel(val)}
+                        </text>
+                      </g>
+                    );
+                  }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/* ── Gallery Product Card (with image navigation) ─────── */
-function GalleryProductCard({ product, index }: { product: Product; index: number }) {
-  const navigate = useNavigate();
-  const [images, setImages] = useState<string[]>(product.image ? [product.image] : []);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [fetched, setFetched] = useState(false);
-
-  async function loadImages() {
-    if (fetched) return;
-    setFetched(true);
-    try {
-      const detail = await productsApi.detail(String(product.id));
-      const imgs: string[] = ((detail as any).images || []).map((img: any) =>
-        typeof img === "string" ? imageUrl(img) : imageUrl(img.url || img.image_url)
-      );
-      if (imgs.length > 0) setImages(imgs);
-    } catch { /* keep primary image */ }
-  }
-
-  function prev(e: React.MouseEvent) {
-    e.stopPropagation();
-    loadImages();
-    setActiveIdx((i) => (i > 0 ? i - 1 : images.length - 1));
-  }
-
-  function next(e: React.MouseEvent) {
-    e.stopPropagation();
-    loadImages();
-    setActiveIdx((i) => (i < images.length - 1 ? i + 1 : 0));
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.025 * index, duration: 0.3 }}
-      whileHover={{ y: -3 }}
-      className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
-      style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
-      onClick={() => navigate(`/retailer/product/${product.id}`)}
-      onMouseEnter={loadImages}
-    >
-      {/* Image area */}
-      <div className="aspect-square overflow-hidden relative" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
-        {images.length > 0 ? (
-          <img
-            src={images[activeIdx] || images[0]}
-            alt={product.name}
-            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageOff className="w-10 h-10" style={{ color: "var(--sf-text-muted)" }} />
-          </div>
-        )}
-
-        {/* Left arrow — appears on hover */}
-        <button
-          onClick={prev}
-          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        {/* Right arrow — appears on hover */}
-        <button
-          onClick={next}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-
-        {/* Image counter — appears on hover */}
-        {images.length > 1 && (
-          <div
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-secondary)" }}
-          >
-            {activeIdx + 1} / {images.length}
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-3">
-        <p className="text-sm font-semibold leading-snug line-clamp-2 mb-0.5" style={{ color: "var(--sf-text-primary)" }}>
-          {product.name}
-        </p>
-        {product.sku && (
-          <p className="text-[10px] mb-2 truncate" style={{ color: "var(--sf-text-muted)", fontFamily: "monospace" }}>
-            {product.sku}
-          </p>
-        )}
-        <p className="text-sm font-bold" style={{ color: "var(--sf-teal)" }}>{product.price}</p>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ── Product Grid ─────────────────────────────────────── */
-function ProductGrid({ products }: { products: Product[] }) {
-  if (products.length === 0) {
-    return <p className="text-sm py-4" style={{ color: "var(--sf-text-muted)" }}>No products to show.</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {products.map((product, i) => (
-        <GalleryProductCard key={`${product.id}-${i}`} product={product} index={i} />
-      ))}
-    </div>
   );
 }

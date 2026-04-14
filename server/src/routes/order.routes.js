@@ -514,12 +514,47 @@ router.get("/check-product/:productId", async (req, res, next) => {
 // Dashboard summary
 router.get("/summary/stats", async (req, res, next) => {
   try {
+    // Per-status counts + total value
     const { rows: totals } = await query(
       `SELECT COUNT(*) AS total_orders,
               SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
-              SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS completed,
-              SUM(total) AS total_spent
+              SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+              SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing,
+              SUM(CASE WHEN status = 'shipped' THEN 1 ELSE 0 END) AS shipped,
+              SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+              SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+              COALESCE(SUM(total), 0) AS total_value
        FROM orders WHERE retailer_id = $1`,
+      [req.retailer.id]
+    );
+
+    // Category-wise buying (total pieces per category)
+    const { rows: categoryBreakdown } = await query(
+      `SELECT COALESCE(c.name, 'Other') AS category,
+              SUM(oi.quantity) AS quantity
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN products p ON p.id = oi.product_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE o.retailer_id = $1 AND o.status != 'cancelled'
+       GROUP BY c.name
+       ORDER BY quantity DESC`,
+      [req.retailer.id]
+    );
+
+    // Monthly trends (last 6 months)
+    const { rows: monthlyTrends } = await query(
+      `SELECT TO_CHAR(o.created_at, 'YYYY-MM') AS month,
+              COUNT(DISTINCT o.id) AS orders,
+              COALESCE(SUM(o.total), 0) AS value,
+              COALESCE(SUM(oi.quantity), 0) AS pcs
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.retailer_id = $1
+         AND o.status != 'cancelled'
+         AND o.created_at >= NOW() - INTERVAL '6 months'
+       GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
+       ORDER BY month ASC`,
       [req.retailer.id]
     );
 
@@ -533,6 +568,8 @@ router.get("/summary/stats", async (req, res, next) => {
 
     res.json({
       summary: totals[0],
+      categoryBreakdown,
+      monthlyTrends,
       lastOrder: lastOrder[0] || null,
     });
   } catch (err) {
