@@ -8,7 +8,6 @@ import {
   Pencil,
   Trash2,
   ShoppingCart,
-  Search,
   X,
   Check,
   MoreVertical,
@@ -124,7 +123,6 @@ export function RetailerWishlist() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFolder, setActiveFolder] = useState<string | null>(null); // null = "All Saved"
-  const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
@@ -167,14 +165,8 @@ export function RetailerWishlist() {
       const folder = folders.find((f) => f.id === activeFolder);
       if (folder) list = list.filter((p) => folder.productIds.includes(p.id));
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
-      );
-    }
     return list;
-  }, [products, folders, activeFolder, search]);
+  }, [products, folders, activeFolder]);
 
   const activeFolderData = activeFolder ? folders.find((f) => f.id === activeFolder) : null;
 
@@ -325,9 +317,7 @@ export function RetailerWishlist() {
           </aside>
           {/* Cards skeleton */}
           <div className="flex-1 min-w-0">
-            {/* Search bar skeleton */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="skeleton-shimmer h-10 flex-1 rounded-lg" />
               <div className="skeleton-shimmer h-10 w-24 rounded-lg" />
             </div>
             {/* Grid skeleton */}
@@ -490,33 +480,8 @@ export function RetailerWishlist() {
               </button>
             </div>
 
-            {/* Search + Actions bar */}
+            {/* Actions bar */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="relative flex-1">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                  style={{ color: "var(--sf-text-muted)" }}
-                />
-                <Input
-                  placeholder="Search wishlist..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 h-10 border-[var(--sf-divider)]"
-                  style={{
-                    backgroundColor: "var(--sf-bg-surface-1)",
-                    color: "var(--sf-text-primary)",
-                  }}
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "var(--sf-text-muted)", background: "none", border: "none", cursor: "pointer" }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
               <Button
                 variant={selectionMode ? "default" : "outline"}
                 className="h-10 text-xs gap-1.5 border-[var(--sf-divider)]"
