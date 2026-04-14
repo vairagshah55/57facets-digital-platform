@@ -273,7 +273,7 @@ export function RetailerDashboard() {
               <CategoryBreakdownCard data={categoryBreakdown} />
             </motion.div>
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
-              <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} />
+              <ActiveOrdersCard orders={recentOrders} onViewAll={() => navigate("/retailer/orders")} onOrderClick={(id) => navigate(`/retailer/orders?order=${id}`)} />
             </motion.div>
           </div>
 
@@ -508,9 +508,10 @@ const ORDER_STATUS_CFG: Record<string, { label: string; color: string; bg: strin
   cancelled:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3 h-3" /> },
 };
 
-function ActiveOrdersCard({ orders, onViewAll }: {
+function ActiveOrdersCard({ orders, onViewAll, onOrderClick }: {
   orders: RecentOrder[];
   onViewAll: () => void;
+  onOrderClick: (orderId: string) => void;
 }) {
   const activeOrders = orders.filter((o) => !["delivered", "cancelled"].includes(o.status));
   return (
@@ -542,8 +543,9 @@ function ActiveOrdersCard({ orders, onViewAll }: {
             {activeOrders.slice(0, 5).map((o) => {
               const cfg = ORDER_STATUS_CFG[o.status] || ORDER_STATUS_CFG.pending;
               return (
-                <div key={o.id} className="flex items-center gap-3 p-2.5 rounded-xl"
-                  style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
+                <div key={o.id} className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: "var(--sf-bg-surface-2)" }}
+                  onClick={() => onOrderClick(o.id)}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                     style={{ backgroundColor: cfg.bg }}>
                     <span style={{ color: cfg.color }}>{cfg.icon}</span>

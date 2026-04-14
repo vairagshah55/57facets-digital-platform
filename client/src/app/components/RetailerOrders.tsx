@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import {
   Search,
@@ -293,6 +293,7 @@ const THIN_MUTED_SCROLLBAR =
 
 export function RetailerOrders() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -444,6 +445,18 @@ export function RetailerOrders() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailLoading, pendingEdit, detailOrder]);
+
+  // ── Auto-open order from ?order=<id> query param ──────
+  useEffect(() => {
+    const orderId = searchParams.get("order");
+    if (!orderId || loading || ordersList.length === 0) return;
+    const found = ordersList.find((o: any) => o.id === orderId);
+    if (found) {
+      openDetail(found);
+      searchParams.delete("order");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [loading, ordersList, searchParams, openDetail, setSearchParams]);
 
   function openDetailAndEdit(order: Order) {
     setPendingEdit(true);
