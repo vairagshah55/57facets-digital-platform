@@ -29,7 +29,6 @@ import {
   BarChart3,
   LineChart,
 } from "lucide-react";
-import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
@@ -212,27 +211,6 @@ export function RetailerDashboard() {
                   ? "Explore our collection and place your first order"
                   : "Here's your business overview"}
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                className="text-sm gap-1.5 h-10 px-5 rounded-xl"
-                style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}
-                onClick={() => navigate("/retailer/catalog")}
-              >
-                <Package className="w-4 h-4" />
-                Browse Catalog
-              </Button>
-              {!isFirstTime && (
-                <Button
-                  variant="outline"
-                  className="text-sm gap-1.5 h-10 px-5 rounded-xl"
-                  style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
-                  onClick={() => navigate("/retailer/orders")}
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  Orders
-                </Button>
-              )}
             </div>
           </div>
         </div>
