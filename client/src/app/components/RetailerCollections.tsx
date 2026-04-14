@@ -6,6 +6,7 @@ import {
   X,
   Heart,
   ShoppingCart,
+  Check,
   ChevronRight,
   Sparkles,
   Calendar,
@@ -31,7 +32,8 @@ import {
   DialogClose,
 } from "./ui/dialog";
 
-import { collections as collectionsApi, wishlist as wishlistApi } from "../../lib/api";
+import { collections as collectionsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
+import { useCart } from "../../context/CartContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -100,6 +102,7 @@ function formatPrice(price: number): string {
 
 export function RetailerCollections() {
   const navigate = useNavigate();
+  const { addItem, items: cartItems } = useCart();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTag>("all");
   const [collectionsList, setCollectionsList] = useState<Collection[]>([]);
@@ -112,6 +115,62 @@ export function RetailerCollections() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  const [recentlyAdded, setRecentlyAdded] = useState<Set<string>>(new Set());
+
+  const cartProductIds = useMemo(() => new Set(cartItems.map((i) => i.productId)), [cartItems]);
+
+  const addToCart = useCallback((product: CollectionProduct) => {
+    if (cartProductIds.has(product.id)) return;
+    addItem({
+      productId: String(product.id),
+      productName: product.name,
+      productSku: product.sku || "",
+      productImage: product.image ? imageUrl(product.image) : "",
+      quantity: 1,
+      unitPrice: product.base_price,
+      carat: product.carat,
+      metalType: null,
+      goldColour: null,
+      diamondShape: null,
+      diamondShade: null,
+      diamondQuality: null,
+      colorStoneName: null,
+      colorStoneQuality: null,
+      note: null,
+    });
+    setRecentlyAdded((prev) => new Set(prev).add(product.id));
+    setTimeout(() => setRecentlyAdded((prev) => { const next = new Set(prev); next.delete(product.id); return next; }), 2000);
+  }, [addItem, cartProductIds]);
+
+  const addAllToCart = useCallback((products: CollectionProduct[]) => {
+    let added = 0;
+    for (const p of products) {
+      if (cartProductIds.has(p.id)) continue;
+      addItem({
+        productId: String(p.id),
+        productName: p.name,
+        productSku: p.sku || "",
+        productImage: p.image ? imageUrl(p.image) : "",
+        quantity: 1,
+        unitPrice: p.base_price,
+        carat: p.carat,
+        metalType: null,
+        goldColour: null,
+        diamondShape: null,
+        diamondShade: null,
+        diamondQuality: null,
+        colorStoneName: null,
+        colorStoneQuality: null,
+        note: null,
+      });
+      added++;
+    }
+    if (added > 0) {
+      const ids = products.map((p) => p.id);
+      setRecentlyAdded((prev) => new Set([...prev, ...ids]));
+      setTimeout(() => setRecentlyAdded((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; }), 2000);
+    }
+  }, [addItem, cartProductIds]);
 
   // Fetch collections when filter or search changes
   useEffect(() => {
@@ -351,14 +410,14 @@ export function RetailerCollections() {
                         key={product.id}
                         product={product}
                         wishlisted={wishlistedIds.has(product.id)}
+                        inCart={cartProductIds.has(product.id)}
+                        justAdded={recentlyAdded.has(product.id)}
                         onToggleWishlist={() => toggleWishlist(product.id)}
                         onView={() => {
                           setOpenCollectionId(null);
                           navigate(`/retailer/product/${product.id}`);
                         }}
-                        onOrder={() => {
-                          alert(`Order request submitted for: ${product.name}`);
-                        }}
+                        onAddToCart={() => addToCart(product)}
                       />
                     ))}
                   </div>
@@ -387,11 +446,13 @@ export function RetailerCollections() {
                   className="flex-1 h-10 gap-2 text-sm border-[var(--sf-divider)]"
                   style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}
                   onClick={() => {
-                    alert(`Order request submitted for all ${detailCollection.products?.length ?? 0} items!`);
+                    if (detailCollection.products) {
+                      addAllToCart(detailCollection.products);
+                    }
                   }}
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  Order Entire Collection
+                  Add All to Cart
                 </Button>
               </div>
             </>
@@ -521,17 +582,21 @@ function CollectionCard({
 function CollectionProductRow({
   product,
   wishlisted,
+  inCart,
+  justAdded,
   onToggleWishlist,
   onView,
-  onOrder,
+  onAddToCart,
 }: {
   product: CollectionProduct;
   wishlisted: boolean;
+  inCart: boolean;
+  justAdded: boolean;
   onToggleWishlist: () => void;
   onView: () => void;
-  onOrder: () => void;
+  onAddToCart: () => void;
 }) {
-  const imgSrc = product.image || PLACEHOLDER_IMAGE;
+  const imgSrc = product.image ? imageUrl(product.image) : PLACEHOLDER_IMAGE;
 
   return (
     <div
@@ -591,16 +656,18 @@ function CollectionProductRow({
           <Heart className="w-4 h-4" fill={wishlisted ? "#ef4444" : "none"} />
         </button>
         <button
-          onClick={onOrder}
+          onClick={onAddToCart}
+          disabled={inCart}
           className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
           style={{
-            backgroundColor: "var(--sf-bg-surface-2)",
-            color: "var(--sf-teal)",
+            backgroundColor: inCart ? "rgba(34,197,94,0.15)" : justAdded ? "rgba(48,184,191,0.15)" : "var(--sf-bg-surface-2)",
+            color: inCart ? "#22c55e" : "var(--sf-teal)",
             border: "none",
-            cursor: "pointer",
+            cursor: inCart ? "default" : "pointer",
           }}
+          title={inCart ? "In cart" : "Add to cart"}
         >
-          <ShoppingCart className="w-4 h-4" />
+          {inCart ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
         </button>
         <button
           onClick={onView}
