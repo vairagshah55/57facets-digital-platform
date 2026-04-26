@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
+const auditLog = require("../utils/auditLog");
 const AppError = require("../utils/AppError");
 
 // ── GET /api/products ──────────────────────────────
@@ -71,6 +72,19 @@ router.get("/", authenticate, async (req, res, next) => {
       `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}`,
       params
     );
+
+    if (search && req.retailer?.id) {
+      auditLog({
+        actorType: "retailer",
+        actorId: req.retailer.id,
+        action: "product.searched",
+        details: {
+          query: search,
+          category: category || null,
+          result_count: parseInt(countRows[0].count),
+        },
+      });
+    }
 
     res.json({
       products: rows,
@@ -169,12 +183,21 @@ router.get("/:id", authenticate, async (req, res, next) => {
       [rows[0].metal_type]
     );
 
-    // Track recently viewed
+    // Track recently viewed (one row per retailer/product, last viewed)
     await query(
       `INSERT INTO recently_viewed (retailer_id, product_id) VALUES ($1, $2)
        ON CONFLICT (retailer_id, product_id) DO UPDATE SET viewed_at = NOW()`,
       [req.retailer.id, req.params.id]
     );
+
+    // Per-event log so reports can count repeat views
+    auditLog({
+      actorType: "retailer",
+      actorId: req.retailer.id,
+      action: "product.viewed",
+      entityType: "product",
+      entityId: req.params.id,
+    });
 
     res.json({
       ...rows[0],

@@ -286,6 +286,12 @@ router.put("/:id", async (req, res, next) => {
       }
     }
 
+    await query(
+      `INSERT INTO activity_log (actor_type, actor_id, action, entity_type, entity_id, details)
+       VALUES ('admin', $1, 'product_updated', 'product', $2, $3)`,
+      [req.admin.id, req.params.id, JSON.stringify({ name: rows[0].name, sku: rows[0].sku })]
+    );
+
     res.json(rows[0]);
   } catch (err) {
     next(err);

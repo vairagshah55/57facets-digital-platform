@@ -206,3 +206,46 @@ export const adminAudit = {
   },
   stats: () => request("/audit/stats"),
 };
+
+// ── Reports ──────────────────────────────────────
+export type ReportColumn = { key: string; label: string };
+export type ReportRunResult = { report: string; columns: ReportColumn[]; rows: any[]; total: number };
+
+export const adminReports = {
+  list: () => request<{ reports: { key: string; columns: ReportColumn[] }[] }>("/reports"),
+
+  run: (reportType: string, params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request<ReportRunResult>(`/reports/${reportType}${qs}`);
+  },
+
+  exportCsv: async (reportType: string, params?: Record<string, string>) => {
+    const token = getAdminToken();
+    const merged = { ...(params || {}), format: "csv" };
+    const qs = "?" + new URLSearchParams(merged).toString();
+    const res = await fetch(`${API_BASE}/reports/${reportType}${qs}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.status === 401) {
+      clearAdminToken();
+      window.location.href = "/admin/login";
+      throw new Error("Session expired");
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Export failed");
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="?([^";]+)"?/i);
+    const filename = match?.[1] || `${reportType}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+};
