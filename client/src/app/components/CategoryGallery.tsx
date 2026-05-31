@@ -107,6 +107,8 @@ function ImageCard({ src, alt, delay }: { src: string; alt: string; delay: numbe
       <img
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         style={{
           width: "100%",
           height: "100%",

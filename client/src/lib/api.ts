@@ -55,16 +55,19 @@ async function request<T = any>(
 }
 
 // ── Auth ──────────────────────────────────────────
+// Retailers can identify themselves by phone or email; OTP flow is shared.
+type AuthIdentifier = { phone: string } | { email: string };
+
 export const auth = {
-  requestOtp: (phone: string) =>
+  requestOtp: (identifier: AuthIdentifier) =>
     request("/auth/request-otp", {
       method: "POST",
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify(identifier),
     }),
-  verifyOtp: (phone: string, otp: string) =>
+  verifyOtp: (identifier: AuthIdentifier, otp: string) =>
     request("/auth/verify-otp", {
       method: "POST",
-      body: JSON.stringify({ phone, otp }),
+      body: JSON.stringify({ ...identifier, otp }),
     }),
   me: () => request("/auth/me"),
 };

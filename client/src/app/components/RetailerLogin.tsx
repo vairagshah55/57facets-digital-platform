@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, Navigate, Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, ShieldCheck, ArrowRight, ArrowLeft, Loader2, Timer, Search, X, ChevronDown } from "lucide-react";
+import { Phone, Mail, ShieldCheck, ArrowRight, ArrowLeft, Loader2, Timer, Search, X, ChevronDown } from "lucide-react";
 import { auth as authApi } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "./ui/button";
@@ -17,6 +17,9 @@ import {
 } from "./ui/card";
 
 type Step = "phone" | "otp";
+type LoginMethod = "phone" | "email";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type CountryCode = { name: string; code: string; flag: string };
 const COUNTRY_CODES: CountryCode[] = [
@@ -69,7 +72,9 @@ export function RetailerLogin() {
   const navigate = useNavigate();
   const { login, retailer, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>("phone");
+  const [method, setMethod] = useState<LoginMethod>("phone");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,15 +118,26 @@ export function RetailerLogin() {
     return c.name.toLowerCase().includes(q) || c.code.includes(q);
   });
 
+  // Build the identifier payload for the current login method
+  const getIdentifier = useCallback(
+    () => (method === "email" ? { email: email.trim() } : { phone }),
+    [method, email, phone]
+  );
+
   const handleRequestOTP = useCallback(async () => {
-    if (phone.length < 10) {
+    if (method === "email") {
+      if (!EMAIL_REGEX.test(email.trim())) {
+        setError("Please enter a valid email address");
+        return;
+      }
+    } else if (phone.length < 10) {
       setError("Please enter a valid 10-digit phone number");
       return;
     }
     setError("");
     setLoading(true);
     try {
-      await authApi.requestOtp(phone);
+      await authApi.requestOtp(getIdentifier());
       setStep("otp");
       setResendTimer(RESEND_COOLDOWN);
     } catch (err: any) {
@@ -129,14 +145,14 @@ export function RetailerLogin() {
     } finally {
       setLoading(false);
     }
-  }, [phone]);
+  }, [method, email, phone, getIdentifier]);
 
   const handleResendOTP = useCallback(async () => {
     if (resendTimer > 0) return;
     setError("");
     setLoading(true);
     try {
-      await authApi.requestOtp(phone);
+      await authApi.requestOtp(getIdentifier());
       setResendTimer(RESEND_COOLDOWN);
       setOtp("");
     } catch (err: any) {
@@ -144,7 +160,7 @@ export function RetailerLogin() {
     } finally {
       setLoading(false);
     }
-  }, [phone, resendTimer]);
+  }, [getIdentifier, resendTimer]);
 
   const handleVerifyOTP = useCallback(async () => {
     if (otp.length < 6) {
@@ -154,7 +170,7 @@ export function RetailerLogin() {
     setError("");
     setLoading(true);
     try {
-      const data = await authApi.verifyOtp(phone, otp);
+      const data = await authApi.verifyOtp(getIdentifier(), otp);
       login(data.token, data.retailer);
       navigate("/retailer/catalog");
     } catch (err: any) {
@@ -162,7 +178,7 @@ export function RetailerLogin() {
     } finally {
       setLoading(false);
     }
-  }, [otp, phone, login, navigate]);
+  }, [otp, getIdentifier, login, navigate]);
 
   const handleBack = useCallback(() => {
     setStep("phone");
@@ -179,6 +195,18 @@ export function RetailerLogin() {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhone(value);
     if (error) setError("");
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (error) setError("");
+  };
+
+  const switchMethod = (next: LoginMethod) => {
+    if (next === method) return;
+    setMethod(next);
+    setError("");
+    setShowCountryPicker(false);
   };
 
   const handleOtpChange = (value: string) => {
@@ -274,8 +302,12 @@ export function RetailerLogin() {
             </CardTitle>
             <CardDescription style={{ color: "var(--sf-text-secondary)" }}>
               {step === "phone"
-                ? "Enter your registered phone number to receive an OTP"
-                : `OTP sent to +91 ${phone.slice(0, 3)}****${phone.slice(7)}`}
+                ? method === "email"
+                  ? "Enter your registered email to receive an OTP"
+                  : "Enter your registered phone number to receive an OTP"
+                : method === "email"
+                ? `OTP sent for ${email.trim()}`
+                : `OTP sent to ${selectedCountry.code} ${phone.slice(0, 3)}****${phone.slice(7)}`}
             </CardDescription>
           </CardHeader>
 
@@ -303,13 +335,50 @@ export function RetailerLogin() {
                   transition={{ duration: 0.3 }}
                   className="space-y-4"
                 >
+                  {/* Phone / Email method toggle */}
+                  <div
+                    className="grid grid-cols-2 gap-1 p-1 rounded-xl"
+                    style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}
+                  >
+                    {(["phone", "email"] as LoginMethod[]).map((m) => {
+                      const active = method === m;
+                      const Icon = m === "phone" ? Phone : Mail;
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => switchMethod(m)}
+                          className="relative flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-medium focus:outline-none"
+                          style={{ color: active ? "#fff" : "var(--sf-text-secondary)" }}
+                        >
+                          {active && (
+                            <motion.span
+                              layoutId="login-method-pill"
+                              className="absolute inset-0 rounded-lg"
+                              style={{
+                                backgroundColor: "var(--sf-teal)",
+                                boxShadow: "0 2px 14px var(--sf-teal-glass)",
+                              }}
+                              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                            />
+                          )}
+                          <span className="relative z-10 flex items-center gap-1.5">
+                            <Icon className="w-3.5 h-3.5" />
+                            {m === "phone" ? "Phone" : "Email"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="space-y-2">
                     <label
                       className="text-sm font-medium"
                       style={{ color: "var(--sf-text-secondary)" }}
                     >
-                      Phone Number
+                      {method === "email" ? "Email Address" : "Phone Number"}
                     </label>
+                    {method === "phone" ? (
                     <div className="flex gap-2">
                       {/* Country Code Picker */}
                       <div className="relative" ref={countryPickerRef}>
@@ -408,6 +477,26 @@ export function RetailerLogin() {
                         />
                       </div>
                     </div>
+                    ) : (
+                      <div className="relative">
+                        <Mail
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                          style={{ color: "var(--sf-text-muted)" }}
+                        />
+                        <Input
+                          type="email"
+                          placeholder="you@company.com"
+                          value={email}
+                          onChange={handleEmailChange}
+                          className={`pl-10 h-12 text-base border-[var(--sf-divider)] focus-visible:border-[var(--sf-teal)] ${error ? "border-red-500 focus-visible:border-red-500" : ""}`}
+                          style={{
+                            backgroundColor: "var(--sf-bg-surface-2)",
+                            color: "var(--sf-text-primary)",
+                          }}
+                          onKeyDown={(e) => e.key === "Enter" && handleRequestOTP()}
+                        />
+                      </div>
+                    )}
                     {error && (
                       <p className="text-red-500 text-sm mt-1">{error}</p>
                     )}
@@ -455,7 +544,9 @@ export function RetailerLogin() {
                         Verification Code
                       </p>
                       <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                        Enter the 6-digit code sent to your phone
+                        {method === "email"
+                          ? "Enter the 6-digit code for your account"
+                          : "Enter the 6-digit code sent to your phone"}
                       </p>
                     </div>
 
@@ -541,7 +632,7 @@ export function RetailerLogin() {
                     style={{ color: "var(--sf-text-secondary)" }}
                   >
                     <ArrowLeft className="w-4 h-4 mr-1" />
-                    Change phone number
+                    {method === "email" ? "Change email" : "Change phone number"}
                   </Button>
                 </motion.div>
               )}

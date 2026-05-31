@@ -609,7 +609,7 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
       style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
     >
       <div className="aspect-square" style={{ position: "relative", overflow: "hidden" }}>
-        <img src={images[activeIdx] || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        <img src={images[activeIdx] || product.image} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
 
         {/* Left arrow — appears on hover */}
         <button
