@@ -336,7 +336,7 @@ export function RetailerCollections() {
                 key={collection.id}
                 collection={collection}
                 index={i}
-                onOpen={() => setOpenCollectionId(collection.id)}
+                onOpen={() => navigate(`/retailer/collections/${collection.id}`)}
               />
             ))}
           </div>

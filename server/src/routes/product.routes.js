@@ -11,13 +11,19 @@ router.get("/", authenticate, async (req, res, next) => {
     const {
       category, search, availability,
       min_price, max_price, min_carat, max_carat,
-      is_new, page = 1, limit = 20,
+      is_new, collection, page = 1, limit = 20,
     } = req.query;
 
     const conditions = ["p.is_active = true"];
     const params = [];
     let idx = 1;
 
+    if (collection) {
+      conditions.push(
+        `EXISTS (SELECT 1 FROM collection_products cp WHERE cp.product_id = p.id AND cp.collection_id = $${idx++})`
+      );
+      params.push(collection);
+    }
     if (category) {
       conditions.push(`c.name = $${idx++}`);
       params.push(category);

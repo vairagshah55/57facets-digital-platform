@@ -33,7 +33,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
-import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, imageUrl } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 
 /* ═══════════════════════════════════════════════════════
@@ -77,8 +77,12 @@ function mapProduct(p: ApiProduct): Product {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════ */
 
-export function ProductCatalog() {
+export function ProductCatalog({ collectionId: collectionIdProp }: { collectionId?: string } = {}) {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Collection can come from a dedicated route param (prop) or a ?collection= query.
+  const collectionId = collectionIdProp ?? searchParams.get("collection");
+  const [collectionName, setCollectionName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") || "All");
@@ -110,7 +114,18 @@ export function ProductCatalog() {
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability]);
+  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, collectionId]);
+
+  // Fetch the collection's name when viewing a collection (for the header)
+  useEffect(() => {
+    if (!collectionId) { setCollectionName(null); return; }
+    let cancelled = false;
+    collectionsApi
+      .detail(collectionId)
+      .then((d: any) => { if (!cancelled) setCollectionName(d?.name ?? null); })
+      .catch(() => { if (!cancelled) setCollectionName(null); });
+    return () => { cancelled = true; };
+  }, [collectionId]);
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
@@ -131,6 +146,7 @@ export function ProductCatalog() {
           if (!cancelled) { setProducts(result); setTotalProducts(result.length); setTotalPages(1); }
         } else {
           const params: Record<string, string> = {};
+          if (collectionId) params.collection = collectionId;
           if (activeCategory !== "All") params.category = activeCategory;
           if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
           if (priceRange[0] > PRICE_MIN) params.min_price = String(priceRange[0]);
@@ -161,7 +177,7 @@ export function ProductCatalog() {
     }
     fetchProducts();
     return () => { cancelled = true; };
-  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page]);
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page, collectionId]);
 
   const toggleWishlist = useCallback(async (productId: string) => {
     const isWishlisted = wishlistedIds.has(productId);
@@ -216,14 +232,25 @@ export function ProductCatalog() {
             <Package className="w-5 h-5" style={{ color: "var(--sf-teal)" }} />
           </div>
           <div>
+            {collectionId && (
+              <button
+                onClick={() => navigate("/retailer/collections")}
+                className="flex items-center gap-1 text-xs font-medium mb-1 cursor-pointer"
+                style={{ color: "var(--sf-teal)", background: "none", border: "none", padding: 0 }}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Collections
+              </button>
+            )}
             <h1
               className="text-xl font-semibold leading-tight"
               style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
             >
-              Product Catalog
+              {collectionId ? (collectionName || "Collection") : "Product Catalog"}
             </h1>
             <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-              {`${totalProducts} products available`}
+              {collectionId
+                ? `${totalProducts} ${totalProducts === 1 ? "piece" : "pieces"} in this collection`
+                : `${totalProducts} products available`}
             </p>
           </div>
         </div>

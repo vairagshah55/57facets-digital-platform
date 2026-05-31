@@ -30,6 +30,7 @@ import { ProductDetail } from "./components/ProductDetail";
 import { RetailerWishlist } from "./components/RetailerWishlist";
 import { RetailerOrders } from "./components/RetailerOrders";
 import { RetailerCollections } from "./components/RetailerCollections";
+import { CollectionCatalog } from "./components/CollectionCatalog";
 import { CategoryGallery } from "./components/CategoryGallery";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Toaster } from "./components/ui/sonner";
@@ -144,6 +145,7 @@ export default function App() {
           <Route path="catalog" element={<ProductCatalog />} />
           <Route path="product/:id" element={<ProductDetail />} />
           <Route path="collections" element={<RetailerCollections />} />
+          <Route path="collections/:id" element={<CollectionCatalog />} />
           <Route path="wishlist" element={<RetailerWishlist />} />
           <Route path="orders" element={<RetailerOrders />} />
           <Route path="notifications" element={<RetailerNotifications />} />
