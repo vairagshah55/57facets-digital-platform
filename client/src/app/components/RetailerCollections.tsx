@@ -16,6 +16,7 @@ import {
   Layers,
   Eye,
   Loader2,
+  Gift,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -55,7 +56,7 @@ type Collection = {
   name: string;
   tagline: string;
   description: string;
-  tag: "seasonal" | "themed" | "bridal" | "new-launch";
+  tag: "seasonal" | "themed" | "bridal" | "new-launch" | "festive";
   cover_image: string | null;
   launch_date: string;
   product_count: number;
@@ -75,6 +76,7 @@ const HERO_GRADIENTS: Record<Collection["tag"], string> = {
   themed: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(194,23,59,0.15))",
   bridal: "linear-gradient(135deg, rgba(168,85,247,0.25), rgba(236,72,153,0.15))",
   "new-launch": "linear-gradient(135deg, rgba(34,197,94,0.25), rgba(48,184,191,0.15))",
+  festive: "linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.15))",
 };
 
 const TAG_CONFIG: Record<Collection["tag"], { label: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -82,6 +84,7 @@ const TAG_CONFIG: Record<Collection["tag"], { label: string; color: string; bg: 
   themed: { label: "Themed", color: "#f59e0b", bg: "rgba(245,158,11,0.15)", icon: <Crown className="w-3.5 h-3.5" /> },
   bridal: { label: "Bridal", color: "#a855f7", bg: "rgba(168,85,247,0.15)", icon: <Gem className="w-3.5 h-3.5" /> },
   "new-launch": { label: "New Launch", color: "#22c55e", bg: "rgba(34,197,94,0.15)", icon: <Sparkles className="w-3.5 h-3.5" /> },
+  festive: { label: "Festive", color: "#ec4899", bg: "rgba(236,72,153,0.15)", icon: <Gift className="w-3.5 h-3.5" /> },
 };
 
 const FILTER_TABS: { key: FilterTag; label: string }[] = [
@@ -90,6 +93,7 @@ const FILTER_TABS: { key: FilterTag; label: string }[] = [
   { key: "seasonal", label: "Seasonal" },
   { key: "bridal", label: "Bridal" },
   { key: "themed", label: "Themed" },
+  { key: "festive", label: "Festive" },
 ];
 
 function formatPrice(price: number): string {

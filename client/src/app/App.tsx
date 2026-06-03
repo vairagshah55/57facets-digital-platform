@@ -7,6 +7,8 @@ import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { AdminRetailers } from "./components/admin/AdminRetailers";
 import { AdminProducts } from "./components/admin/AdminProducts";
+import { AdminCollections } from "./components/admin/AdminCollections";
+import { AdminCollectionForm } from "./components/admin/AdminCollectionForm";
 import { AdminProductWizard } from "./components/admin/AdminProductWizard";
 import { AdminOrders } from "./components/admin/AdminOrders";
 import { AdminNotifications } from "./components/admin/AdminNotifications";
@@ -158,6 +160,9 @@ export default function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/new" element={<AdminProductWizard />} />
           <Route path="products/:id/edit" element={<AdminProductWizard />} />
+          <Route path="collections" element={<AdminCollections />} />
+          <Route path="collections/new" element={<AdminCollectionForm />} />
+          <Route path="collections/:id/edit" element={<AdminCollectionForm />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="audit" element={<AdminAuditLog />} />

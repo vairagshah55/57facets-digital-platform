@@ -175,6 +175,21 @@ export const adminProducts = {
   },
 };
 
+// ── Collections (Admin) ───────────────────────────
+export const adminCollections = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/collections${qs}`);
+  },
+  detail: (id: string) => request(`/collections/${id}`),
+  create: (data: any) =>
+    request("/collections", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: any) =>
+    request(`/collections/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request(`/collections/${id}`, { method: "DELETE" }),
+};
+
 // ── Orders (Admin) ───────────────────────────────
 export const adminOrders = {
   list: (params?: Record<string, string>) => {
