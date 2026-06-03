@@ -66,7 +66,7 @@ const COUNTRY_CODES: CountryCode[] = [
   { name: "Oman", code: "+968", flag: "🇴🇲" },
 ];
 
-const RESEND_COOLDOWN = 30; // seconds
+const RESEND_COOLDOWN = 60; // seconds (1 minute)
 
 export function RetailerLogin() {
   const navigate = useNavigate();
@@ -77,6 +77,7 @@ export function RetailerLogin() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -148,9 +149,9 @@ export function RetailerLogin() {
   }, [method, email, phone, getIdentifier]);
 
   const handleResendOTP = useCallback(async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || resending) return;
     setError("");
-    setLoading(true);
+    setResending(true);
     try {
       await authApi.requestOtp(getIdentifier());
       setResendTimer(RESEND_COOLDOWN);
@@ -158,9 +159,9 @@ export function RetailerLogin() {
     } catch (err: any) {
       setError(err.message || "Failed to resend OTP");
     } finally {
-      setLoading(false);
+      setResending(false);
     }
-  }, [getIdentifier, resendTimer]);
+  }, [getIdentifier, resendTimer, resending]);
 
   const handleVerifyOTP = useCallback(async () => {
     if (otp.length < 6) {
@@ -592,11 +593,12 @@ export function RetailerLogin() {
                       ) : (
                         <button
                           onClick={handleResendOTP}
-                          disabled={loading}
-                          className="text-xs font-semibold"
-                          style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}
+                          disabled={resending}
+                          className="text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-60"
+                          style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: resending ? "default" : "pointer" }}
                         >
-                          Resend
+                          {resending && <Loader2 className="w-3 h-3 animate-spin" />}
+                          {resending ? "Sending…" : "Resend"}
                         </button>
                       )}
                     </div>
