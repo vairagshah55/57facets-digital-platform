@@ -104,42 +104,14 @@ async function downloadSampleFile() {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
 
-  const headers = [
-    "name","sku","description","category",
-    "base_price","metal_type","gold_colour","metal_weight",
-    "diamond_type","diamond_shape","diamond_color","diamond_clarity",
-    "diamond_certification","carat","setting_type","hallmark",
-    "width_mm","height_mm","color_stone_name","color_stone_quality",
-    "availability","lead_time_days","min_order_qty","max_order_qty",
-    "is_new","occasion_tags","finish_options","images",
-  ];
-  const hints = [
-    "Product Name","RNG-18K-001","Description text","Ring / Necklace / Bracelet",
-    "45000","14KT | 18KT | 22KT","YELLOW | ROSE | WHITE | TWO TONE","4.5 (grams)",
-    "Natural | Lab-grown","Round | Princess | Pan | Baguette | Marquise | Oval | Solitaire | Emerald | Cushion | Radiant",
-    "EF | FG | GH | HI | IJ","VVS | VVS-VS | VS | VS-SI | SI",
-    "GIA | IGI","1.5","Prong | Bezel | Pave","BIS 916",
-    "2.5 (mm)","8.0 (mm)",
-    "Precious Stones | Semi Precious Stones | Synthetic Stones | Pearl | Beads | Kundan",
-    "EMERALD | Ruby | BLUE SAPPHIRE | CORAL | etc.",
-    "in-stock | made-to-order | out-of-stock","7 (days)","1","100",
-    "true | false","wedding, anniversary","Polished, Matte",
-    "filenames (e.g. ring1.jpg, ring2.png)",
-  ];
-  const sample = [
-    "Radiant Diamond Solitaire Ring","RNG-18K-001","Elegant 18K gold ring","Ring",
-    "45000","18KT","YELLOW","4.5",
-    "Natural","Round","EF","VVS",
-    "GIA","1.5","Prong","BIS 916",
-    "2.5","8.0","Precious Stones","EMERALD",
-    "in-stock","7","1","100",
-    "true","wedding, anniversary","Polished",
-    "ring-front.jpg, ring-side.jpg",
-  ];
+  // The xlsx template is served as a static asset from client/public.
+  // To update the template, replace client/public/product_import_template.xlsx.
+  const res = await fetch(`${import.meta.env.BASE_URL}product_import_template.xlsx`);
+  const xlsxBlob = await res.blob();
+  zip.file("product_import_template.xlsx", xlsxBlob);
 
-  const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g,'""')}"` : v;
-  zip.file("products.csv", [headers,hints,sample].map(r=>r.map(escape).join(",")).join("\n"));
-
+  // Placeholder images for the filenames listed in the example row's
+  // "images" column, so the bundled sample imports cleanly end-to-end.
   const canvas = document.createElement("canvas");
   canvas.width = 100; canvas.height = 100;
   const ctx = canvas.getContext("2d")!;
@@ -154,19 +126,20 @@ async function downloadSampleFile() {
 `PRODUCT IMPORT TEMPLATE
 =======================
 HOW TO USE:
-1. Open products.csv and fill in your product data
+1. Open product_import_template.xlsx and fill in your product data
 2. Row 2 (hints) will be auto-skipped during import
-3. Required columns: name, sku
+3. Coloured (required) columns must carry a value or the row is skipped:
+   sku, category, base_price, metal_weight, diamond_type, diamond_shape,
+   diamond_color, diamond_clarity, carat, color_stone_name,
+   color_stone_quality, max_order_qty, is_new, images
+4. Optional columns may be left blank:
+   name, description, metal_type, gold_colour, diamond_certification,
+   availability, occasion_tags
 
 IMAGES:
-- Place product images (JPG, PNG, WEBP) in this ZIP alongside the CSV
+- Place product images (JPG, PNG, WEBP) in this ZIP alongside the xlsx
 - In the "images" column, list filenames separated by commas
 - First image listed becomes the primary/thumbnail
-
-ALLOWED VALUES:
-- metal_type:    14KT, 18KT, 22KT
-- availability:  in-stock, made-to-order, out-of-stock
-- is_new:        true, false
 `);
 
   const blob = await zip.generateAsync({ type: "blob" });
@@ -728,7 +701,7 @@ export function AdminProducts() {
               </div>
             </DialogTitle>
             <DialogDescription style={{ color: "var(--sf-text-muted)" }}>
-              Upload a CSV or ZIP (CSV + images). Add an "images" column with comma-separated filenames.
+              Upload a CSV, XLSX, or ZIP (CSV/XLSX + images). Add an "images" column with comma-separated filenames.
             </DialogDescription>
           </DialogHeader>
 
@@ -760,10 +733,10 @@ export function AdminProducts() {
                       <Upload className="w-5 h-5" style={{ color: "var(--sf-text-muted)" }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>Click to select file</p>
-                    <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>CSV or ZIP with product images · Max 100 MB</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>CSV, XLSX, or ZIP with product images · Max 100 MB</p>
                   </>
                 )}
-                <input ref={importFileRef} type="file" accept=".csv,.zip" className="hidden"
+                <input ref={importFileRef} type="file" accept=".csv,.xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) setImportFile(e.target.files[0]); e.target.value = ""; }} />
               </div>
 

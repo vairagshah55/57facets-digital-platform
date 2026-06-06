@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS collections (
   tagline       VARCHAR(500),
   description   TEXT,
   tag           VARCHAR(20) DEFAULT 'themed'
-                CHECK (tag IN ('seasonal', 'themed', 'bridal', 'new-launch')),
+                CHECK (tag IN ('seasonal', 'themed', 'bridal', 'new-launch', 'festive')),
   cover_image   TEXT,
   launch_date   DATE,
   is_active     BOOLEAN DEFAULT true,
