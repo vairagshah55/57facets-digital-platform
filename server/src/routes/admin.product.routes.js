@@ -133,7 +133,7 @@ router.post("/", async (req, res, next) => {
       collection_ids,
     } = req.body;
 
-    if (!name || !sku) throw new AppError("Name and SKU are required");
+    if (!sku) throw new AppError("SKU is required");
 
     // Check SKU uniqueness (only active products)
     const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
@@ -154,7 +154,7 @@ router.post("/", async (req, res, next) => {
         $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
       ) RETURNING *`,
       [
-        name, sku, description || null, category_id || null,
+        name || "", sku, description || null, category_id || null,
         base_price || 0, carat || 0, metal_type || null, gold_colour || null,
         metal_weight || null,
         diamond_type || null, diamond_shape || null, diamond_color || null,

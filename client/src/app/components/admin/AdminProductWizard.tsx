@@ -176,12 +176,7 @@ function formToPayload(f: FormData) {
 function validateStep(step: number, form: FormData): FieldErrors {
   const errors: FieldErrors = {};
   if (step === 1) {
-    if (!form.name.trim())  errors.name = "Product name is required";
     if (!form.sku.trim())   errors.sku  = "SKU is required";
-  }
-  if (step === 4) {
-    if (!form.base_price || isNaN(Number(form.base_price)) || Number(form.base_price) <= 0)
-      errors.base_price = "A valid price is required";
   }
   return errors;
 }
@@ -301,7 +296,7 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
-        <FInput label="Product Name" required placeholder="e.g. Radiant Diamond Solitaire Ring"
+        <FInput label="Product Name" hint="Optional" placeholder="e.g. Radiant Diamond Solitaire Ring"
           value={form.name} onChange={f("name")} error={errors.name} />
         <FInput label="SKU" required placeholder="e.g. RNG-18K-001"
           value={form.sku} onChange={f("sku")} error={errors.sku} />
@@ -590,7 +585,7 @@ function StepPricing({ form, setForm, errors, clearError }: {
   return (
     <div className="space-y-5">
       <div className="max-w-xs">
-        <FInput label="Base Price (₹)" required type="number" placeholder="45000"
+        <FInput label="Base Price (₹)" hint="Optional" type="number" placeholder="45000"
           value={form.base_price} onChange={f("base_price")} error={errors.base_price} />
       </div>
       <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
