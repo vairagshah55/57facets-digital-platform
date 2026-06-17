@@ -478,6 +478,7 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
             onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
             {DIAMOND_QUALITIES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
+          <FInput label="Carat" type="number" placeholder="1.5" value={form.carat} onChange={f("carat")} />
           <FSelect label="Certification" placeholder="Select certification" value={form.diamond_certification}
             onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
             {["GIA", "GSI", "IGI"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
@@ -529,7 +530,6 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
       <div>
         <GroupLabel>Carat & Dimensions</GroupLabel>
         <div className="grid grid-cols-3 gap-4">
-          <FInput label="Carat" type="number" placeholder="1.5" value={form.carat} onChange={f("carat")} />
           <FInput label="Carat Range Min" type="number" placeholder="0.5" value={form.carat_range_min} onChange={f("carat_range_min")} />
           <FInput label="Carat Range Max" type="number" placeholder="3.0" value={form.carat_range_max} onChange={f("carat_range_max")} />
           <FInput label="Hallmark" placeholder="BIS 916" value={form.hallmark} onChange={f("hallmark")} />
