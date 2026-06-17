@@ -41,10 +41,20 @@ type Category    = { id: string; name: string };
 type Collection  = { id: string; name: string };
 type FieldErrors = Record<string, string>;
 
+type DiamondRow = {
+  diamond_type: string; diamond_shape: string; diamond_color: string;
+  diamond_clarity: string; diamond_certification: string; carat: string;
+};
+const EMPTY_DIAMOND: DiamondRow = {
+  diamond_type: "", diamond_shape: "", diamond_color: "",
+  diamond_clarity: "", diamond_certification: "", carat: "",
+};
+
 type FormData = {
   name: string; sku: string; description: string; category_id: string;
   collection_ids: string[]; occasion_tags: string;
   metal_type: string; gold_colour: string; metal_weight: string;
+  diamonds: DiamondRow[];
   finish_options: string; diamond_type: string; diamond_shape: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
@@ -93,6 +103,7 @@ const MAX_IMAGES = 10;
 const EMPTY: FormData = {
   name: "", sku: "", description: "", category_id: "", collection_ids: [],
   occasion_tags: "", metal_type: "", gold_colour: "", metal_weight: "",
+  diamonds: [],
   finish_options: "", diamond_type: "", diamond_shape: "", diamond_color: "",
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "",
@@ -116,6 +127,27 @@ function detailToForm(d: ProductDetail): FormData {
     metal_type: d.metal_type || "", gold_colour: d.gold_colour || "",
     metal_weight: d.metal_weight != null ? String(d.metal_weight) : "",
     finish_options: Array.isArray(d.finish_options) ? d.finish_options.join(", ") : (d.finish_options || ""),
+    diamonds: (() => {
+      const arr = Array.isArray((d as any).diamonds) ? (d as any).diamonds : [];
+      if (arr.length) {
+        return arr.map((r: any) => ({
+          diamond_type: r.diamond_type || "", diamond_shape: r.diamond_shape || "",
+          diamond_color: r.diamond_color || "", diamond_clarity: r.diamond_clarity || "",
+          diamond_certification: r.diamond_certification || "",
+          carat: r.carat != null ? String(r.carat) : "",
+        }));
+      }
+      // Legacy product with single diamond fields → seed one row
+      if (d.diamond_type || d.diamond_shape || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat != null) {
+        return [{
+          diamond_type: d.diamond_type || "", diamond_shape: d.diamond_shape || "",
+          diamond_color: d.diamond_color || "", diamond_clarity: d.diamond_clarity || "",
+          diamond_certification: d.diamond_certification || "",
+          carat: d.carat != null ? String(d.carat) : "",
+        }];
+      }
+      return [];
+    })(),
     diamond_type: d.diamond_type || "", diamond_shape: d.diamond_shape || "",
     diamond_color: d.diamond_color || "", diamond_clarity: d.diamond_clarity || "",
     diamond_certification: d.diamond_certification || "", setting_type: d.setting_type || "",
@@ -150,6 +182,16 @@ function formToPayload(f: FormData) {
     metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
     metal_weight: f.metal_weight ? parseFloat(f.metal_weight) : null,
     finish_options: f.finish_options ? f.finish_options.split(",").map((t) => t.trim()).filter(Boolean) : [],
+    diamonds: f.diamonds
+      .filter((d) => d.diamond_type || d.diamond_shape || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat)
+      .map((d) => ({
+        diamond_type: d.diamond_type.trim() || null,
+        diamond_shape: d.diamond_shape || null,
+        diamond_color: d.diamond_color || null,
+        diamond_clarity: d.diamond_clarity || null,
+        diamond_certification: d.diamond_certification.trim() || null,
+        carat: d.carat ? parseFloat(d.carat) : null,
+      })),
     diamond_type: f.diamond_type.trim() || null, diamond_shape: f.diamond_shape || null,
     diamond_color: f.diamond_color || null, diamond_clarity: f.diamond_clarity || null,
     diamond_certification: f.diamond_certification.trim() || null,
@@ -434,6 +476,21 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
    STEP CONTENT — SPECS
    ═══════════════════════════════════════════════════════ */
 
+// Compact themed select for the diamond grid cells (dark dropdown, not native white).
+function DiaSelect({ value, onChange, placeholder, options }: {
+  value: string; onChange: (v: string) => void; placeholder: string; options: string[];
+}) {
+  return (
+    <Select value={value || "__none__"} onValueChange={(v) => onChange(v === "__none__" ? "" : v)}>
+      <SelectTrigger className="h-8 text-xs" style={iBase}><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">—</SelectItem>
+        {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat, setPendingCarat }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
   pendingStone: { name: string; quality: string };
@@ -464,25 +521,55 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
 
       <div>
         <GroupLabel>Diamond</GroupLabel>
-        <div className="grid grid-cols-2 gap-4">
-          <FInput label="Diamond Type" placeholder="Natural, Lab-grown" value={form.diamond_type} onChange={f("diamond_type")} />
-          <FSelect label="Diamond Shape" placeholder="Select shape" value={form.diamond_shape}
-            onValueChange={(v) => setForm((p) => ({ ...p, diamond_shape: v }))}>
-            {DIAMOND_SHAPES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
-          <FSelect label="Diamond Shade" placeholder="Select shade" value={form.diamond_color}
-            onValueChange={(v) => setForm((p) => ({ ...p, diamond_color: v }))}>
-            {DIAMOND_SHADES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
-          <FSelect label="Diamond Quality" placeholder="Select quality" value={form.diamond_clarity}
-            onValueChange={(v) => setForm((p) => ({ ...p, diamond_clarity: v }))}>
-            {DIAMOND_QUALITIES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
-          <FInput label="Carat" type="number" placeholder="1.5" value={form.carat} onChange={f("carat")} />
-          <FSelect label="Certification" placeholder="Select certification" value={form.diamond_certification}
-            onValueChange={(v) => setForm((p) => ({ ...p, diamond_certification: v }))}>
-            {["GIA", "GSI", "IGI"].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
+        <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--sf-divider)" }}>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--sf-divider)" }}>
+                {["Type", "Shape", "Shade", "Quality", "Certification", "Carat"].map((h) => (
+                  <th key={h} className="text-left text-xs font-semibold px-2 py-2 whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>{h}</th>
+                ))}
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {form.diamonds.length === 0 ? (
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No diamonds yet — click "Add diamond" below.</td></tr>
+              ) : form.diamonds.map((d, i) => {
+                const upd = (key: keyof DiamondRow, v: string) =>
+                  setForm((p) => ({ ...p, diamonds: p.diamonds.map((x, j) => (j === i ? { ...x, [key]: v } : x)) }));
+                return (
+                  <tr key={i} style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <td className="p-1" style={{ minWidth: 120 }}>
+                      <input value={d.diamond_type} onChange={(e) => upd("diamond_type", e.target.value)} placeholder="Natural"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 130 }}><DiaSelect value={d.diamond_shape} onChange={(v) => upd("diamond_shape", v)} placeholder="Shape" options={DIAMOND_SHAPES} /></td>
+                    <td className="p-1" style={{ minWidth: 95 }}><DiaSelect value={d.diamond_color} onChange={(v) => upd("diamond_color", v)} placeholder="Shade" options={DIAMOND_SHADES} /></td>
+                    <td className="p-1" style={{ minWidth: 110 }}><DiaSelect value={d.diamond_clarity} onChange={(v) => upd("diamond_clarity", v)} placeholder="Quality" options={DIAMOND_QUALITIES} /></td>
+                    <td className="p-1" style={{ minWidth: 100 }}><DiaSelect value={d.diamond_certification} onChange={(v) => upd("diamond_certification", v)} placeholder="Cert" options={["GIA", "GSI", "IGI"]} /></td>
+                    <td className="p-1" style={{ minWidth: 85 }}>
+                      <input type="number" value={d.carat} onChange={(e) => upd("carat", e.target.value)} placeholder="1.5"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="px-1 text-center">
+                      <button onClick={() => setForm((p) => ({ ...p, diamonds: p.diamonds.filter((_, j) => j !== i) }))}
+                        title="Delete diamond" className="w-7 h-7 rounded-lg inline-flex items-center justify-center"
+                        style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <button onClick={() => setForm((p) => ({ ...p, diamonds: [...p.diamonds, { ...EMPTY_DIAMOND }] }))}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
+          style={{ color: "var(--sf-teal)", backgroundColor: "var(--sf-bg-surface-2)", border: "none", cursor: "pointer" }}>
+          <Plus className="w-3.5 h-3.5" /> Add diamond
+        </button>
+        <div className="grid grid-cols-2 gap-4 mt-4">
           <FInput label="Setting Type" placeholder="Prong, Bezel, Pave" value={form.setting_type} onChange={f("setting_type")} />
         </div>
       </div>
