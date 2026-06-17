@@ -13,7 +13,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
-import { adminProducts } from "../../../lib/adminApi";
+import { adminProducts, adminPricing } from "../../../lib/adminApi";
 import { imageUrl } from "../../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
@@ -574,9 +574,9 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
    STEP CONTENT — PRICING
    ═══════════════════════════════════════════════════════ */
 
-function StepPricing({ form, setForm, errors, clearError }: {
+function StepPricing({ form, setForm, errors, clearError, productId }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>; errors: FieldErrors;
-  clearError: (key: string) => void;
+  clearError: (key: string) => void; productId?: string;
 }) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((p) => ({ ...p, [key]: e.target.value }));
@@ -597,6 +597,79 @@ function StepPricing({ form, setForm, errors, clearError }: {
           value={form.price_modifiers} onChange={f("price_modifiers")}
           className="font-mono text-xs min-h-[120px]" />
       </div>
+      <RetailerPricePreview productId={productId} />
+    </div>
+  );
+}
+
+/* ── Retailer price preview (admin): pick a retailer → see their price ── */
+function RetailerPricePreview({ productId }: { productId?: string }) {
+  const [retailers, setRetailers] = useState<any[]>([]);
+  const [rid, setRid] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!productId) return;
+    adminPricing.retailers().then((d: any) => setRetailers(d || [])).catch(() => {});
+  }, [productId]);
+
+  useEffect(() => {
+    if (!productId) { setResult(null); return; }
+    setLoading(true);
+    adminPricing.preview(productId, rid || undefined)
+      .then((d: any) => setResult(d))
+      .catch(() => setResult(null))
+      .finally(() => setLoading(false));
+  }, [productId, rid]);
+
+  const inr = (n: any) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
+
+  return (
+    <div className="rounded-xl p-4" style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}>
+      <p className="text-xs font-semibold mb-1" style={{ color: "var(--sf-teal)" }}>Retailer price preview</p>
+      {!productId ? (
+        <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+          Save the product first to preview how each retailer's price is computed.
+        </p>
+      ) : (
+        <>
+          <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
+            Pick a retailer to see the price they'll be shown for this product.
+          </p>
+          <div className="max-w-xs mb-3">
+            <FSelect
+              label=""
+              placeholder="No retailer (base computed)"
+              value={rid || "__none__"}
+              onValueChange={(v) => setRid(v === "__none__" ? "" : v)}
+            >
+              <SelectItem value="__none__">No retailer (base computed)</SelectItem>
+              {retailers.map((r) => (
+                <SelectItem key={r.id} value={r.id}>{r.name || "Unnamed retailer"} (×{r.price_factor})</SelectItem>
+              ))}
+            </FSelect>
+          </div>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--sf-text-muted)" }}>
+              <Loader2 className="w-4 h-4 animate-spin" /> Calculating…
+            </div>
+          ) : result ? (
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold" style={{ color: "var(--sf-text-primary)" }}>{inr(result.price)}</span>
+                <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded"
+                  style={{ background: "var(--sf-bg-surface)", color: "var(--sf-text-muted)" }}>{result.source}</span>
+              </div>
+              {result.breakdown && (
+                <p className="text-[11px] mt-1.5" style={{ color: "var(--sf-text-muted)" }}>
+                  Metal {inr(result.breakdown.metalCost)} · Diamond {inr(result.breakdown.diamondCost)} · Stone {inr(result.breakdown.stoneCost)} · Making {inr(result.breakdown.makingCost)}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -1033,7 +1106,7 @@ export function AdminProductWizard() {
                 <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone}
                   setPendingStone={setPendingStone} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />
               )}
-              {step === 4 && <StepPricing form={form} setForm={setForm} errors={fieldErrors} clearError={clearError} />}
+              {step === 4 && <StepPricing form={form} setForm={setForm} errors={fieldErrors} clearError={clearError} productId={id} />}
               {step === 5 && <StepStatus form={form} setForm={setForm} />}
             </motion.div>
           </AnimatePresence>

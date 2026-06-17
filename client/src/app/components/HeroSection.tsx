@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+// Bundled with the app (hashed + served by nginx). Previously pointed at a
+// GCS object that 404s in prod; importing the local asset is self-contained.
+import bannerVideo from "@/assets/Videos/banne video.mp4";
 
-// Host this on Google Cloud Storage with Cloud CDN for fast delivery.
-// Upload: gsutil cp "banne video.mp4" gs://YOUR_BUCKET/videos/banner-video.mp4
-// Then set this to: "https://storage.googleapis.com/YOUR_BUCKET/videos/banner-video.mp4"
-// const BANNER_VIDEO_URL = "https://storage.googleapis.com/YOUR_BUCKET/videos/banner-video.mp4";
-
-const BANNER_VIDEO_URL = "https://storage.googleapis.com/facets-bucket/banne_video.mp4";
+const BANNER_VIDEO_URL = bannerVideo;
 
 // ─── Reusable pill CTA button ──────────────────────────────────────────────────
 function CtaButton({

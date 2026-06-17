@@ -42,6 +42,7 @@ import { useCart } from "../../context/CartContext";
 
 type ApiProduct = {
   id: number; name: string; sku: string; base_price: string;
+  price?: number; price_source?: string;
   carat: number; metal_type: string;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
   is_new: boolean; category: string; image: string | null;
@@ -65,7 +66,8 @@ const PLACEHOLDER_IMAGE =
 function formatPrice(n: number): string { return "₹" + n.toLocaleString("en-IN"); }
 
 function mapProduct(p: ApiProduct): Product {
-  const price = Number(p.base_price) || 0;
+  // Prefer the per-retailer price computed by the server; fall back to base_price.
+  const price = p.price != null ? Number(p.price) : (Number(p.base_price) || 0);
   return {
     id: p.id, name: p.name, sku: p.sku || "", price, priceLabel: formatPrice(price),
     category: p.category, carat: p.carat ?? 0, availability: p.availability,

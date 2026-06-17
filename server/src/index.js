@@ -24,6 +24,7 @@ const adminCollectionRoutes = require("./routes/admin.collection.routes");
 const adminOrderRoutes = require("./routes/admin.order.routes");
 const adminAuditRoutes = require("./routes/admin.audit.routes");
 const adminReportsRoutes = require("./routes/admin.reports.routes");
+const adminPricingRoutes = require("./routes/admin.pricing.routes");
 
 const app = express();
 app.set("trust proxy", 1); // Required for Cloud Run / load balancers
@@ -95,6 +96,7 @@ app.use("/api/admin/collections", adminCollectionRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/audit", adminAuditRoutes);
 app.use("/api/admin/reports", adminReportsRoutes);
+app.use("/api/admin/pricing", adminPricingRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

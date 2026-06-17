@@ -511,15 +511,9 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     //  • Un-coloured columns are REQUIRED — a row missing any is skipped.
     //  • Coloured columns are OPTIONAL (name, description, metal_type,
     //     gold_colour, diamond_certification, availability, occasion_tags).
-    const REQUIRED_FIELDS = [
-      "sku", "category", "base_price", "metal_weight",
-      "diamond_type", "diamond_shape", "diamond_color", "diamond_clarity", "carat",
-      "color_stone_name", "color_stone_quality",
-      "max_order_qty", "is_new", "images",
-    ];
-    for (const r of REQUIRED_FIELDS) {
-      if (col(r) === -1) throw new AppError(`File must have a '${r}' column`);
-    }
+    // Only SKU is required (matches the single-product form). Every other field is
+    // optional on import — missing values are stored as null / sensible defaults.
+    if (col("sku") === -1) throw new AppError("File must have a 'sku' column");
 
     // Helpers
     const getVal = (cols, idx) => {
@@ -546,17 +540,11 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     for (let i = startRow; i < rows.length; i++) {
       const cols = rows[i];
 
-      const name = getVal(cols, col("name")); // optional (coloured field)
-
-      // Every required (un-coloured) column must carry a value on this row
-      const missing = REQUIRED_FIELDS.filter((f) => getVal(cols, col(f)) === null);
-      if (missing.length > 0) {
-        skipped++;
-        errors.push({ row: i + 1, reason: `Missing required field(s): ${missing.join(", ")}` });
-        continue;
-      }
-
+      const name = getVal(cols, col("name")); // optional
       const sku = getVal(cols, col("sku"));
+
+      // SKU is the only required field. Rows without one are blank/spacer rows — skip quietly.
+      if (!sku) { skipped++; continue; }
 
       // Check duplicates — the products_sku_key unique constraint spans ALL
       // rows. An ACTIVE product with this SKU is a real conflict and is
@@ -616,7 +604,7 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
           ) RETURNING id`,
           [
-            name, sku,
+            name || "", sku,
             getVal(cols, col("description")),
             category_id,
             getNum(cols, col("base_price")) || 0,

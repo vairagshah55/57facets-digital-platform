@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "db:migrate": "node src/db/migrate.js && node src/db/migrate-admin.js && node src/db/migrate-search-trigram.js && node src/db/migrate-collection-festive-tag.js",
+    "db:migrate": "node src/db/migrate.js && node src/db/migrate-admin.js && node src/db/migrate-search-trigram.js && node src/db/migrate-collection-festive-tag.js && node src/db/migrate-pricing.js",
     "db:migrate:search": "node src/db/migrate-search-trigram.js",
     "db:migrate:festive-tag": "node src/db/migrate-collection-festive-tag.js",
     "db:migrate:admin": "node src/db/migrate-admin.js",
+    "db:migrate:pricing": "node src/db/migrate-pricing.js",
     "db:seed": "node src/db/seed.js",
     "db:seed:admin": "node src/db/seed-admin.js"
   },

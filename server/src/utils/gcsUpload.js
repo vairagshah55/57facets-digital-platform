@@ -25,8 +25,10 @@ const uploadFile = (buffer, filename, mimetype) => {
     const uploadDir = path.join(__dirname, "../../uploads", path.dirname(filename));
     fs.mkdirSync(uploadDir, { recursive: true });
     fs.writeFileSync(path.join(__dirname, "../../uploads", filename), buffer);
-    const base = `http://localhost:${process.env.PORT || 5000}`;
-    return Promise.resolve(`${base}/uploads/${filename}`);
+    // Return a host-relative path so the URL works on any origin: the browser
+    // resolves it against the current site (e.g. https://57facets.in/uploads/...).
+    // Storing an absolute http://localhost URL breaks images in production.
+    return Promise.resolve(`/uploads/${filename}`);
   }
 
   return new Promise((resolve, reject) => {

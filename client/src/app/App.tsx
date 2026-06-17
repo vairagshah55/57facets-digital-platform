@@ -14,6 +14,7 @@ import { AdminOrders } from "./components/admin/AdminOrders";
 import { AdminNotifications } from "./components/admin/AdminNotifications";
 import { AdminAuditLog } from "./components/admin/AdminAuditLog";
 import { AdminReports } from "./components/admin/AdminReports";
+import { AdminPricing } from "./components/admin/AdminPricing";
 import { RetailerNotifications } from "./components/RetailerNotifications";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
@@ -167,6 +168,7 @@ export default function App() {
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="audit" element={<AdminAuditLog />} />
           <Route path="reports" element={<AdminReports />} />
+          <Route path="pricing" element={<AdminPricing />} />
         </Route>
       </Routes>
       <Toaster position="bottom-right" richColors closeButton />

@@ -3,6 +3,7 @@ const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const auditLog = require("../utils/auditLog");
 const AppError = require("../utils/AppError");
+const pricing = require("../services/pricing.service");
 
 // ── GET /api/products ──────────────────────────────
 // List products with filters
@@ -61,8 +62,9 @@ router.get("/", authenticate, async (req, res, next) => {
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type,
-              p.availability, p.is_new, p.diamond_shape,
+      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
+              p.availability, p.is_new, p.diamond_shape, p.diamond_color, p.diamond_clarity,
+              p.color_stone_name, p.color_stone_quality,
               c.name AS category,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
        FROM products p
@@ -72,6 +74,9 @@ router.get("/", authenticate, async (req, res, next) => {
        LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, parseInt(limit), offset]
     );
+
+    // Attach the per-retailer computed price (price + price_source) to each row.
+    const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
 
     // Total count
     const { rows: countRows } = await query(
@@ -93,7 +98,7 @@ router.get("/", authenticate, async (req, res, next) => {
     }
 
     res.json({
-      products: rows,
+      products: priced,
       total: parseInt(countRows[0].count),
       page: parseInt(page),
       totalPages: Math.ceil(parseInt(countRows[0].count) / parseInt(limit)),
@@ -205,8 +210,14 @@ router.get("/:id", authenticate, async (req, res, next) => {
       entityId: req.params.id,
     });
 
+    // Per-retailer computed price + full cost breakdown
+    const priced = await pricing.priceForRetailer(rows[0], req.retailer?.id);
+
     res.json({
       ...rows[0],
+      price: priced.price,
+      price_source: priced.source,
+      price_breakdown: priced.breakdown,
       images,
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });

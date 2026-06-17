@@ -213,6 +213,78 @@ export const adminOrders = {
     request(`/orders/${id}/edit-logs`),
 };
 
+// ── Pricing (Admin) ───────────────────────────────
+export const adminPricing = {
+  // ── Rate chart — every read/write is scoped: pass a retailerId to edit that
+  // retailer's own chart, or omit it (scope = "") to edit the Global default. ──
+  // Diamond rate matrix
+  diamondRates: (retailerId?: string) =>
+    request(`/pricing/diamond-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
+  saveDiamondRates: (rows: any[], retailerId?: string) =>
+    request(`/pricing/diamond-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  deleteDiamondRate: (id: string) => request(`/pricing/diamond-rates/${id}`, { method: "DELETE" }),
+  // Delete a whole sieve row (shape_group + sieve) — Global, or a retailer's chart.
+  deleteDiamondSieveRow: (shapeGroup: string, sieve: string, retailerId?: string) =>
+    request(`/pricing/diamond-rates?shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "DELETE" }),
+
+  // Carat → sieve map
+  sieveMap: (retailerId?: string) =>
+    request(`/pricing/sieve-map${retailerId ? `?retailerId=${retailerId}` : ""}`),
+  saveSieveMap: (rows: any[], retailerId?: string) =>
+    request(`/pricing/sieve-map${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  deleteSieve: (id: string) => request(`/pricing/sieve-map/${id}`, { method: "DELETE" }),
+
+  // Stone rates
+  stoneRates: (retailerId?: string) =>
+    request(`/pricing/stone-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
+  saveStoneRates: (rows: any[], retailerId?: string) =>
+    request(`/pricing/stone-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  deleteStoneRate: (id: string) => request(`/pricing/stone-rates/${id}`, { method: "DELETE" }),
+
+  // Metal (gold) rates
+  metalRates: (retailerId?: string) =>
+    request(`/pricing/metal-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
+  saveMetalRates: (rows: any[], retailerId?: string) =>
+    request(`/pricing/metal-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  syncGold: () => request("/pricing/metal-rates/sync", { method: "POST" }),
+
+  // Making charges
+  makingCharges: (retailerId?: string) =>
+    request(`/pricing/making-charges${retailerId ? `?retailerId=${retailerId}` : ""}`),
+  saveMakingCharges: (rows: any[], retailerId?: string) =>
+    request(`/pricing/making-charges${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  deleteMaking: (id: string) => request(`/pricing/making-charges/${id}`, { method: "DELETE" }),
+
+  // Retailer pricing — factors + per-product overrides
+  retailers: () => request("/pricing/retailers"),
+  saveFactors: (id: string, body: any) =>
+    request(`/pricing/retailers/${id}/factors`, { method: "PUT", body: JSON.stringify(body) }),
+  overrides: (id: string) => request(`/pricing/retailers/${id}/overrides`),
+  saveOverride: (id: string, product_id: string, price: number) =>
+    request(`/pricing/retailers/${id}/overrides`, { method: "PUT", body: JSON.stringify({ product_id, price }) }),
+  deleteOverride: (id: string, productId: string) =>
+    request(`/pricing/retailers/${id}/overrides/${productId}`, { method: "DELETE" }),
+
+  // Price preview (cost breakdown)
+  preview: (productId: string, retailerId?: string) =>
+    request(`/pricing/preview?productId=${productId}${retailerId ? `&retailerId=${retailerId}` : ""}`),
+
+  // Seed the chart from the master xlsx
+  importChart: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = getAdminToken();
+    const res = await fetch(`${API_BASE}/pricing/import`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Import failed");
+    return data;
+  },
+};
+
 // ── Audit Logs ───────────────────────────────────
 export const adminAudit = {
   list: (params?: Record<string, string>) => {

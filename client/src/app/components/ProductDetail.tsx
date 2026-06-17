@@ -59,6 +59,9 @@ interface ProductData {
   video: string;
   isNew: boolean;
   goldPricePerGram: number;
+  serverPrice: number | null;
+  priceSource?: string;
+  priceBreakdown?: any;
   specs: {
     metalType: string;
     metalWeight: string;
@@ -104,6 +107,9 @@ function mapApiProduct(raw: any): ProductData {
     sku: raw.sku || "",
     availability: raw.availability || "in-stock",
     basePrice: Number(raw.base_price) || 0,
+    serverPrice: raw.price != null ? Number(raw.price) : null,
+    priceSource: raw.price_source,
+    priceBreakdown: raw.price_breakdown || null,
     images: apiImages.length > 0 ? apiImages : FALLBACK_IMAGES,
     video: videoEntry ? imageUrl(videoEntry.image_url) : "",
     isNew: Boolean(raw.is_new),
@@ -133,24 +139,6 @@ function mapApiProduct(raw: any): ProductData {
       caratOptions: Array.isArray(raw.carat_options) ? raw.carat_options.map(Number) : [],
     },
   };
-}
-
-/* ═══════════════════════════════════════════════════════
-   PRICE CALCULATION
-   ═══════════════════════════════════════════════════════ */
-
-function calculatePrice(
-  baseCarat: number,
-  selectedCarat: number,
-  basePrice: number,
-  metalWeight: number,
-  goldPrice: number
-) {
-  const caratMultiplier = selectedCarat / baseCarat;
-  const diamondPrice = basePrice * 0.65 * caratMultiplier;
-  const metalPrice = metalWeight * goldPrice;
-  const makingCharges = basePrice * 0.12;
-  return Math.round(diamondPrice + metalPrice + makingCharges);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -265,16 +253,11 @@ export function ProductDetail() {
 
   const totalPrice = useMemo(() => {
     if (!product) return 0;
-    return (
-      calculatePrice(
-        product.specs.diamondCarat,
-        selectedCarat,
-        product.basePrice,
-        parseFloat(product.specs.metalWeight),
-        product.goldPricePerGram
-      ) * quantity
-    );
-  }, [product, selectedCarat, quantity]);
+    // Per-retailer price computed by the server, fixed to the product's listed
+    // configuration (base carat). Falls back to base_price if the server didn't price it.
+    const unit = product.serverPrice ?? product.basePrice;
+    return unit * quantity;
+  }, [product, quantity]);
 
   const handleAddToCart = useCallback(() => {
     if (!product || product.availability === "out-of-stock") return;
@@ -564,7 +547,7 @@ export function ProductDetail() {
                 </Tooltip>
               </div>
               <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
-                Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Making charges: 12%
+                Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Your contracted pricing
               </p>
             </div>
 
@@ -1377,14 +1360,17 @@ export function ProductDetail() {
               {/* ── Pricing tab ─────────────────────────── */}
               <TabsContent value="pricing" className="mt-5">
                 {(() => {
-                  const diamondVal = Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
-                  const metalVal   = Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
-                  const makingVal  = Math.round(product.basePrice * 0.12);
-                  const subtotal   = diamondVal + metalVal + makingVal;
+                  // Prefer the server's computed breakdown; fall back to an estimate
+                  // when the server didn't itemise (e.g. per-retailer override).
+                  const bd = product.priceBreakdown;
+                  const diamondVal = bd ? Math.round(bd.diamondCost || 0) : Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
+                  const metalVal   = bd ? Math.round(bd.metalCost || 0)   : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
+                  const makingVal  = bd ? Math.round(bd.makingCost || 0)  : Math.round(product.basePrice * 0.12);
+                  const subtotal   = (diamondVal + metalVal + makingVal) || 1;
                   const rows = [
-                    { icon: <Diamond />,  accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${selectedCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
+                    { icon: <Diamond />,  accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${product.specs.diamondCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
                     { icon: <Palette />,  accent: "#D4A843", gradient: "212,168,67", label: "Metal",   sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
-                    { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship · 12%", val: makingVal },
+                    { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
                   ];
                   return (
                     <motion.div

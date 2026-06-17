@@ -3,6 +3,12 @@ const { query, getClient } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
+const pricing = require("../services/pricing.service");
+
+// Columns the pricing engine needs to compute a per-retailer price.
+const PRICING_COLS =
+  "id, availability, base_price, carat, metal_type, metal_weight, " +
+  "diamond_shape, diamond_color, diamond_clarity, color_stone_name, color_stone_quality";
 
 router.use(authenticate);
 
@@ -150,21 +156,22 @@ router.post("/", async (req, res, next) => {
     // Generate order number
     const orderNumber = `ORD-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
-    // Validate all products exist and calculate total from unitPrice sent by client
-    // unitPrice is the dynamically calculated price (gold rate + carat + making charges)
+    // Validate all products exist and compute the AUTHORITATIVE per-retailer price
+    // server-side. The client-sent unitPrice is ignored — never trust it.
     let total = 0;
     for (const item of items) {
       const { rows: products } = await client.query(
-        "SELECT id, availability FROM products WHERE id = $1",
+        `SELECT ${PRICING_COLS} FROM products WHERE id = $1`,
         [item.productId]
       );
       if (products.length === 0) throw new AppError(`Product ${item.productId} not found`);
       if (products[0].availability === "out-of-stock") {
         throw new AppError(`Product ${item.productId} is currently unavailable`, 400);
       }
-      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const priced = await pricing.priceForRetailer(products[0], req.retailer.id);
+      item._unitPrice = priced.price;
       const qty = parseInt(item.quantity) || 1;
-      total += unitPrice * qty;
+      total += item._unitPrice * qty;
     }
 
     // Create order
@@ -181,7 +188,7 @@ router.post("/", async (req, res, next) => {
         `INSERT INTO order_items (order_id, product_id, quantity, unit_price, carat, metal_type,
          gold_colour, diamond_shape, diamond_shade, diamond_quality, color_stone_name, color_stone_quality, note)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [order.id, item.productId, item.quantity || 1, item.unitPrice || 0,
+        [order.id, item.productId, item.quantity || 1, item._unitPrice || 0,
          item.carat || null, item.metalType || null,
          item.goldColour || null, item.diamondShape || null, item.diamondShade || null,
          item.diamondQuality || null, item.colorStoneName || null, item.colorStoneQuality || null,
@@ -265,6 +272,18 @@ router.put("/:id", async (req, res, next) => {
       return value;
     };
 
+    // Authoritative per-retailer price for a product (server-side; the client
+    // unitPrice is never trusted, on create or edit).
+    const serverUnitPrice = async (productId) => {
+      const { rows } = await client.query(
+        `SELECT ${PRICING_COLS} FROM products WHERE id = $1`,
+        [productId]
+      );
+      if (!rows.length) throw new AppError("Product not found", 404);
+      const priced = await pricing.priceForRetailer(rows[0], req.retailer.id);
+      return priced.price;
+    };
+
     for (const item of items) {
       const qty = Math.max(1, parseInt(item.quantity) || 1);
       const itemNote = cleanText(item.note);
@@ -275,10 +294,7 @@ router.put("/:id", async (req, res, next) => {
           throw new AppError("Invalid order item in edit payload", 400);
         }
 
-        const unitPrice =
-          Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
-            ? parseFloat(item.unitPrice)
-            : parseFloat(existing.unit_price) || 0;
+        const unitPrice = await serverUnitPrice(existing.product_id);
         const carat = Number.isFinite(parseFloat(item.carat))
           ? parseFloat(item.carat)
           : existing.carat;
@@ -323,10 +339,7 @@ router.put("/:id", async (req, res, next) => {
       // If the product already exists in the order, treat this as an update.
       const existingForProduct = existingByProductId.get(item.productId);
       if (existingForProduct) {
-        const unitPrice =
-          Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
-            ? parseFloat(item.unitPrice)
-            : parseFloat(existingForProduct.unit_price) || 0;
+        const unitPrice = await serverUnitPrice(item.productId);
         const carat = Number.isFinite(parseFloat(item.carat))
           ? parseFloat(item.carat)
           : existingForProduct.carat;
@@ -365,8 +378,7 @@ router.put("/:id", async (req, res, next) => {
       }
 
       const { rows: products } = await client.query(
-        `SELECT id, base_price, carat, metal_type, diamond_shape, diamond_color, diamond_clarity, availability
-         FROM products WHERE id = $1 AND is_active = true`,
+        `SELECT ${PRICING_COLS} FROM products WHERE id = $1 AND is_active = true`,
         [item.productId]
       );
       if (!products.length) throw new AppError("Product not found", 404);
@@ -375,10 +387,7 @@ router.put("/:id", async (req, res, next) => {
       }
 
       const p = products[0];
-      const unitPrice =
-        Number.isFinite(parseFloat(item.unitPrice)) && parseFloat(item.unitPrice) > 0
-          ? parseFloat(item.unitPrice)
-          : parseFloat(p.base_price) || 0;
+      const unitPrice = (await pricing.priceForRetailer(p, req.retailer.id)).price;
       const carat = Number.isFinite(parseFloat(item.carat))
         ? parseFloat(item.carat)
         : p.carat;
