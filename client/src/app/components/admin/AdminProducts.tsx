@@ -601,6 +601,15 @@ export function AdminProducts() {
                   </button>
 
                   <button
+                    onClick={() => navigate(`/admin/products/${p.id}/view`)}
+                    title="View as retailer"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[rgba(48,184,191,0.15)]"
+                    style={{ background: "none", border: "none", cursor: "pointer" }}
+                  >
+                    <Eye className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
+                  </button>
+
+                  <button
                     onClick={() => navigate(`/admin/products/${p.id}/edit`)}
                     title="Edit"
                     className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[rgba(38,96,160,0.15)]"

@@ -32,6 +32,7 @@ import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
+import { adminProducts } from "../../lib/adminApi";
 import { useCart } from "../../context/CartContext";
 
 import img1 from "../../assets/Images/1.jpg";
@@ -145,7 +146,7 @@ function mapApiProduct(raw: any): ProductData {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════ */
 
-export function ProductDetail() {
+export function ProductDetail({ adminPreview = false, previewRetailerId }: { adminPreview?: boolean; previewRetailerId?: string } = {}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -200,7 +201,7 @@ export function ProductDetail() {
       try {
         setLoading(true);
         setError(null);
-        const raw = await productsApi.detail(id!);
+        const raw = adminPreview ? await adminProducts.preview(id!, previewRetailerId) : await productsApi.detail(id!);
         if (cancelled) return;
 
         const mapped = mapApiProduct(raw);
@@ -215,12 +216,15 @@ export function ProductDetail() {
         if (mapped.customization.colorStoneQualities.length) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
 
         // Check if retailer has an active (non-final) order for this product
-        try {
-          const check = await ordersApi.checkProduct(id!);
-          if (!cancelled && check.hasActiveOrder && check.order) {
-            setExistingOrder(check.order);
-          }
-        } catch { /* not logged in or no orders — ignore */ }
+        // (retailer-only — skipped in admin preview).
+        if (!adminPreview) {
+          try {
+            const check = await ordersApi.checkProduct(id!);
+            if (!cancelled && check.hasActiveOrder && check.order) {
+              setExistingOrder(check.order);
+            }
+          } catch { /* not logged in or no orders — ignore */ }
+        }
       } catch (err: any) {
         if (cancelled) return;
         setError(err.message || "Failed to load product");
@@ -231,11 +235,11 @@ export function ProductDetail() {
 
     fetchProduct();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, adminPreview, previewRetailerId]);
 
   // ── Wishlist toggle ────────────────────────────────
   const handleWishlistToggle = useCallback(async () => {
-    if (!product || wishlistLoading) return;
+    if (adminPreview || !product || wishlistLoading) return;
     setWishlistLoading(true);
     try {
       if (wishlisted) {
@@ -260,7 +264,7 @@ export function ProductDetail() {
   }, [product, quantity]);
 
   const handleAddToCart = useCallback(() => {
-    if (!product || product.availability === "out-of-stock") return;
+    if (adminPreview || !product || product.availability === "out-of-stock") return;
     addItem({
       productId: product.id,
       productName: product.name,

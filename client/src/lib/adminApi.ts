@@ -107,6 +107,9 @@ export const adminProducts = {
     return request(`/products${qs}`);
   },
   detail: (id: string) => request(`/products/${id}`),
+  // Retailer-shaped detail (price for a given retailer, or base when none) — for admin "view as retailer".
+  preview: (id: string, retailerId?: string) =>
+    request(`/products/${id}/preview${retailerId ? `?retailerId=${retailerId}` : ""}`),
   create: (data: any) =>
     request("/products", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: any) =>

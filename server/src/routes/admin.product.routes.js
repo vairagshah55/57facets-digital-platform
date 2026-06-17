@@ -7,9 +7,50 @@ const AppError = require("../utils/AppError");
 const multer = require("multer");
 const AdmZip = require("adm-zip");
 const { uploadFile } = require("../utils/gcsUpload");
+const pricing = require("../services/pricing.service");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 router.use(adminAuth);
+
+// ── GET /api/admin/products/:id/preview ────────────
+// Returns the SAME shape as the retailer product detail, priced for the given
+// retailer (or base price when none). Lets an admin preview exactly what a
+// retailer sees. Read-only — no recently_viewed / audit side effects.
+router.get("/:id/preview", async (req, res, next) => {
+  try {
+    const { retailerId } = req.query;
+    const { rows } = await query(
+      `SELECT p.*, c.name AS category FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = $1`,
+      [req.params.id]
+    );
+    if (rows.length === 0) throw new AppError("Product not found", 404);
+    const { rows: images } = await query(
+      "SELECT id, image_url, is_primary, media_type, sort_order FROM product_images WHERE product_id = $1 ORDER BY sort_order",
+      [req.params.id]
+    );
+    const { rows: goldPrice } = await query(
+      "SELECT price_per_gram FROM gold_prices WHERE metal_type = $1", [rows[0].metal_type]
+    );
+    const { rows: diamonds } = await query(
+      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat
+       FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
+      [req.params.id]
+    );
+    const priced = await pricing.priceForRetailer(rows[0], retailerId || null);
+    res.json({
+      ...rows[0],
+      price: priced.price,
+      price_source: priced.source,
+      price_breakdown: priced.breakdown,
+      images,
+      diamonds,
+      goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── GET /api/admin/products ────────────────────────
 // List all products with filters
