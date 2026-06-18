@@ -102,8 +102,8 @@ function mapApiProduct(raw: any): ProductData {
   const apiImages =
     raw.images && raw.images.length > 0
       ? raw.images
-          .filter((img: any) => img.media_type !== "video")
-          .map((img: any) => imageUrl(img.image_url))
+        .filter((img: any) => img.media_type !== "video")
+        .map((img: any) => imageUrl(img.image_url))
       : [];
   const videoEntry =
     raw.images && raw.images.find((img: any) => img.media_type === "video");
@@ -125,13 +125,13 @@ function mapApiProduct(raw: any): ProductData {
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
     diamonds: Array.isArray(raw.diamonds)
       ? raw.diamonds.map((d: any) => ({
-          type: d.diamond_type || "",
-          shape: d.diamond_shape || "",
-          color: d.diamond_color || "",
-          clarity: d.diamond_clarity || "",
-          certification: d.diamond_certification || "",
-          carat: d.carat != null ? Number(d.carat) : null,
-        }))
+        type: d.diamond_type || "",
+        shape: d.diamond_shape || "",
+        color: d.diamond_color || "",
+        clarity: d.diamond_clarity || "",
+        certification: d.diamond_certification || "",
+        carat: d.carat != null ? Number(d.carat) : null,
+      }))
       : [],
     specs: {
       metalType: raw.metal_type || "18K White Gold",
@@ -188,6 +188,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [selectedDiamondQuality, setSelectedDiamondQuality] = useState("");
   const [selectedColorStone, setSelectedColorStone] = useState("");
   const [selectedColorStoneQuality, setSelectedColorStoneQuality] = useState("");
+  const [selectedDiamondIdx, setSelectedDiamondIdx] = useState(0);
+  const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
@@ -385,240 +387,240 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   }
 
   return (
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* ═══ LEFT: Image Gallery ═══════════════════ */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        {/* ═══ LEFT: Image Gallery ═══════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Main Image / Video */}
+          <div
+            className="relative aspect-square rounded-2xl overflow-hidden mb-3"
+            style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
           >
-            {/* Main Image / Video */}
-            <div
-              className="relative aspect-square rounded-2xl overflow-hidden mb-3"
-              style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
-            >
-              <AnimatePresence mode="wait">
-                {showVideo && product.video ? (
-                  <motion.video
-                    key="video"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    src={product.video}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <motion.img
-                    key={activeImage}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    src={product.images[activeImage]}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {showVideo && product.video ? (
+                <motion.video
+                  key="video"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  src={product.video}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <motion.img
+                  key={activeImage}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  src={product.images[activeImage]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </AnimatePresence>
 
-              {/* Nav arrows */}
-              {!showVideo && (
+            {/* Nav arrows */}
+            {!showVideo && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
+                  style={{
+                    backgroundColor: "var(--sf-overlay-bg)",
+                    color: "var(--sf-text-primary)",
+                  }}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
+                  style={{
+                    backgroundColor: "var(--sf-overlay-bg)",
+                    color: "var(--sf-text-primary)",
+                  }}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
+            {/* Badges */}
+            {product.isNew && (
+              <Badge
+                className="absolute top-3 left-3 text-xs"
+                style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
+              >
+                NEW
+              </Badge>
+            )}
+
+            {/* Image counter */}
+            <div
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md"
+              style={{
+                backgroundColor: "var(--sf-overlay-bg)",
+                color: "var(--sf-text-secondary)",
+              }}
+            >
+              {showVideo ? "Video" : `${activeImage + 1} / ${product.images.length}`}
+            </div>
+          </div>
+
+          {/* Thumbnails */}
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--sf-glass-border) transparent" }}>
+            {product.images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => { setActiveImage(i); setShowVideo(false); }}
+                className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all"
+                style={{
+                  borderColor:
+                    !showVideo && activeImage === i
+                      ? "var(--sf-teal)"
+                      : "var(--sf-divider)",
+                  opacity: !showVideo && activeImage === i ? 1 : 0.6,
+                }}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+            {/* Video thumb — only if admin uploaded a video */}
+            {product.video && (
+              <button
+                onClick={() => setShowVideo(true)}
+                className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all relative"
+                style={{
+                  borderColor: showVideo ? "var(--sf-teal)" : "var(--sf-divider)",
+                  opacity: showVideo ? 1 : 0.6,
+                  backgroundColor: "var(--sf-bg-surface-2)",
+                }}
+              >
+                <video src={product.video} muted className="w-full h-full object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <Play className="w-5 h-5" style={{ color: "var(--sf-text-primary)" }} fill="white" />
+                </div>
+              </button>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ═══ RIGHT: Product Info ═══════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="flex flex-col"
+        >
+          {/* Header */}
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
+              {product.category}
+            </p>
+            <h1
+              className="text-2xl sm:text-3xl font-semibold mb-2"
+              style={{
+                fontFamily: "'Melodrama', 'Georgia', serif",
+                color: "var(--sf-text-primary)",
+              }}
+            >
+              {product.name}
+            </h1>
+            <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
+              {product.description}
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <AvailabilityBadge status={product.availability} />
+              <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                SKU: {product.sku}
+              </span>
+            </div>
+          </div>
+
+          <Separator className="mb-5" style={{ backgroundColor: "var(--sf-divider)" }} />
+
+          {/* Price */}
+          <div className="mb-6">
+            <p className="text-xs mb-1" style={{ color: "var(--sf-text-muted)" }}>
+              Estimated Price
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span
+                className="text-3xl font-semibold"
+                style={{ color: "var(--sf-text-primary)" }}
+              >
+                {formatPrice(totalPrice)}
+              </span>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Price includes diamond, metal, and making charges.</p>
+                  <p>Gold rate: {formatPrice(product.goldPricePerGram)}/g (live)</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
+              Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Your contracted pricing
+            </p>
+          </div>
+
+          {/* ── Customization ────────────────────────── */}
+          <div className="rounded-2xl border mb-5 overflow-hidden"
+            style={{
+              backgroundColor: "var(--sf-bg-surface-1)",
+              borderColor: existingOrder ? "var(--sf-amber-border)" : "var(--sf-divider)",
+            }}>
+
+            {/* Header */}
+            <div className="px-5 py-3.5 flex items-center gap-2.5"
+              style={{ borderBottom: "1px solid var(--sf-divider)" }}>
+              {existingOrder ? (
                 <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
-                    style={{
-                      backgroundColor: "var(--sf-overlay-bg)",
-                      color: "var(--sf-text-primary)",
-                    }}
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
-                    style={{
-                      backgroundColor: "var(--sf-overlay-bg)",
-                      color: "var(--sf-text-primary)",
-                    }}
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                  <Shield className="w-4 h-4" style={{ color: "var(--sf-amber)" }} />
+                  <span className="text-[13px] font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                    Order Locked
+                  </span>
+                  <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
+                    style={{ background: "var(--sf-amber-subtle)", color: "var(--sf-amber)", border: "1px solid var(--sf-amber-border)" }}>
+                    {existingOrder.order_number} · {existingOrder.status}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                  <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                    Customize Your Piece
+                  </span>
                 </>
               )}
-
-              {/* Badges */}
-              {product.isNew && (
-                <Badge
-                  className="absolute top-3 left-3 text-xs"
-                  style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
-                >
-                  NEW
-                </Badge>
-              )}
-
-              {/* Image counter */}
-              <div
-                className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md"
-                style={{
-                  backgroundColor: "var(--sf-overlay-bg)",
-                  color: "var(--sf-text-secondary)",
-                }}
-              >
-                {showVideo ? "Video" : `${activeImage + 1} / ${product.images.length}`}
-              </div>
             </div>
 
-            {/* Thumbnails */}
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--sf-glass-border) transparent" }}>
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setActiveImage(i); setShowVideo(false); }}
-                  className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all"
-                  style={{
-                    borderColor:
-                      !showVideo && activeImage === i
-                        ? "var(--sf-teal)"
-                        : "var(--sf-divider)",
-                    opacity: !showVideo && activeImage === i ? 1 : 0.6,
-                  }}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-              {/* Video thumb — only if admin uploaded a video */}
-              {product.video && (
-                <button
-                  onClick={() => setShowVideo(true)}
-                  className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all relative"
-                  style={{
-                    borderColor: showVideo ? "var(--sf-teal)" : "var(--sf-divider)",
-                    opacity: showVideo ? 1 : 0.6,
-                    backgroundColor: "var(--sf-bg-surface-2)",
-                  }}
-                >
-                  <video src={product.video} muted className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <Play className="w-5 h-5" style={{ color: "var(--sf-text-primary)" }} fill="white" />
-                  </div>
-                </button>
-              )}
-            </div>
-          </motion.div>
-
-          {/* ═══ RIGHT: Product Info ═══════════════════ */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col"
-          >
-            {/* Header */}
-            <div className="mb-4">
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
-                {product.category}
-              </p>
-              <h1
-                className="text-2xl sm:text-3xl font-semibold mb-2"
-                style={{
-                  fontFamily: "'Melodrama', 'Georgia', serif",
-                  color: "var(--sf-text-primary)",
-                }}
-              >
-                {product.name}
-              </h1>
-              <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
-                {product.description}
-              </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <AvailabilityBadge status={product.availability} />
-                <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                  SKU: {product.sku}
-                </span>
+            {/* Locked overlay notice */}
+            {existingOrder && (
+              <div className="px-5 py-3 flex items-center gap-2.5"
+                style={{ background: "var(--sf-amber-bg)", borderBottom: "1px solid var(--sf-amber-border)" }}>
+                <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sf-amber)" }} />
+                <p className="text-[11px]" style={{ color: "var(--sf-amber)" }}>
+                  Customization is locked because this product has an active order. Cancel the order to make changes.
+                </p>
               </div>
-            </div>
+            )}
 
-            <Separator className="mb-5" style={{ backgroundColor: "var(--sf-divider)" }} />
-
-            {/* Price */}
-            <div className="mb-6">
-              <p className="text-xs mb-1" style={{ color: "var(--sf-text-muted)" }}>
-                Estimated Price
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="text-3xl font-semibold"
-                  style={{ color: "var(--sf-text-primary)" }}
-                >
-                  {formatPrice(totalPrice)}
-                </span>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Price includes diamond, metal, and making charges.</p>
-                    <p>Gold rate: {formatPrice(product.goldPricePerGram)}/g (live)</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
-                Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Your contracted pricing
-              </p>
-            </div>
-
-            {/* ── Customization ────────────────────────── */}
-            <div className="rounded-2xl border mb-5 overflow-hidden"
-              style={{
-                backgroundColor: "var(--sf-bg-surface-1)",
-                borderColor: existingOrder ? "var(--sf-amber-border)" : "var(--sf-divider)",
-              }}>
-
-              {/* Header */}
-              <div className="px-5 py-3.5 flex items-center gap-2.5"
-                style={{ borderBottom: "1px solid var(--sf-divider)" }}>
-                {existingOrder ? (
-                  <>
-                    <Shield className="w-4 h-4" style={{ color: "var(--sf-amber)" }} />
-                    <span className="text-[13px] font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
-                      Order Locked
-                    </span>
-                    <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
-                      style={{ background: "var(--sf-amber-subtle)", color: "var(--sf-amber)", border: "1px solid var(--sf-amber-border)" }}>
-                      {existingOrder.order_number} · {existingOrder.status}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                    <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
-                      Customize Your Piece
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Locked overlay notice */}
-              {existingOrder && (
-                <div className="px-5 py-3 flex items-center gap-2.5"
-                  style={{ background: "var(--sf-amber-bg)", borderBottom: "1px solid var(--sf-amber-border)" }}>
-                  <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sf-amber)" }} />
-                  <p className="text-[11px]" style={{ color: "var(--sf-amber)" }}>
-                    Customization is locked because this product has an active order. Cancel the order to make changes.
-                  </p>
-                </div>
-              )}
-
-              {/* Lock wrapper — disables all interaction when order exists */}
-              <div className={existingOrder ? "sf-disabled-section" : ""} style={{
-                pointerEvents: existingOrder ? "none" : "auto",
-              }}>
+            {/* Lock wrapper — disables all interaction when order exists */}
+            <div className={existingOrder ? "sf-disabled-section" : ""} style={{
+              pointerEvents: existingOrder ? "none" : "auto",
+            }}>
 
               {/* ─── Metal ──────────────────────────────── */}
               {(product.customization.goldTypes.length > 0 || product.customization.goldColours.length > 0) && (() => {
@@ -712,7 +714,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               })()}
 
               {/* ─── Diamond ─────────────────────────────── */}
-              {(product.customization.diamondShapes.length > 0 || product.customization.diamondShades.length > 0 || product.customization.diamondQualities.length > 0) && (() => {
+              {(product.diamonds.length > 0 || product.customization.diamondShapes.length > 0 || product.customization.diamondShades.length > 0 || product.customization.diamondQualities.length > 0) && (() => {
+                const multiDiamond = product.diamonds.length > 1;
                 const shape = selectedDiamondShape || product.customization.diamondShapes[0] || "";
                 const shade = selectedDiamondShade || product.customization.diamondShades[0] || "";
                 const clarity = selectedDiamondQuality || product.customization.diamondQualities[0] || "";
@@ -733,48 +736,155 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         </div>
                         <div>
                           <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
-                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select cut, shade & clarity</p>
+                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? "All diamonds in this design" : "Select cut, shade & clarity"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
                         style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
                         <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
-                          {[shape, shade, clarity].filter(Boolean).join(" · ")}
+                          {multiDiamond
+                            ? `${product.diamonds.length} diamonds`
+                            : [shape, shade, clarity].filter(Boolean).join(" · ")}
                         </span>
                       </div>
                     </div>
 
-                    {/* Single row: Shape | Shade | Clarity */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {fields.map((field, fi) => (
-                        <>
-                          {fi > 0 && (
-                            <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
-                          )}
-                          <div key={field.label} className="flex items-center gap-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {field.options.map((opt) => {
-                                const active = field.selected === opt;
-                                return (
-                                  <button key={opt} onClick={() => field.set(opt)}
-                                    className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
-                                    style={{
-                                      background: active
-                                        ? "var(--sf-teal-glass)"
-                                        : "var(--sf-glass-bg)",
-                                      border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
-                                      color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
-                                      boxShadow: active ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 12px var(--sf-shadow-teal)" : "none",
-                                      transform: active ? "translateY(-1px)" : "none",
-                                    }}>{opt}</button>
-                                );
-                              })}
-                            </div>
+                    {/* Multiple diamonds — pick one from a dropdown, details show below */}
+                    {multiDiamond && (() => {
+                      const idx = Math.min(selectedDiamondIdx, product.diamonds.length - 1);
+                      const d = product.diamonds[idx];
+                      const detailRows = [
+                        { label: "Shape", value: d.shape },
+                        { label: "Shade", value: d.color },
+                        { label: "Clarity", value: d.clarity },
+                        { label: "Carat", value: d.carat != null ? `${Number(d.carat)} ct` : "" },
+                        { label: "Type", value: d.type },
+                        { label: "Certification", value: d.certification },
+                      ].filter((r) => r.value);
+                      return (
+                        <div className="mb-5">
+                          {/* Diamond picker — custom themed dropdown */}
+                          <div className="relative mb-3">
+                            <button
+                              type="button"
+                              onClick={() => setDiamondMenuOpen((o) => !o)}
+                              className="w-full flex items-center gap-2.5 h-12 rounded-xl pl-2.5 pr-3 transition-colors"
+                              style={{ background: "var(--sf-glass-bg)", border: `1px solid ${diamondMenuOpen ? "var(--sf-teal)" : "var(--sf-teal-border)"}` }}
+                            >
+                              <span className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black shrink-0"
+                                style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>
+                                {idx + 1}
+                              </span>
+                              <span className="text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
+                              {[d.color, d.clarity].filter(Boolean).length > 0 && (
+                                <span className="text-[11px] truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
+                              )}
+                              <span className="ml-auto flex items-center gap-2 shrink-0">
+                                {d.carat != null && (
+                                  <span className="flex items-baseline gap-0.5 px-2.5 py-1 rounded-full"
+                                    style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
+                                    <span className="text-[12px] font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
+                                    <span className="text-[9px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
+                                  </span>
+                                )}
+                                <ChevronRight className="w-4 h-4 transition-transform"
+                                  style={{ color: "var(--sf-teal)", transform: diamondMenuOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
+                              </span>
+                            </button>
+
+                            <AnimatePresence>
+                              {diamondMenuOpen && (
+                                <>
+                                  {/* click-outside catcher */}
+                                  <div className="fixed inset-0 z-40" onClick={() => setDiamondMenuOpen(false)} />
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden p-1.5"
+                                    style={{ top: "calc(100% + 6px)", background: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-glass-border-strong)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }}
+                                  >
+                                    {product.diamonds.map((dd, i) => {
+                                      const active = i === idx;
+                                      return (
+                                        <button key={i} type="button"
+                                          onClick={() => { setSelectedDiamondIdx(i); setDiamondMenuOpen(false); }}
+                                          className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors"
+                                          style={{ background: active ? "var(--sf-teal-glass)" : "transparent", border: active ? "1px solid var(--sf-teal-border)" : "1px solid transparent" }}
+                                          onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
+                                          onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                                        >
+                                          <span className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black shrink-0"
+                                            style={{ background: active ? "var(--sf-teal)" : "var(--sf-glass-pill)", color: active ? "#fff" : "var(--sf-text-muted)" }}>
+                                            {i + 1}
+                                          </span>
+                                          <span className="text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
+                                          {[dd.color, dd.clarity].filter(Boolean).length > 0 && (
+                                            <span className="text-[11px] truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
+                                          )}
+                                          <span className="ml-auto flex items-center gap-2 shrink-0">
+                                            {dd.carat != null && (
+                                              <span className="text-[12px] font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
+                                            )}
+                                            {active && <Check className="w-4 h-4" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </motion.div>
+                                </>
+                              )}
+                            </AnimatePresence>
                           </div>
-                        </>
-                      ))}
-                    </div>
+
+                          {/* Selected diamond — full grade */}
+                          <div className="grid grid-cols-2 gap-2">
+                            {detailRows.map((r) => (
+                              <div key={r.label} className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                                style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border)" }}>
+                                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
+                                <span className="text-[12px] font-bold" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Single row: Shape | Shade | Clarity — only when there's a single diamond */}
+                    {!multiDiamond && (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {fields.map((field, fi) => (
+                          <>
+                            {fi > 0 && (
+                              <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
+                            )}
+                            <div key={field.label} className="flex items-center gap-2">
+                              <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {field.options.map((opt) => {
+                                  const active = field.selected === opt;
+                                  return (
+                                    <button key={opt} onClick={() => field.set(opt)}
+                                      className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
+                                      style={{
+                                        background: active
+                                          ? "var(--sf-teal-glass)"
+                                          : "var(--sf-glass-bg)",
+                                        border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
+                                        color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
+                                        boxShadow: active ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 12px var(--sf-shadow-teal)" : "none",
+                                        transform: active ? "translateY(-1px)" : "none",
+                                      }}>{opt}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        ))}
+                      </div>
+                    )}
                     {/* Carat */}
                     <div className="mt-5 pt-5" style={{ borderTop: "1px solid var(--sf-glass-border)" }}>
                       <div className="flex items-center justify-between mb-5">
@@ -839,12 +949,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   quality: product.customization.colorStoneQualities[i] || "",
                 }));
                 const gemPalette: Record<string, { dot: string; glow: string; bg: string; activeBg: string; border: string; text: string; tag: string }> = {
-                  "Precious Stones":      { dot: "#27AE60", glow: "rgba(39,174,96,0.45)",   bg: "rgba(39,174,96,0.06)",   activeBg: "rgba(39,174,96,0.13)",   border: "rgba(39,174,96,0.38)",   text: "#2ECC71", tag: "rgba(39,174,96,0.15)"   },
-                  "Semi Precious Stones": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)",  bg: "rgba(41,128,185,0.06)",  activeBg: "rgba(41,128,185,0.13)",  border: "rgba(41,128,185,0.38)",  text: "#5DADE2", tag: "rgba(41,128,185,0.15)"  },
-                  "Synthetic Stones":     { dot: "#C0392B", glow: "rgba(192,57,43,0.45)",   bg: "rgba(192,57,43,0.06)",   activeBg: "rgba(192,57,43,0.13)",   border: "rgba(192,57,43,0.38)",   text: "#E74C3C", tag: "rgba(192,57,43,0.15)"   },
-                  "Pearl":                { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
-                  "Beads":                { dot: "#D68910", glow: "rgba(214,137,16,0.45)",  bg: "rgba(214,137,16,0.06)",  activeBg: "rgba(214,137,16,0.13)",  border: "rgba(214,137,16,0.38)",  text: "#F39C12", tag: "rgba(214,137,16,0.15)"  },
-                  "Kundan":               { dot: "#B7950B", glow: "rgba(183,149,11,0.45)",  bg: "rgba(183,149,11,0.06)",  activeBg: "rgba(183,149,11,0.13)",  border: "rgba(183,149,11,0.38)",  text: "#D4A843", tag: "rgba(183,149,11,0.15)"  },
+                  "Precious Stones": { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.13)", border: "rgba(39,174,96,0.38)", text: "#2ECC71", tag: "rgba(39,174,96,0.15)" },
+                  "Semi Precious Stones": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.13)", border: "rgba(41,128,185,0.38)", text: "#5DADE2", tag: "rgba(41,128,185,0.15)" },
+                  "Synthetic Stones": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
+                  "Pearl": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
+                  "Beads": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
+                  "Kundan": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
                 };
                 const fallback = { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" };
                 const selectedPair = pairs.find(p => p.name === selectedColorStone && p.quality === selectedColorStoneQuality);
@@ -976,169 +1086,169 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 </div>
               </div>
 
-              </div>{/* end lock wrapper */}
-            </div>
+            </div>{/* end lock wrapper */}
+          </div>
 
-            {/* ── Note Section ─────────────────────────── */}
-            <div className="mb-5">
-              <button
-                onClick={() => setShowNote(!showNote)}
-                className="flex items-center gap-2 text-sm font-medium mb-2"
-                style={{ color: "var(--sf-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
-              >
-                <StickyNote className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                {showNote ? "Hide note" : "Add a note for this order"}
-              </button>
-              <AnimatePresence>
-                {showNote && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <Textarea
-                      placeholder="E.g., engraving text, size preferences, special requests..."
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      className="border-[var(--sf-divider)] min-h-[80px]"
-                      style={{
-                        backgroundColor: "var(--sf-bg-surface-1)",
-                        color: "var(--sf-text-primary)",
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* ── Action Buttons ───────────────────────── */}
-            <div className="flex gap-3 mb-8">
-              {product.availability === "out-of-stock" ? (
-                /* Product is locked / out-of-stock */
-                <Button
-                  className="flex-1 h-12 text-base font-semibold gap-2"
-                  disabled
-                  style={{
-                    backgroundColor: "var(--sf-bg-surface-2)",
-                    color: "var(--sf-text-muted)",
-                    border: "1px solid var(--sf-divider)",
-                    cursor: "not-allowed",
-                  }}
+          {/* ── Note Section ─────────────────────────── */}
+          <div className="mb-5">
+            <button
+              onClick={() => setShowNote(!showNote)}
+              className="flex items-center gap-2 text-sm font-medium mb-2"
+              style={{ color: "var(--sf-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
+            >
+              <StickyNote className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+              {showNote ? "Hide note" : "Add a note for this order"}
+            </button>
+            <AnimatePresence>
+              {showNote && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
                 >
-                  <Lock className="w-5 h-5" /> Currently Unavailable
-                </Button>
-              ) : existingOrder ? (
-                /* Active order exists → block re-ordering */
-                <Button
-                  className="flex-1 h-12 text-base font-semibold gap-2"
-                  style={{
-                    backgroundColor: "var(--sf-amber-subtle)",
-                    color: "var(--sf-amber)",
-                    border: "1px solid var(--sf-amber-border)",
-                  }}
-                  onClick={() => navigate("/retailer/orders")}
-                >
-                  <Check className="w-5 h-5" />
-                  {existingOrder.order_number} — {existingOrder.status}
-                </Button>
-              ) : alreadyInCart ? (
-                /* Already in the current unsent cart */
-                <Button
-                  className="flex-1 h-12 text-base font-semibold gap-2"
-                  style={{
-                    backgroundColor: "var(--sf-teal-glass)",
-                    color: "var(--sf-teal)",
-                    border: "1.5px solid var(--sf-teal-border)",
-                  }}
-                  onClick={() => navigate("/retailer/catalog")}
-                >
-                  <Check className="w-5 h-5" /> In Cart · Keep Shopping
-                </Button>
-              ) : (
-                /* Normal add to cart */
-                <Button
-                  className="flex-1 h-12 text-base font-semibold gap-2 transition-all duration-200"
-                  style={{
-                    backgroundColor: addedToCart ? "#22c55e" : "var(--sf-teal)",
-                    color: "var(--sf-bg-base)",
-                    border: "none",
-                    boxShadow: addedToCart
-                      ? "0 4px 20px rgba(34,197,94,0.4)"
-                      : "0 4px 20px var(--sf-shadow-teal)",
-                  }}
-                  onClick={handleAddToCart}
-                >
-                  {addedToCart ? (
-                    <><Check className="w-5 h-5" /> Added to Cart!</>
-                  ) : (
-                    <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
-                  )}
-                </Button>
+                  <Textarea
+                    placeholder="E.g., engraving text, size preferences, special requests..."
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="border-[var(--sf-divider)] min-h-[80px]"
+                    style={{
+                      backgroundColor: "var(--sf-bg-surface-1)",
+                      color: "var(--sf-text-primary)",
+                    }}
+                  />
+                </motion.div>
               )}
+            </AnimatePresence>
+          </div>
+
+          {/* ── Action Buttons ───────────────────────── */}
+          <div className="flex gap-3 mb-8">
+            {product.availability === "out-of-stock" ? (
+              /* Product is locked / out-of-stock */
               <Button
-                variant="outline"
-                className="h-12 px-5 gap-2 border-[var(--sf-divider)]"
+                className="flex-1 h-12 text-base font-semibold gap-2"
+                disabled
                 style={{
-                  backgroundColor: "var(--sf-bg-surface-1)",
-                  color: wishlisted ? "#ef4444" : "var(--sf-text-secondary)",
+                  backgroundColor: "var(--sf-bg-surface-2)",
+                  color: "var(--sf-text-muted)",
+                  border: "1px solid var(--sf-divider)",
+                  cursor: "not-allowed",
                 }}
-                onClick={handleWishlistToggle}
-                disabled={wishlistLoading}
               >
-                <Heart className="w-5 h-5" fill={wishlisted ? "#ef4444" : "none"} />
-                {wishlisted ? "Wishlisted" : "Wishlist"}
+                <Lock className="w-5 h-5" /> Currently Unavailable
               </Button>
+            ) : existingOrder ? (
+              /* Active order exists → block re-ordering */
               <Button
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 border-[var(--sf-divider)]"
+                className="flex-1 h-12 text-base font-semibold gap-2"
                 style={{
-                  backgroundColor: "var(--sf-bg-surface-1)",
-                  color: "var(--sf-text-secondary)",
+                  backgroundColor: "var(--sf-amber-subtle)",
+                  color: "var(--sf-amber)",
+                  border: "1px solid var(--sf-amber-border)",
                 }}
+                onClick={() => navigate("/retailer/orders")}
               >
-                <Share2 className="w-5 h-5" />
+                <Check className="w-5 h-5" />
+                {existingOrder.order_number} — {existingOrder.status}
               </Button>
-            </div>
-
-            {/* ── Specifications Tabs ──────────────────── */}
-            <Tabs defaultValue="specs">
-
-              {/* Tab switcher — glassmorphism pill bar */}
-              <TabsList
-                className="w-full gap-1 rounded-2xl"
+            ) : alreadyInCart ? (
+              /* Already in the current unsent cart */
+              <Button
+                className="flex-1 h-12 text-base font-semibold gap-2"
                 style={{
-                  background: "var(--sf-glass-bg)",
-                  border: "1px solid var(--sf-glass-border)",
-                  padding: "5px",
-                  backdropFilter: "blur(10px)",
+                  backgroundColor: "var(--sf-teal-glass)",
+                  color: "var(--sf-teal)",
+                  border: "1.5px solid var(--sf-teal-border)",
                 }}
+                onClick={() => navigate("/retailer/catalog")}
               >
-                {([
-                  { value: "specs",   icon: <Ruler className="w-3.5 h-3.5" />,    label: "Specs" },
-                  { value: "diamond", icon: <Diamond className="w-3.5 h-3.5" />,  label: "Diamond" },
-                  { value: "pricing", icon: <Sparkles className="w-3.5 h-3.5" />, label: "Pricing" },
-                ] as const).map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className={[
-                      "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[12px] font-semibold",
-                      "transition-all duration-200",
-                      "data-[state=inactive]:text-[var(--sf-text-muted)] data-[state=inactive]:hover:text-[var(--sf-text-secondary)]",
-                      "data-[state=active]:text-[var(--sf-teal)]",
-                    ].join(" ")}
-                    style={{ fontFamily: "inherit" }}
-                  >
-                    {tab.icon}{tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+                <Check className="w-5 h-5" /> In Cart · Keep Shopping
+              </Button>
+            ) : (
+              /* Normal add to cart */
+              <Button
+                className="flex-1 h-12 text-base font-semibold gap-2 transition-all duration-200"
+                style={{
+                  backgroundColor: addedToCart ? "#22c55e" : "var(--sf-teal)",
+                  color: "var(--sf-bg-base)",
+                  border: "none",
+                  boxShadow: addedToCart
+                    ? "0 4px 20px rgba(34,197,94,0.4)"
+                    : "0 4px 20px var(--sf-shadow-teal)",
+                }}
+                onClick={handleAddToCart}
+              >
+                {addedToCart ? (
+                  <><Check className="w-5 h-5" /> Added to Cart!</>
+                ) : (
+                  <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
+                )}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="h-12 px-5 gap-2 border-[var(--sf-divider)]"
+              style={{
+                backgroundColor: "var(--sf-bg-surface-1)",
+                color: wishlisted ? "#ef4444" : "var(--sf-text-secondary)",
+              }}
+              onClick={handleWishlistToggle}
+              disabled={wishlistLoading}
+            >
+              <Heart className="w-5 h-5" fill={wishlisted ? "#ef4444" : "none"} />
+              {wishlisted ? "Wishlisted" : "Wishlist"}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 border-[var(--sf-divider)]"
+              style={{
+                backgroundColor: "var(--sf-bg-surface-1)",
+                color: "var(--sf-text-secondary)",
+              }}
+            >
+              <Share2 className="w-5 h-5" />
+            </Button>
+          </div>
 
-              {/* Inject active-tab pill glow via CSS */}
-              <style>{`
+          {/* ── Specifications Tabs ──────────────────── */}
+          <Tabs defaultValue="specs">
+
+            {/* Tab switcher — glassmorphism pill bar */}
+            <TabsList
+              className="w-full gap-1 rounded-2xl"
+              style={{
+                background: "var(--sf-glass-bg)",
+                border: "1px solid var(--sf-glass-border)",
+                padding: "5px",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              {([
+                { value: "specs", icon: <Ruler className="w-3.5 h-3.5" />, label: "Specs" },
+                { value: "diamond", icon: <Diamond className="w-3.5 h-3.5" />, label: "Diamond" },
+                { value: "pricing", icon: <Sparkles className="w-3.5 h-3.5" />, label: "Pricing" },
+              ] as const).map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className={[
+                    "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[12px] font-semibold",
+                    "transition-all duration-200",
+                    "data-[state=inactive]:text-[var(--sf-text-muted)] data-[state=inactive]:hover:text-[var(--sf-text-secondary)]",
+                    "data-[state=active]:text-[var(--sf-teal)]",
+                  ].join(" ")}
+                  style={{ fontFamily: "inherit" }}
+                >
+                  {tab.icon}{tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* Inject active-tab pill glow via CSS */}
+            <style>{`
                 [data-slot="tabs-trigger"][data-state="active"] {
                   background: var(--sf-teal-glass) !important;
                   border: 1px solid var(--sf-teal-border);
@@ -1154,494 +1264,494 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 }
               `}</style>
 
-              {/* ── Specs tab ───────────────────────────── */}
-              <TabsContent value="specs" className="mt-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="space-y-2"
-                >
-                  {([
-                    { icon: <Palette />, accent: "#D4A843",        gradient: "212,168,67",  label: "Metal",      value: [selectedGoldType, selectedGoldColour].filter(Boolean).join(" · ") || product.specs.metalType },
-                    { icon: <Weight />,  accent: "#A569BD",        gradient: "165,105,189", label: "Weight",     value: product.specs.metalWeight },
-                    { icon: <Ruler />,   accent: "var(--sf-teal)", gradient: "48,184,191",  label: "Dimensions", value: [product.specs.width, product.specs.height].filter(s => s !== "-").join(" × ") || "-" },
-                    { icon: <Diamond />, accent: "#5DADE2",        gradient: "93,173,226",  label: "Setting",    value: product.specs.settingType },
-                    { icon: <Shield />,  accent: "#27AE60",        gradient: "39,174,96",   label: "Hallmark",   value: product.specs.hallmark },
-                  ] as const).map((row, i) => (
-                    <motion.div
-                      key={row.label}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
-                      className="group relative flex items-center justify-between px-4 py-3.5 rounded-xl overflow-hidden cursor-default"
-                      style={{
-                        background: "var(--sf-glass-bg)",
-                        border: "1px solid var(--sf-glass-border)",
-                        transition: "border-color 0.3s ease, box-shadow 0.3s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = `rgba(${row.gradient},0.2)`;
-                        e.currentTarget.style.boxShadow = `0 2px 12px rgba(${row.gradient},0.06)`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--sf-glass-border)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
-                      {/* Subtle hover glow */}
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
-                        style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.05) 0%, transparent 60%)` }} />
-
-                      <div className="relative flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 transition-transform duration-200 group-hover:scale-110"
-                          style={{ background: `${row.accent}1A`, border: `1px solid ${row.accent}30`, color: row.accent }}>
-                          {row.icon}
-                        </div>
-                        <span className="text-[13px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
-                      </div>
-                      <span className="relative text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{row.value}</span>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </TabsContent>
-
-              {/* ── Diamond tab ─────────────────────────── */}
-              <TabsContent value="diamond" className="mt-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="space-y-3"
-                >
-                  {/* GIA-style certificate card with glassmorphism */}
-                  <div className="relative rounded-2xl overflow-hidden"
+            {/* ── Specs tab ───────────────────────────── */}
+            <TabsContent value="specs" className="mt-5">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-2"
+              >
+                {([
+                  { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", value: [selectedGoldType, selectedGoldColour].filter(Boolean).join(" · ") || product.specs.metalType },
+                  { icon: <Weight />, accent: "#A569BD", gradient: "165,105,189", label: "Weight", value: product.specs.metalWeight },
+                  { icon: <Ruler />, accent: "var(--sf-teal)", gradient: "48,184,191", label: "Dimensions", value: [product.specs.width, product.specs.height].filter(s => s !== "-").join(" × ") || "-" },
+                  { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Setting", value: product.specs.settingType },
+                  { icon: <Shield />, accent: "#27AE60", gradient: "39,174,96", label: "Hallmark", value: product.specs.hallmark },
+                ] as const).map((row, i) => (
+                  <motion.div
+                    key={row.label}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
+                    className="group relative flex items-center justify-between px-4 py-3.5 rounded-xl overflow-hidden cursor-default"
                     style={{
-                      background: "linear-gradient(135deg, rgba(93,173,226,0.1) 0%, rgba(48,184,191,0.07) 40%, rgba(165,105,189,0.05) 100%)",
-                      border: "1px solid rgba(93,173,226,0.2)",
-                      backdropFilter: "blur(12px)",
-                      boxShadow: "0 8px 32px rgba(93,173,226,0.08)",
-                    }}>
-                    {/* Decorative glow orb */}
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full pointer-events-none"
-                      style={{ background: "radial-gradient(circle, rgba(93,173,226,0.12) 0%, transparent 70%)" }} />
-                    <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
-                      style={{ background: "radial-gradient(circle, rgba(165,105,189,0.1) 0%, transparent 70%)" }} />
+                      background: "var(--sf-glass-bg)",
+                      border: "1px solid var(--sf-glass-border)",
+                      transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = `rgba(${row.gradient},0.2)`;
+                      e.currentTarget.style.boxShadow = `0 2px 12px rgba(${row.gradient},0.06)`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--sf-glass-border)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Subtle hover glow */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                      style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.05) 0%, transparent 60%)` }} />
 
-                    {/* Header strip */}
-                    <div className="relative px-4 py-3.5 flex items-center justify-between"
-                      style={{ borderBottom: "1px solid var(--sf-glass-border)", background: "var(--sf-glass-bg)" }}>
-                      <div className="flex items-center gap-2.5">
-                        <motion.div
-                          animate={{ rotate: [0, 5, -5, 0] }}
-                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center"
-                          style={{
-                            background: "linear-gradient(135deg, rgba(93,173,226,0.2), rgba(48,184,191,0.15))",
-                            border: "1px solid rgba(93,173,226,0.3)",
-                            boxShadow: "0 0 12px rgba(93,173,226,0.15)",
-                          }}>
-                          <Diamond className="w-4 h-4" style={{ color: "#5DADE2" }} />
-                        </motion.div>
-                        <div>
-                          <p className="text-[12px] font-bold tracking-wide" style={{ color: "var(--sf-text-primary)" }}>Diamond Certificate</p>
-                          <p className="text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>{product.specs.diamondType}</p>
-                        </div>
+                    <div className="relative flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 transition-transform duration-200 group-hover:scale-110"
+                        style={{ background: `${row.accent}1A`, border: `1px solid ${row.accent}30`, color: row.accent }}>
+                        {row.icon}
                       </div>
-                      {product.specs.diamondCertification !== "-" && (
-                        <motion.div
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                          style={{
-                            background: "linear-gradient(135deg, rgba(212,168,67,0.15), rgba(212,168,67,0.08))",
-                            border: "1px solid rgba(212,168,67,0.3)",
-                            boxShadow: "0 0 16px rgba(212,168,67,0.1)",
-                          }}>
-                          <Award className="w-3 h-3" style={{ color: "#D4A843" }} />
-                          <span className="text-[10px] font-bold" style={{ color: "#D4A843" }}>{product.specs.diamondCertification}</span>
-                        </motion.div>
-                      )}
+                      <span className="text-[13px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
                     </div>
+                    <span className="relative text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{row.value}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </TabsContent>
 
-                    {/* 4C stats with staggered animation */}
-                    <div className="relative grid grid-cols-4">
-                      {([
-                        { label: "Carat", value: `${selectedCarat}`, unit: "ct", accent: "var(--sf-teal)", gradient: "48,184,191" },
-                        { label: "Cut", value: product.specs.diamondShape.split(" ")[0], unit: "", accent: "#5DADE2", gradient: "93,173,226" },
-                        { label: "Colour", value: product.specs.diamondColor, unit: "", accent: "#D4A843", gradient: "212,168,67" },
-                        { label: "Clarity", value: product.specs.diamondClarity, unit: "", accent: "#A569BD", gradient: "165,105,189" },
-                      ] as const).map((stat, i) => (
-                        <motion.div
-                          key={stat.label}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: "easeOut" }}
-                          className="group relative flex flex-col items-center justify-center py-6 px-2 cursor-default"
-                          style={{
-                            borderRight: i < 3 ? "1px solid var(--sf-glass-border)" : "none",
-                            transition: "background 0.3s ease",
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(${stat.gradient},0.06)`; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                        >
-                          {/* Subtle glow dot behind value */}
-                          <div className="absolute w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                            style={{ background: `radial-gradient(circle, rgba(${stat.gradient},0.2) 0%, transparent 70%)`, top: "20%" }} />
-                          <div className="relative flex items-baseline gap-0.5">
-                            <motion.span
-                              key={stat.value}
-                              initial={{ scale: 0.9 }}
-                              animate={{ scale: 1 }}
-                              className="text-[22px] font-black leading-none"
-                              style={{ color: stat.accent, textShadow: `0 0 20px rgba(${stat.gradient},0.3)` }}>
-                              {stat.value}
-                            </motion.span>
-                            {stat.unit && (
-                              <span className="text-[10px] font-bold" style={{ color: `${stat.accent}88` }}>{stat.unit}</span>
-                            )}
-                          </div>
-                          <span className="text-[9px] font-semibold uppercase tracking-[0.15em] mt-2" style={{ color: "var(--sf-text-muted)" }}>
-                            {stat.label}
-                          </span>
-                          {/* Bottom accent line */}
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 group-hover:w-8 rounded-full transition-all duration-300"
-                            style={{ background: stat.accent, opacity: 0.6 }} />
-                        </motion.div>
-                      ))}
+            {/* ── Diamond tab ─────────────────────────── */}
+            <TabsContent value="diamond" className="mt-5">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-3"
+              >
+                {/* GIA-style certificate card with glassmorphism */}
+                <div className="relative rounded-2xl overflow-hidden"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(93,173,226,0.1) 0%, rgba(48,184,191,0.07) 40%, rgba(165,105,189,0.05) 100%)",
+                    border: "1px solid rgba(93,173,226,0.2)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 8px 32px rgba(93,173,226,0.08)",
+                  }}>
+                  {/* Decorative glow orb */}
+                  <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full pointer-events-none"
+                    style={{ background: "radial-gradient(circle, rgba(93,173,226,0.12) 0%, transparent 70%)" }} />
+                  <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
+                    style={{ background: "radial-gradient(circle, rgba(165,105,189,0.1) 0%, transparent 70%)" }} />
+
+                  {/* Header strip */}
+                  <div className="relative px-4 py-3.5 flex items-center justify-between"
+                    style={{ borderBottom: "1px solid var(--sf-glass-border)", background: "var(--sf-glass-bg)" }}>
+                    <div className="flex items-center gap-2.5">
+                      <motion.div
+                        animate={{ rotate: [0, 5, -5, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(93,173,226,0.2), rgba(48,184,191,0.15))",
+                          border: "1px solid rgba(93,173,226,0.3)",
+                          boxShadow: "0 0 12px rgba(93,173,226,0.15)",
+                        }}>
+                        <Diamond className="w-4 h-4" style={{ color: "#5DADE2" }} />
+                      </motion.div>
+                      <div>
+                        <p className="text-[12px] font-bold tracking-wide" style={{ color: "var(--sf-text-primary)" }}>Diamond Certificate</p>
+                        <p className="text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>{product.specs.diamondType}</p>
+                      </div>
                     </div>
+                    {product.specs.diamondCertification !== "-" && (
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(212,168,67,0.15), rgba(212,168,67,0.08))",
+                          border: "1px solid rgba(212,168,67,0.3)",
+                          boxShadow: "0 0 16px rgba(212,168,67,0.1)",
+                        }}>
+                        <Award className="w-3 h-3" style={{ color: "#D4A843" }} />
+                        <span className="text-[10px] font-bold" style={{ color: "#D4A843" }}>{product.specs.diamondCertification}</span>
+                      </motion.div>
+                    )}
                   </div>
 
-                  {/* All diamonds in this product — shape, carat & full grade */}
-                  {product.diamonds.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.45 }}
-                      className="rounded-2xl overflow-hidden"
-                      style={{
-                        background: "var(--sf-glass-bg)",
-                        border: "1px solid var(--sf-glass-border)",
-                        backdropFilter: "blur(8px)",
-                      }}>
-                      {/* Header */}
-                      <div className="flex items-center justify-between px-4 py-3"
-                        style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
-                        <div className="flex items-center gap-2">
-                          <Diamond className="w-3.5 h-3.5" style={{ color: "#5DADE2" }} />
-                          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
-                            Diamonds
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(93,173,226,0.12)", color: "#5DADE2" }}>
-                          {product.diamonds.length} {product.diamonds.length === 1 ? "stone" : "stones"}
-                          {(() => {
-                            const total = product.diamonds.reduce((s, d) => s + (d.carat || 0), 0);
-                            return total > 0 ? ` · ${Number(total.toFixed(3))} ct` : "";
-                          })()}
-                        </span>
-                      </div>
-
-                      {/* Column labels */}
-                      <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                  {/* 4C stats with staggered animation */}
+                  <div className="relative grid grid-cols-4">
+                    {([
+                      { label: "Carat", value: `${selectedCarat}`, unit: "ct", accent: "var(--sf-teal)", gradient: "48,184,191" },
+                      { label: "Cut", value: product.specs.diamondShape.split(" ")[0], unit: "", accent: "#5DADE2", gradient: "93,173,226" },
+                      { label: "Colour", value: product.specs.diamondColor, unit: "", accent: "#D4A843", gradient: "212,168,67" },
+                      { label: "Clarity", value: product.specs.diamondClarity, unit: "", accent: "#A569BD", gradient: "165,105,189" },
+                    ] as const).map((stat, i) => (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: "easeOut" }}
+                        className="group relative flex flex-col items-center justify-center py-6 px-2 cursor-default"
                         style={{
-                          gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
-                          color: "var(--sf-text-muted)",
-                          borderBottom: "1px solid var(--sf-glass-border)",
-                        }}>
-                        <span>Shape</span>
-                        <span className="text-right">Carat</span>
-                        <span className="text-center">Colour</span>
-                        <span className="text-center">Clarity</span>
-                        <span className="text-right">Cert</span>
-                      </div>
-
-                      {/* Rows */}
-                      {product.diamonds.map((d, i) => (
-                        <div key={i}
-                          className="grid items-center px-4 py-2.5 text-[12px]"
-                          style={{
-                            gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
-                            borderBottom: i < product.diamonds.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
-                          }}>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Diamond className="w-3 h-3 shrink-0" style={{ color: "#5DADE2" }} />
-                            <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
-                              {d.shape || "—"}
-                            </span>
-                            {d.type && (
-                              <span className="text-[9px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
-                            )}
-                          </div>
-                          <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
-                            {d.carat != null ? `${Number(d.carat)}` : "—"}
-                          </span>
-                          <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.color || "—"}</span>
-                          <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.clarity || "—"}</span>
-                          <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{d.certification || "—"}</span>
+                          borderRight: i < 3 ? "1px solid var(--sf-glass-border)" : "none",
+                          transition: "background 0.3s ease",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(${stat.gradient},0.06)`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {/* Subtle glow dot behind value */}
+                        <div className="absolute w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                          style={{ background: `radial-gradient(circle, rgba(${stat.gradient},0.2) 0%, transparent 70%)`, top: "20%" }} />
+                        <div className="relative flex items-baseline gap-0.5">
+                          <motion.span
+                            key={stat.value}
+                            initial={{ scale: 0.9 }}
+                            animate={{ scale: 1 }}
+                            className="text-[22px] font-black leading-none"
+                            style={{ color: stat.accent, textShadow: `0 0 20px rgba(${stat.gradient},0.3)` }}>
+                            {stat.value}
+                          </motion.span>
+                          {stat.unit && (
+                            <span className="text-[10px] font-bold" style={{ color: `${stat.accent}88` }}>{stat.unit}</span>
+                          )}
                         </div>
-                      ))}
-                    </motion.div>
-                  )}
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.15em] mt-2" style={{ color: "var(--sf-text-muted)" }}>
+                          {stat.label}
+                        </span>
+                        {/* Bottom accent line */}
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 group-hover:w-8 rounded-full transition-all duration-300"
+                          style={{ background: stat.accent, opacity: 0.6 }} />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
 
-                  {/* Carat options with enhanced interaction */}
-                  {product.customization.caratOptions.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.35, duration: 0.45 }}
-                      className="rounded-2xl px-4 py-4"
-                      style={{
-                        background: "var(--sf-glass-bg)",
-                        border: "1px solid var(--sf-glass-border)",
-                        backdropFilter: "blur(8px)",
-                      }}>
-                      <div className="flex items-center gap-2 mb-3.5">
-                        <motion.div
-                          animate={{ rotate: [0, 180, 360] }}
-                          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}>
-                          <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
-                        </motion.div>
+                {/* All diamonds in this product — shape, carat & full grade */}
+                {product.diamonds.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.45 }}
+                    className="rounded-2xl overflow-hidden"
+                    style={{
+                      background: "var(--sf-glass-bg)",
+                      border: "1px solid var(--sf-glass-border)",
+                      backdropFilter: "blur(8px)",
+                    }}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3"
+                      style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                      <div className="flex items-center gap-2">
+                        <Diamond className="w-3.5 h-3.5" style={{ color: "#5DADE2" }} />
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
-                          Available Weights
+                          Diamonds
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {[...product.customization.caratOptions].sort((a, b) => a - b).map((ct, i) => {
-                          const active = ct === selectedCarat;
-                          return (
-                            <motion.button
-                              key={ct}
-                              initial={{ opacity: 0, scale: 0.85 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: 0.4 + i * 0.04, type: "spring", stiffness: 300, damping: 20 }}
-                              whileHover={{ scale: 1.06, y: -2 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setSelectedCarat(ct)}
-                              className="relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors duration-200"
-                              style={{
-                                background: active
-                                  ? "var(--sf-teal-glass)"
-                                  : "var(--sf-glass-pill)",
-                                border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
-                                boxShadow: active
-                                  ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 16px var(--sf-shadow-teal)"
-                                  : "0 2px 8px rgba(0,0,0,0.1)",
-                              }}>
-                              <span className="text-[13px] font-black" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
-                              <span className="text-[9px] font-semibold" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
-                              <AnimatePresence>
-                                {active && (
-                                  <motion.div
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    transition={{ type: "spring", stiffness: 400 }}>
-                                    <Check className="w-3 h-3 ml-0.5" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </motion.button>
-                          );
-                        })}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(93,173,226,0.12)", color: "#5DADE2" }}>
+                        {product.diamonds.length} {product.diamonds.length === 1 ? "stone" : "stones"}
+                        {(() => {
+                          const total = product.diamonds.reduce((s, d) => s + (d.carat || 0), 0);
+                          return total > 0 ? ` · ${Number(total.toFixed(3))} ct` : "";
+                        })()}
+                      </span>
+                    </div>
+
+                    {/* Column labels */}
+                    <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                      style={{
+                        gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                        color: "var(--sf-text-muted)",
+                        borderBottom: "1px solid var(--sf-glass-border)",
+                      }}>
+                      <span>Shape</span>
+                      <span className="text-right">Carat</span>
+                      <span className="text-center">Colour</span>
+                      <span className="text-center">Clarity</span>
+                      <span className="text-right">Cert</span>
+                    </div>
+
+                    {/* Rows */}
+                    {product.diamonds.map((d, i) => (
+                      <div key={i}
+                        className="grid items-center px-4 py-2.5 text-[12px]"
+                        style={{
+                          gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                          borderBottom: i < product.diamonds.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
+                        }}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Diamond className="w-3 h-3 shrink-0" style={{ color: "#5DADE2" }} />
+                          <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
+                            {d.shape || "—"}
+                          </span>
+                          {d.type && (
+                            <span className="text-[9px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
+                          )}
+                        </div>
+                        <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
+                          {d.carat != null ? `${Number(d.carat)}` : "—"}
+                        </span>
+                        <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.color || "—"}</span>
+                        <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.clarity || "—"}</span>
+                        <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{d.certification || "—"}</span>
                       </div>
-                    </motion.div>
-                  )}
-                </motion.div>
-              </TabsContent>
+                    ))}
+                  </motion.div>
+                )}
 
-              {/* ── Pricing tab ─────────────────────────── */}
-              <TabsContent value="pricing" className="mt-5">
-                {(() => {
-                  // Prefer the server's computed breakdown; fall back to an estimate
-                  // when the server didn't itemise (e.g. per-retailer override).
-                  const bd = product.priceBreakdown;
-                  const diamondVal = bd ? Math.round(bd.diamondCost || 0) : Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
-                  const metalVal   = bd ? Math.round(bd.metalCost || 0)   : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
-                  const makingVal  = bd ? Math.round(bd.makingCost || 0)  : Math.round(product.basePrice * 0.12);
-                  const subtotal   = (diamondVal + metalVal + makingVal) || 1;
-                  const rows = [
-                    { icon: <Diamond />,  accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${product.specs.diamondCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
-                    { icon: <Palette />,  accent: "#D4A843", gradient: "212,168,67", label: "Metal",   sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
-                    { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
-                  ];
-                  return (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.4 }}
-                      className="space-y-2.5"
-                    >
-                      {/* Breakdown cards with staggered entrance */}
-                      {rows.map((row, i) => {
-                        const pct = Math.round((row.val / subtotal) * 100);
+                {/* Carat options with enhanced interaction */}
+                {product.customization.caratOptions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35, duration: 0.45 }}
+                    className="rounded-2xl px-4 py-4"
+                    style={{
+                      background: "var(--sf-glass-bg)",
+                      border: "1px solid var(--sf-glass-border)",
+                      backdropFilter: "blur(8px)",
+                    }}>
+                    <div className="flex items-center gap-2 mb-3.5">
+                      <motion.div
+                        animate={{ rotate: [0, 180, 360] }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}>
+                        <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
+                      </motion.div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+                        Available Weights
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {[...product.customization.caratOptions].sort((a, b) => a - b).map((ct, i) => {
+                        const active = ct === selectedCarat;
                         return (
-                          <motion.div
-                            key={row.label}
-                            initial={{ opacity: 0, x: -16 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                            className="group relative rounded-2xl px-4 pt-4 pb-3 overflow-hidden cursor-default"
+                          <motion.button
+                            key={ct}
+                            initial={{ opacity: 0, scale: 0.85 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.4 + i * 0.04, type: "spring", stiffness: 300, damping: 20 }}
+                            whileHover={{ scale: 1.06, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setSelectedCarat(ct)}
+                            className="relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors duration-200"
                             style={{
-                              background: "var(--sf-glass-bg)",
-                              border: "1px solid var(--sf-glass-border)",
-                              backdropFilter: "blur(8px)",
-                              transition: "border-color 0.3s ease, box-shadow 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = `rgba(${row.gradient},0.25)`;
-                              e.currentTarget.style.boxShadow = `0 4px 20px rgba(${row.gradient},0.08)`;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = "var(--sf-glass-border)";
-                              e.currentTarget.style.boxShadow = "none";
-                            }}
-                          >
-                            {/* Hover glow bg */}
-                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                              style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.06) 0%, transparent 70%)` }} />
-
-                            <div className="relative flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
+                              background: active
+                                ? "var(--sf-teal-glass)"
+                                : "var(--sf-glass-pill)",
+                              border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
+                              boxShadow: active
+                                ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 16px var(--sf-shadow-teal)"
+                                : "0 2px 8px rgba(0,0,0,0.1)",
+                            }}>
+                            <span className="text-[13px] font-black" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
+                            <span className="text-[9px] font-semibold" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
+                            <AnimatePresence>
+                              {active && (
                                 <motion.div
-                                  whileHover={{ scale: 1.1, rotate: 5 }}
-                                  className="w-9 h-9 rounded-xl flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4"
-                                  style={{
-                                    background: `linear-gradient(135deg, ${row.accent}22, ${row.accent}0D)`,
-                                    border: `1px solid ${row.accent}33`,
-                                    color: row.accent,
-                                    boxShadow: `0 0 12px ${row.accent}15`,
-                                  }}>
-                                  {row.icon}
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ type: "spring", stiffness: 400 }}>
+                                  <Check className="w-3 h-3 ml-0.5" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />
                                 </motion.div>
-                                <div>
-                                  <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>{row.label}</p>
-                                  <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{row.sub}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <motion.p
-                                  key={row.val}
-                                  initial={{ opacity: 0.6, y: -4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  className="text-[15px] font-black tabular-nums"
-                                  style={{ color: "var(--sf-text-primary)" }}>
-                                  {formatPrice(row.val)}
-                                </motion.p>
-                                <p className="text-[10px] font-semibold" style={{ color: `${row.accent}88` }}>{pct}%</p>
-                              </div>
-                            </div>
-                            {/* Animated progress bar */}
-                            <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "var(--sf-glass-bg-hover)" }}>
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ delay: 0.2 + i * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                                className="h-full rounded-full"
-                                style={{
-                                  background: `linear-gradient(90deg, ${row.accent}, ${row.accent}88)`,
-                                  boxShadow: `0 0 8px ${row.accent}40`,
-                                }}
-                              />
-                            </div>
-                          </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.button>
                         );
                       })}
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            </TabsContent>
 
-                      {/* Total card with premium glassmorphism */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="relative rounded-2xl overflow-hidden"
-                        style={{
-                          background: "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(48,184,191,0.04) 50%, rgba(93,173,226,0.04) 100%)",
-                          border: "1.5px solid var(--sf-teal-border)",
-                          backdropFilter: "blur(12px)",
-                          boxShadow: "0 8px 32px var(--sf-shadow-teal)",
-                        }}
-                      >
-                        {/* Shimmer overlay */}
-                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                          <div
-                            className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
-                            style={{
-                              background: "conic-gradient(from 0deg, transparent 0%, rgba(48,184,191,0.04) 10%, transparent 20%)",
-                              animation: "spin 8s linear infinite",
-                            }}
-                          />
-                        </div>
-                        {/* Glow orbs */}
-                        <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none"
-                          style={{ background: "radial-gradient(circle, rgba(48,184,191,0.1) 0%, transparent 70%)" }} />
+            {/* ── Pricing tab ─────────────────────────── */}
+            <TabsContent value="pricing" className="mt-5">
+              {(() => {
+                // Prefer the server's computed breakdown; fall back to an estimate
+                // when the server didn't itemise (e.g. per-retailer override).
+                const bd = product.priceBreakdown;
+                const diamondVal = bd ? Math.round(bd.diamondCost || 0) : Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
+                const metalVal = bd ? Math.round(bd.metalCost || 0) : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
+                const makingVal = bd ? Math.round(bd.makingCost || 0) : Math.round(product.basePrice * 0.12);
+                const subtotal = (diamondVal + metalVal + makingVal) || 1;
+                const rows = [
+                  { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${product.specs.diamondCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
+                  { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
+                  { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
+                ];
+                return (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
+                    className="space-y-2.5"
+                  >
+                    {/* Breakdown cards with staggered entrance */}
+                    {rows.map((row, i) => {
+                      const pct = Math.round((row.val / subtotal) * 100);
+                      return (
+                        <motion.div
+                          key={row.label}
+                          initial={{ opacity: 0, x: -16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                          className="group relative rounded-2xl px-4 pt-4 pb-3 overflow-hidden cursor-default"
+                          style={{
+                            background: "var(--sf-glass-bg)",
+                            border: "1px solid var(--sf-glass-border)",
+                            backdropFilter: "blur(8px)",
+                            transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = `rgba(${row.gradient},0.25)`;
+                            e.currentTarget.style.boxShadow = `0 4px 20px rgba(${row.gradient},0.08)`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = "var(--sf-glass-border)";
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                        >
+                          {/* Hover glow bg */}
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                            style={{ background: `radial-gradient(ellipse at 0% 50%, rgba(${row.gradient},0.06) 0%, transparent 70%)` }} />
 
-                        <div className="relative px-4 py-5 flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "var(--sf-teal)" }}>Estimated Total</p>
-                            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
-                              {quantity > 1 ? `${quantity} pcs · ` : ""}{formatPrice(product.goldPricePerGram)}/g gold rate
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <motion.p
-                              key={totalPrice}
-                              initial={{ scale: 0.95, opacity: 0.7 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                              className="text-[28px] font-black leading-none"
-                              style={{
-                                color: "var(--sf-teal)",
-                                letterSpacing: "-0.03em",
-                                textShadow: "0 0 30px rgba(48,184,191,0.25)",
-                              }}>
-                              {formatPrice(totalPrice)}
-                            </motion.p>
-                            {quantity > 1 && (
-                              <p className="text-[11px] mt-1" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
-                            )}
-                          </div>
-                        </div>
-                        {/* Animated stacked composition bar */}
-                        <div className="flex h-1.5 relative" style={{ opacity: 0.8 }}>
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.round((diamondVal / subtotal) * 100)}%` }}
-                            transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
-                            style={{ background: "linear-gradient(90deg, #5DADE2, #5DADE2cc)" }}
-                          />
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.round((metalVal / subtotal) * 100)}%` }}
-                            transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
-                            style={{ background: "linear-gradient(90deg, #D4A843, #D4A843cc)" }}
-                          />
-                          <motion.div
-                            initial={{ flex: 0 }}
-                            animate={{ flex: 1 }}
-                            transition={{ delay: 0.7, duration: 0.7, ease: "easeOut" }}
-                            style={{ background: "linear-gradient(90deg, #A569BD, #A569BDcc)" }}
-                          />
-                        </div>
-                        {/* Composition legend */}
-                        <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "var(--sf-glass-bg)" }}>
-                          {rows.map((row) => (
-                            <div key={row.label} className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 rounded-full" style={{ background: row.accent, boxShadow: `0 0 6px ${row.accent}50` }} />
-                              <span className="text-[9px] font-semibold" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                          <div className="relative flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <motion.div
+                                whileHover={{ scale: 1.1, rotate: 5 }}
+                                className="w-9 h-9 rounded-xl flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4"
+                                style={{
+                                  background: `linear-gradient(135deg, ${row.accent}22, ${row.accent}0D)`,
+                                  border: `1px solid ${row.accent}33`,
+                                  color: row.accent,
+                                  boxShadow: `0 0 12px ${row.accent}15`,
+                                }}>
+                                {row.icon}
+                              </motion.div>
+                              <div>
+                                <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>{row.label}</p>
+                                <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{row.sub}</p>
+                              </div>
                             </div>
-                          ))}
+                            <div className="text-right">
+                              <motion.p
+                                key={row.val}
+                                initial={{ opacity: 0.6, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-[15px] font-black tabular-nums"
+                                style={{ color: "var(--sf-text-primary)" }}>
+                                {formatPrice(row.val)}
+                              </motion.p>
+                              <p className="text-[10px] font-semibold" style={{ color: `${row.accent}88` }}>{pct}%</p>
+                            </div>
+                          </div>
+                          {/* Animated progress bar */}
+                          <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "var(--sf-glass-bg-hover)" }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ delay: 0.2 + i * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                              className="h-full rounded-full"
+                              style={{
+                                background: `linear-gradient(90deg, ${row.accent}, ${row.accent}88)`,
+                                boxShadow: `0 0 8px ${row.accent}40`,
+                              }}
+                            />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+
+                    {/* Total card with premium glassmorphism */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      className="relative rounded-2xl overflow-hidden"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(48,184,191,0.12) 0%, rgba(48,184,191,0.04) 50%, rgba(93,173,226,0.04) 100%)",
+                        border: "1.5px solid var(--sf-teal-border)",
+                        backdropFilter: "blur(12px)",
+                        boxShadow: "0 8px 32px var(--sf-shadow-teal)",
+                      }}
+                    >
+                      {/* Shimmer overlay */}
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        <div
+                          className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
+                          style={{
+                            background: "conic-gradient(from 0deg, transparent 0%, rgba(48,184,191,0.04) 10%, transparent 20%)",
+                            animation: "spin 8s linear infinite",
+                          }}
+                        />
+                      </div>
+                      {/* Glow orbs */}
+                      <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none"
+                        style={{ background: "radial-gradient(circle, rgba(48,184,191,0.1) 0%, transparent 70%)" }} />
+
+                      <div className="relative px-4 py-5 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "var(--sf-teal)" }}>Estimated Total</p>
+                          <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                            {quantity > 1 ? `${quantity} pcs · ` : ""}{formatPrice(product.goldPricePerGram)}/g gold rate
+                          </p>
                         </div>
-                      </motion.div>
+                        <div className="text-right">
+                          <motion.p
+                            key={totalPrice}
+                            initial={{ scale: 0.95, opacity: 0.7 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            className="text-[28px] font-black leading-none"
+                            style={{
+                              color: "var(--sf-teal)",
+                              letterSpacing: "-0.03em",
+                              textShadow: "0 0 30px rgba(48,184,191,0.25)",
+                            }}>
+                            {formatPrice(totalPrice)}
+                          </motion.p>
+                          {quantity > 1 && (
+                            <p className="text-[11px] mt-1" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Animated stacked composition bar */}
+                      <div className="flex h-1.5 relative" style={{ opacity: 0.8 }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.round((diamondVal / subtotal) * 100)}%` }}
+                          transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
+                          style={{ background: "linear-gradient(90deg, #5DADE2, #5DADE2cc)" }}
+                        />
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.round((metalVal / subtotal) * 100)}%` }}
+                          transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
+                          style={{ background: "linear-gradient(90deg, #D4A843, #D4A843cc)" }}
+                        />
+                        <motion.div
+                          initial={{ flex: 0 }}
+                          animate={{ flex: 1 }}
+                          transition={{ delay: 0.7, duration: 0.7, ease: "easeOut" }}
+                          style={{ background: "linear-gradient(90deg, #A569BD, #A569BDcc)" }}
+                        />
+                      </div>
+                      {/* Composition legend */}
+                      <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "var(--sf-glass-bg)" }}>
+                        {rows.map((row) => (
+                          <div key={row.label} className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ background: row.accent, boxShadow: `0 0 6px ${row.accent}50` }} />
+                            <span className="text-[9px] font-semibold" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </motion.div>
-                  );
-                })()}
-              </TabsContent>
-            </Tabs>
-          </motion.div>
-        </div>
-      </main>
+                  </motion.div>
+                );
+              })()}
+            </TabsContent>
+          </Tabs>
+        </motion.div>
+      </div>
+    </main>
   );
 }
 
@@ -1651,9 +1761,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
 function AvailabilityBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; border: string; label: string }> = {
-    "in-stock":      { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
-    "made-to-order": { bg: "var(--sf-status-mto-bg)",      text: "var(--sf-status-mto-text)",      border: "var(--sf-status-mto-border)",      label: "Made to Order" },
-    "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)",      label: "Out of Stock" },
+    "in-stock": { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
+    "made-to-order": { bg: "var(--sf-status-mto-bg)", text: "var(--sf-status-mto-text)", border: "var(--sf-status-mto-border)", label: "Made to Order" },
+    "out-of-stock": { bg: "var(--sf-status-oos-bg)", text: "var(--sf-status-oos-text)", border: "var(--sf-status-oos-border)", label: "Out of Stock" },
   };
   const s = map[status] || map["in-stock"];
   return (

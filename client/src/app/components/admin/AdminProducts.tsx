@@ -10,8 +10,10 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Loader2,
   Package,
+  Diamond,
   Eye,
   Image as ImageIcon,
   ImagePlus,
@@ -63,7 +65,14 @@ type ProductListItem = {
   sku: string;
   base_price: number;
   carat: number | null;
-  carats: (number | string)[] | null;
+  diamonds: {
+    type: string | null;
+    shape: string | null;
+    color: string | null;
+    clarity: string | null;
+    certification: string | null;
+    carat: number | string | null;
+  }[] | null;
   metal_type: string | null;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
   is_new: boolean;
@@ -104,7 +113,10 @@ function fmtCarat(c: number | string) {
 // All carats stored for a product: every product_diamonds row, falling back
 // to the single product-level carat for legacy single-diamond products.
 function productCarats(p: ProductListItem): string[] {
-  if (p.carats && p.carats.length) return p.carats.map(fmtCarat);
+  if (p.diamonds && p.diamonds.length) {
+    const cs = p.diamonds.filter((d) => d.carat != null).map((d) => fmtCarat(d.carat as number | string));
+    if (cs.length) return cs;
+  }
   if (p.carat != null) return [fmtCarat(p.carat)];
   return [];
 }
@@ -182,6 +194,15 @@ export function AdminProducts() {
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
   const [isNewFilter, setIsNewFilter]         = useState<string>("all");
   const [categories, setCategories]           = useState<Category[]>([]);
+
+  // Rows expanded to show their full diamond breakdown
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRow = (id: string) =>
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
@@ -484,7 +505,10 @@ export function AdminProducts() {
           <EmptyState hasFilters={!!search || activeFilters > 0} onClear={() => { setSearch(""); setCategoryFilter("all"); setAvailabilityFilter("all"); setIsNewFilter("all"); }} />
         ) : (
           <AnimatePresence initial={false}>
-            {products.map((p, i) => (
+            {products.flatMap((p, i) => {
+              const isRowOpen = expandedRows.has(p.id);
+              const rowHasDiamonds = !!(p.diamonds && p.diamonds.length);
+              return [
               <motion.div
                 key={p.id}
                 initial={{ opacity: 0, y: 6 }}
@@ -523,8 +547,23 @@ export function AdminProducts() {
                 {/* Name + meta — fall back to SKU when the product has no name */}
                 {(() => {
                   const hasName = !!p.name?.trim();
+                  const isOpen = expandedRows.has(p.id);
+                  const hasDiamonds = !!(p.diamonds && p.diamonds.length);
                   return (
-                    <div className="min-w-0 pr-3">
+                    <div className="flex items-center gap-1.5 min-w-0 pr-3">
+                      {hasDiamonds ? (
+                        <button
+                          onClick={() => toggleRow(p.id)}
+                          title={isOpen ? "Hide diamonds" : "Show diamonds"}
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors hover:bg-[var(--sf-bg-surface-1)]"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--sf-text-muted)" }}
+                        >
+                          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        </button>
+                      ) : (
+                        <span className="w-5 shrink-0" />
+                      )}
+                      <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span
                           className="text-sm font-medium truncate"
@@ -546,6 +585,7 @@ export function AdminProducts() {
                         {p.metal_type && (
                           <span className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>{hasName ? "· " : ""}{p.metal_type}</span>
                         )}
+                      </div>
                       </div>
                     </div>
                   );
@@ -669,8 +709,22 @@ export function AdminProducts() {
                     <Trash2 className="w-3.5 h-3.5" style={{ color: "#ef4444" }} />
                   </button>
                 </div>
-              </motion.div>
-            ))}
+              </motion.div>,
+              (isRowOpen && rowHasDiamonds) ? (
+                <motion.div
+                  key={`${p.id}-diamonds`}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden border-b last:border-0"
+                  style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}
+                >
+                  <DiamondBreakdown diamonds={p.diamonds!} />
+                </motion.div>
+              ) : null,
+              ];
+            })}
           </AnimatePresence>
         )}
       </motion.div>
@@ -991,6 +1045,67 @@ export function AdminProducts() {
 /* ═══════════════════════════════════════════════════════
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════ */
+
+/* Expanded row: full per-diamond breakdown (Type / Shape / Shade / Quality /
+   Certification / Carat) — mirrors the editor's diamond grid. */
+function DiamondBreakdown({ diamonds }: { diamonds: NonNullable<ProductListItem["diamonds"]> }) {
+  const list = diamonds || [];
+  const cols = "minmax(110px,1.3fr) 1fr 0.7fr 0.8fr 1fr 0.8fr";
+  const total = list.reduce((s, d) => s + (Number(d.carat) || 0), 0);
+  const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
+
+  return (
+    <div className="px-4 py-3 pl-[60px]">
+      <div className="rounded-xl overflow-hidden"
+        style={{ border: "1px solid var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-1)" }}>
+        {/* Column labels */}
+        <div className="grid items-center px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+          style={{ gridTemplateColumns: cols, color: "var(--sf-text-muted)", borderBottom: "1px solid var(--sf-divider)" }}>
+          <span>Type</span>
+          <span>Shape</span>
+          <span>Shade</span>
+          <span>Quality</span>
+          <span>Certification</span>
+          <span className="text-right">Carat</span>
+        </div>
+
+        {/* One row per diamond */}
+        {list.map((d, i) => (
+          <div key={i} className="grid items-center px-3 py-2 text-xs"
+            style={{
+              gridTemplateColumns: cols,
+              color: "var(--sf-text-secondary)",
+              borderBottom: i < list.length - 1 ? "1px solid var(--sf-divider)" : "none",
+            }}>
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Diamond className="w-3 h-3 shrink-0" style={{ color: "var(--sf-teal)" }} />
+              <span className="truncate">{fmt(d.type)}</span>
+            </span>
+            <span className="font-medium" style={{ color: "var(--sf-text-primary)" }}>{fmt(d.shape)}</span>
+            <span>{fmt(d.color)}</span>
+            <span>{fmt(d.clarity)}</span>
+            <span>{fmt(d.certification)}</span>
+            <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
+              {d.carat != null ? `${Number(d.carat)} ct` : "—"}
+            </span>
+          </div>
+        ))}
+
+        {/* Total */}
+        <div className="grid items-center px-3 py-2 text-[11px]"
+          style={{ gridTemplateColumns: cols, borderTop: "1px solid var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+          <span className="font-semibold" style={{ color: "var(--sf-text-muted)" }}>
+            {list.length} {list.length === 1 ? "stone" : "stones"}
+          </span>
+          <span /><span /><span /><span />
+          <span className="text-right font-black" style={{ color: "var(--sf-teal)" }}>
+            {Number(total.toFixed(3))} ct
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FilterSelect({
   value, onChange, placeholder, width, children,

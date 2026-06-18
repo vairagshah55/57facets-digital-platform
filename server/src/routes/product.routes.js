@@ -194,6 +194,13 @@ router.get("/:id", authenticate, async (req, res, next) => {
       [rows[0].metal_type]
     );
 
+    // Diamonds (multiple per product)
+    const { rows: diamonds } = await query(
+      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat
+       FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
+      [req.params.id]
+    );
+
     // Track recently viewed (one row per retailer/product, last viewed)
     await query(
       `INSERT INTO recently_viewed (retailer_id, product_id) VALUES ($1, $2)
@@ -219,6 +226,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
       price_source: priced.source,
       price_breakdown: priced.breakdown,
       images,
+      diamonds,
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });
   } catch (err) {
