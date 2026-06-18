@@ -885,59 +885,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         ))}
                       </div>
                     )}
-                    {/* Carat */}
-                    <div className="mt-5 pt-5" style={{ borderTop: "1px solid var(--sf-glass-border)" }}>
-                      <div className="flex items-center justify-between mb-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
-                            <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                          </div>
-                          <div>
-                            <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Carat Weight</p>
-                            <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select diamond weight</p>
-                          </div>
-                        </div>
-                        <div className="flex items-baseline gap-1 px-4 py-2 rounded-full"
-                          style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
-                          <span className="text-[18px] font-black leading-none" style={{ color: "var(--sf-teal)" }}>{selectedCarat}</span>
-                          <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {(product.customization.caratOptions.length ? product.customization.caratOptions : CARAT_OPTIONS)
-                          .sort((a, b) => a - b)
-                          .map((ct) => {
-                            const active = selectedCarat === ct;
-                            return (
-                              <button key={ct} onClick={() => setSelectedCarat(ct)}
-                                className="relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200"
-                                style={{
-                                  width: 68, height: 68,
-                                  background: active
-                                    ? "var(--sf-teal-glass)"
-                                    : "var(--sf-glass-bg)",
-                                  border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
-                                  boxShadow: active
-                                    ? "0 0 0 4px var(--sf-teal-subtle), 0 8px 28px var(--sf-shadow-teal)"
-                                    : "none",
-                                  transform: active ? "translateY(-2px)" : "translateY(0)",
-                                }}>
-                                <span className="text-[16px] font-black leading-none"
-                                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
-                                <span className="text-[9px] font-semibold tracking-widest mt-1.5 leading-none uppercase"
-                                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
-                                {active && (
-                                  <span className="absolute flex items-center justify-center rounded-full"
-                                    style={{ top: -8, right: -8, width: 20, height: 20, background: "var(--sf-teal)", boxShadow: "0 2px 10px var(--sf-shadow-teal)" }}>
-                                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                      </div>
-                    </div>
                   </div>
                 );
               })()}
@@ -1496,69 +1443,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   </motion.div>
                 )}
 
-                {/* Carat options with enhanced interaction */}
-                {product.customization.caratOptions.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35, duration: 0.45 }}
-                    className="rounded-2xl px-4 py-4"
-                    style={{
-                      background: "var(--sf-glass-bg)",
-                      border: "1px solid var(--sf-glass-border)",
-                      backdropFilter: "blur(8px)",
-                    }}>
-                    <div className="flex items-center gap-2 mb-3.5">
-                      <motion.div
-                        animate={{ rotate: [0, 180, 360] }}
-                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}>
-                        <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
-                      </motion.div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
-                        Available Weights
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {[...product.customization.caratOptions].sort((a, b) => a - b).map((ct, i) => {
-                        const active = ct === selectedCarat;
-                        return (
-                          <motion.button
-                            key={ct}
-                            initial={{ opacity: 0, scale: 0.85 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.4 + i * 0.04, type: "spring", stiffness: 300, damping: 20 }}
-                            whileHover={{ scale: 1.06, y: -2 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setSelectedCarat(ct)}
-                            className="relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors duration-200"
-                            style={{
-                              background: active
-                                ? "var(--sf-teal-glass)"
-                                : "var(--sf-glass-pill)",
-                              border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
-                              boxShadow: active
-                                ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 16px var(--sf-shadow-teal)"
-                                : "0 2px 8px rgba(0,0,0,0.1)",
-                            }}>
-                            <span className="text-[13px] font-black" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)" }}>{ct}</span>
-                            <span className="text-[9px] font-semibold" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>ct</span>
-                            <AnimatePresence>
-                              {active && (
-                                <motion.div
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  exit={{ scale: 0, opacity: 0 }}
-                                  transition={{ type: "spring", stiffness: 400 }}>
-                                  <Check className="w-3 h-3 ml-0.5" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
               </motion.div>
             </TabsContent>
 
