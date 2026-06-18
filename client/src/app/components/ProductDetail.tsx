@@ -63,6 +63,14 @@ interface ProductData {
   serverPrice: number | null;
   priceSource?: string;
   priceBreakdown?: any;
+  diamonds: {
+    type: string;
+    shape: string;
+    color: string;
+    clarity: string;
+    certification: string;
+    carat: number | null;
+  }[];
   specs: {
     metalType: string;
     metalWeight: string;
@@ -115,6 +123,16 @@ function mapApiProduct(raw: any): ProductData {
     video: videoEntry ? imageUrl(videoEntry.image_url) : "",
     isNew: Boolean(raw.is_new),
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
+    diamonds: Array.isArray(raw.diamonds)
+      ? raw.diamonds.map((d: any) => ({
+          type: d.diamond_type || "",
+          shape: d.diamond_shape || "",
+          color: d.diamond_color || "",
+          clarity: d.diamond_clarity || "",
+          certification: d.diamond_certification || "",
+          carat: d.carat != null ? Number(d.carat) : null,
+        }))
+      : [],
     specs: {
       metalType: raw.metal_type || "18K White Gold",
       metalWeight: raw.metal_weight ? `${raw.metal_weight} g` : "0 g",
@@ -1294,6 +1312,79 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       ))}
                     </div>
                   </div>
+
+                  {/* All diamonds in this product — shape, carat & full grade */}
+                  {product.diamonds.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.45 }}
+                      className="rounded-2xl overflow-hidden"
+                      style={{
+                        background: "var(--sf-glass-bg)",
+                        border: "1px solid var(--sf-glass-border)",
+                        backdropFilter: "blur(8px)",
+                      }}>
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3"
+                        style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                        <div className="flex items-center gap-2">
+                          <Diamond className="w-3.5 h-3.5" style={{ color: "#5DADE2" }} />
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+                            Diamonds
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: "rgba(93,173,226,0.12)", color: "#5DADE2" }}>
+                          {product.diamonds.length} {product.diamonds.length === 1 ? "stone" : "stones"}
+                          {(() => {
+                            const total = product.diamonds.reduce((s, d) => s + (d.carat || 0), 0);
+                            return total > 0 ? ` · ${Number(total.toFixed(3))} ct` : "";
+                          })()}
+                        </span>
+                      </div>
+
+                      {/* Column labels */}
+                      <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                        style={{
+                          gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                          color: "var(--sf-text-muted)",
+                          borderBottom: "1px solid var(--sf-glass-border)",
+                        }}>
+                        <span>Shape</span>
+                        <span className="text-right">Carat</span>
+                        <span className="text-center">Colour</span>
+                        <span className="text-center">Clarity</span>
+                        <span className="text-right">Cert</span>
+                      </div>
+
+                      {/* Rows */}
+                      {product.diamonds.map((d, i) => (
+                        <div key={i}
+                          className="grid items-center px-4 py-2.5 text-[12px]"
+                          style={{
+                            gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                            borderBottom: i < product.diamonds.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
+                          }}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Diamond className="w-3 h-3 shrink-0" style={{ color: "#5DADE2" }} />
+                            <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
+                              {d.shape || "—"}
+                            </span>
+                            {d.type && (
+                              <span className="text-[9px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
+                            )}
+                          </div>
+                          <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
+                            {d.carat != null ? `${Number(d.carat)}` : "—"}
+                          </span>
+                          <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.color || "—"}</span>
+                          <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.clarity || "—"}</span>
+                          <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{d.certification || "—"}</span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
 
                   {/* Carat options with enhanced interaction */}
                   {product.customization.caratOptions.length > 0 && (
