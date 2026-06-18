@@ -88,6 +88,9 @@ router.get("/", async (req, res, next) => {
               p.availability, p.is_new, p.is_active, p.min_order_qty, p.max_order_qty,
               p.lead_time_days, p.occasion_tags, p.created_at,
               c.name AS category,
+              (SELECT ARRAY_AGG(pd.carat ORDER BY pd.sort_order, pd.created_at)
+                 FROM product_diamonds pd
+                 WHERE pd.product_id = p.id AND pd.carat IS NOT NULL) AS carats,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               (SELECT COUNT(*) FROM product_images pi WHERE pi.product_id = p.id) AS image_count,
               (SELECT COUNT(*) FROM recently_viewed rv WHERE rv.product_id = p.id) AS view_count,

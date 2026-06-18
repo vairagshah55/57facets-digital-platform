@@ -63,6 +63,7 @@ type ProductListItem = {
   sku: string;
   base_price: number;
   carat: number | null;
+  carats: (number | string)[] | null;
   metal_type: string | null;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
   is_new: boolean;
@@ -92,6 +93,20 @@ const AVAILABILITY_STYLE: Record<string, { bg: string; text: string; border: str
 
 function formatPrice(n: number) {
   return "₹" + Number(n).toLocaleString("en-IN");
+}
+
+// Trim trailing zeros from a NUMERIC carat value (e.g. "1.200" -> "1.2").
+function fmtCarat(c: number | string) {
+  const n = Number(c);
+  return Number.isFinite(n) ? String(n) : String(c);
+}
+
+// All carats stored for a product: every product_diamonds row, falling back
+// to the single product-level carat for legacy single-diamond products.
+function productCarats(p: ProductListItem): string[] {
+  if (p.carats && p.carats.length) return p.carats.map(fmtCarat);
+  if (p.carat != null) return [fmtCarat(p.carat)];
+  return [];
 }
 
 const PAGE_SIZE = 15;
@@ -448,7 +463,7 @@ export function AdminProducts() {
           style={{
             borderColor: "var(--sf-divider)",
             color: "var(--sf-text-muted)",
-            gridTemplateColumns: "56px 1fr 110px 110px 100px 90px 72px 60px 80px",
+            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
           }}
         >
           <span></span>
@@ -476,11 +491,11 @@ export function AdminProducts() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, delay: i * 0.015 }}
-                className="group grid items-center px-4 py-3 border-b last:border-0 transition-colors"
+                className="group grid items-center px-4 py-2 border-b last:border-0 transition-colors"
                 style={{
                   borderColor: "var(--sf-divider)",
                   backgroundColor: "transparent",
-                  gridTemplateColumns: "56px 1fr 110px 110px 100px 90px 72px 60px 80px",
+                  gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
                 }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sf-bg-surface-2)")}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -489,7 +504,7 @@ export function AdminProducts() {
                 <button
                   onClick={() => openImgDialog(p.id, p.name)}
                   title="Manage images"
-                  className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative"
+                  className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 relative"
                   style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "none", cursor: "pointer", padding: 0 }}
                 >
                   {p.image ? (
@@ -505,25 +520,36 @@ export function AdminProducts() {
                   </span>
                 </button>
 
-                {/* Name + meta */}
-                <div className="min-w-0 pr-3">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>
-                      {p.name}
-                    </span>
-                    {p.is_new && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] font-mono" style={{ color: "var(--sf-text-muted)" }}>{p.sku}</span>
-                    {p.metal_type && (
-                      <span className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>· {p.metal_type}</span>
-                    )}
-                  </div>
-                </div>
+                {/* Name + meta — fall back to SKU when the product has no name */}
+                {(() => {
+                  const hasName = !!p.name?.trim();
+                  return (
+                    <div className="min-w-0 pr-3">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="text-sm font-medium truncate"
+                          style={{ color: hasName ? "var(--sf-text-primary)" : "var(--sf-text-secondary)" }}
+                        >
+                          {hasName ? p.name : (p.sku || "Unnamed product")}
+                        </span>
+                        {p.is_new && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {/* Only show the SKU here when it isn't already the title */}
+                        {hasName && (
+                          <span className="text-[10px] font-mono" style={{ color: "var(--sf-text-muted)" }}>{p.sku}</span>
+                        )}
+                        {p.metal_type && (
+                          <span className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>{hasName ? "· " : ""}{p.metal_type}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Category */}
                 <div className="hidden md:block pr-2">
@@ -559,11 +585,27 @@ export function AdminProducts() {
                   })()}
                 </div>
 
-                {/* Carat */}
+                {/* Carat — all diamonds stored for this product */}
                 <div className="hidden lg:block">
-                  <span className="text-xs" style={{ color: "var(--sf-text-secondary)" }}>
-                    {p.carat != null ? `${p.carat} ct` : "—"}
-                  </span>
+                  {(() => {
+                    const carats = productCarats(p);
+                    if (!carats.length) {
+                      return <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>—</span>;
+                    }
+                    return (
+                      <div className="flex flex-wrap gap-1" title={carats.map(c => `${c} ct`).join(", ")}>
+                        {carats.map((c, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap"
+                            style={{ backgroundColor: "rgba(38,96,160,0.10)", color: "var(--sf-text-secondary)" }}
+                          >
+                            {c} ct
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Image count */}
@@ -1010,13 +1052,13 @@ function SkeletonRows() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="grid items-center px-4 py-3 border-b last:border-0"
+          className="grid items-center px-4 py-2 border-b last:border-0"
           style={{
             borderColor: "var(--sf-divider)",
-            gridTemplateColumns: "56px 1fr 110px 110px 100px 90px 72px 60px 80px",
+            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
           }}
         >
-          <div className="skeleton-shimmer w-11 h-11 rounded-xl" />
+          <div className="skeleton-shimmer w-10 h-10 rounded-xl" />
           <div className="pr-3 space-y-1.5">
             <div className="skeleton-shimmer h-3 w-36 rounded-full" />
             <div className="skeleton-shimmer h-2.5 w-20 rounded-full" />
