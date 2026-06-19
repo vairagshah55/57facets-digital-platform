@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, createContext, useContext } 
 import { motion } from "framer-motion";
 import {
   Gem, Coins, Sparkles, Hammer, Users, Calculator,
-  Plus, Trash2, Save, Upload, Loader2, Check, X, Search, RefreshCw,
+  Plus, Trash2, Save, Upload, Loader2, Check, X, Search, RefreshCw, Download,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -368,6 +368,102 @@ const sieveSort = (a: string, b: string) => {
   return a.startsWith("-") ? -1 : 1;
 };
 
+/* ── Diamond-matrix XLSX helpers (one sheet per shape group) ─────────
+   Excel sheet names can't contain / \ ? * [ ] : — so "MARQUISE/BAGUETTE"
+   is written as "MARQUISE-BAGUETTE" and mapped back on import. */
+const sheetNameForGroup = (sg: string) => sg.replace(/\//g, "-").slice(0, 31);
+const groupForSheetName = (name: string) =>
+  SHAPE_GROUPS.find((sg) => sheetNameForGroup(sg).toUpperCase() === String(name).trim().toUpperCase()) || null;
+
+const xmlEsc = (s: any) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+function colLetter(n: number) { let s = ""; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+
+// Build a multi-sheet .xlsx from [{ name, rows: (string|number)[][] }].
+async function buildXlsx(sheets: { name: string; rows: (string | number)[][] }[]): Promise<Blob> {
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  const overrides = sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("");
+  zip.file("[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}</Types>`);
+  zip.file("_rels/.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  const sheetTags = sheets.map((s, i) => `<sheet name="${xmlEsc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("");
+  zip.file("xl/workbook.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheetTags}</sheets></workbook>`);
+  const wbRels = sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("");
+  zip.file("xl/_rels/workbook.xml.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${wbRels}</Relationships>`);
+  sheets.forEach((s, i) => {
+    const rowsXml = s.rows.map((row, r) => {
+      const cells = row.map((val, c) => {
+        const ref = colLetter(c) + (r + 1);
+        return typeof val === "number"
+          ? `<c r="${ref}"><v>${val}</v></c>`
+          : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(val)}</t></is></c>`;
+      }).join("");
+      return `<row r="${r + 1}">${cells}</row>`;
+    }).join("");
+    zip.file(`xl/worksheets/sheet${i + 1}.xml`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`);
+  });
+  return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+// Parse a .xlsx File into Map<sheetName, string[][]>.
+async function readWorkbook(file: File): Promise<Map<string, string[][]>> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(file);
+  const read = async (n: string) => { const f = zip.file(n); return f ? await f.async("string") : ""; };
+  const dec = (s: string) => String(s).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+  const textRuns = (xml: string) => dec((xml.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || []).map((p) => p.replace(/<t[^>]*>([\s\S]*?)<\/t>/, "$1")).join(""));
+  const colToIdx = (letters: string) => { let n = 0; for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
+
+  const shared: string[] = [];
+  const ss = await read("xl/sharedStrings.xml");
+  if (ss) for (const si of ss.match(/<si\b[^>]*?(?:\/>|>[\s\S]*?<\/si>)/g) || []) shared.push(textRuns(si));
+
+  const wb = await read("xl/workbook.xml");
+  const rels = await read("xl/_rels/workbook.xml.rels");
+  const ridToTarget: Record<string, string> = {};
+  for (const m of rels.matchAll(/<Relationship\b[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)) ridToTarget[m[1]] = m[2].replace(/^\/?xl\//, "");
+
+  const parseSheet = (xml: string): string[][] => {
+    const rows: string[][] = [];
+    if (!xml) return rows;
+    for (const rowXml of xml.match(/<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g) || []) {
+      const cells: string[] = [];
+      let maxIdx = -1;
+      for (const cXml of rowXml.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || []) {
+        const refM = /\br="([A-Z]+)\d+"/.exec(cXml);
+        const idx = refM ? colToIdx(refM[1]) : cells.length;
+        const typeM = /\bt="([^"]+)"/.exec(cXml);
+        const type = typeM ? typeM[1] : "n";
+        let value = "";
+        if (type === "inlineStr") {
+          const isM = /<is>([\s\S]*?)<\/is>/.exec(cXml);
+          if (isM) value = textRuns(isM[1]);
+        } else {
+          const vM = /<v>([\s\S]*?)<\/v>/.exec(cXml);
+          const raw = vM ? vM[1] : "";
+          value = type === "s" ? (shared[parseInt(raw, 10)] || "") : dec(raw);
+        }
+        cells[idx] = value;
+        if (idx > maxIdx) maxIdx = idx;
+      }
+      for (let i = 0; i <= maxIdx; i++) if (cells[i] === undefined) cells[i] = "";
+      rows.push(cells);
+    }
+    return rows;
+  };
+
+  const out = new Map<string, string[][]>();
+  for (const m of wb.matchAll(/<sheet\b[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g)) {
+    const target = ridToTarget[m[2]];
+    if (target) out.set(dec(m[1]).trim(), parseSheet(await read("xl/" + target)));
+  }
+  return out;
+}
+
 function DiamondTab() {
   const scope = useScope();
   const [shape, setShape] = useState("ROUND");
@@ -429,6 +525,65 @@ function DiamondTab() {
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
+  // ── Download the matrix as a 3-sheet .xlsx (one sheet per shape group),
+  //    every cell pre-filled — doubles as the import template.
+  const downloadSample = async () => {
+    const sampleRate = (gi: number) => 6000 - gi * 250; // top grade highest, steps down
+    const sheets = SHAPE_GROUPS.map((sg) => {
+      const svs = sievesByShape[sg] || DEFAULT_SIEVES[sg] || [];
+      const header: (string | number)[] = ["sieve", ...GRADE_COLUMNS.map((g) => g.label)];
+      const rows: (string | number)[][] = [header];
+      for (const sv of svs) {
+        rows.push([sv, ...GRADE_COLUMNS.map((g, gi) => {
+          const cur = cells[cellKey(sg, sv, g.shade, g.clarity)];
+          return cur != null && cur !== "" ? Number(cur) : sampleRate(gi);
+        })]);
+      }
+      return { name: sheetNameForGroup(sg), rows };
+    });
+    const blob = await buildXlsx(sheets);
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "diamond-rate-matrix.xlsx" });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ── Import a filled .xlsx (sheet name = shape group, col0 = sieve, grade columns)
+  //    and save the rates.
+  const importFile = async (file: File) => {
+    try {
+      const sheets = await readWorkbook(file);
+      const rows: any[] = [];
+      for (const [name, grid] of sheets) {
+        const shape_group = groupForSheetName(name);
+        if (!shape_group || !grid || grid.length < 2) continue;
+        const header = grid[0].map((h) => String(h).replace(/\s+/g, "").toUpperCase());
+        const gradeIdx = GRADE_COLUMNS.map((g) => header.indexOf(g.label.replace(/\s+/g, "").toUpperCase()));
+        for (let r = 1; r < grid.length; r++) {
+          const sieve_size = String(grid[r][0] || "").trim();
+          if (!sieve_size) continue;
+          GRADE_COLUMNS.forEach((g, gi) => {
+            const ci = gradeIdx[gi];
+            if (ci === -1) return;
+            const raw = String(grid[r][ci] ?? "").trim();
+            if (raw === "") return;
+            const rate = Number(raw);
+            if (!isFinite(rate) || rate < 0) return;
+            rows.push({ shape_group, sieve_size, shade: g.shade, clarity: g.clarity, rate_per_carat: rate });
+          });
+        }
+      }
+      if (!rows.length) { toast.error("No valid rates found — check the sheet names match the shape groups"); return; }
+      setSaving(true);
+      await adminPricing.saveDiamondRates(rows, scope);
+      toast.success(`Imported ${rows.length} diamond rates`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Import failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <>
       <Card title="Carat → sieve map" sub="Maps a product's carat to a sieve bucket — the rows of the matrix below"
@@ -446,7 +601,22 @@ function DiamondTab() {
       </Card>
 
       <Card title="Diamond rate matrix (₹ / carat)" sub="Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells."
-        action={<SaveBtn onClick={saveRates} saving={saving} />}>
+        action={
+          <div className="flex items-center gap-2">
+            <button onClick={downloadSample}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium cursor-pointer"
+              style={{ border: "1px solid var(--sf-divider)", color: "var(--sf-text-secondary)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+              <Download className="w-3.5 h-3.5" /> Sample
+            </button>
+            <label className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium cursor-pointer"
+              style={{ border: "1px solid var(--sf-divider)", color: "var(--sf-text-secondary)", backgroundColor: "var(--sf-bg-surface-2)" }}>
+              <input type="file" accept=".xlsx" hidden disabled={saving}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile(f); e.target.value = ""; }} />
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Import
+            </label>
+            <SaveBtn onClick={saveRates} saving={saving} />
+          </div>
+        }>
         {loading ? <SkeletonRows cols={8} n={5} /> : (
           <div className="p-4 space-y-3">
             {/* Shape group selector */}
