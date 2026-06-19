@@ -630,8 +630,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   WHITE: { bg: "linear-gradient(145deg, #F0F0F0, #9E9E9E)", label: "White" },
                   "TWO TONE": { bg: "linear-gradient(145deg, #F5D66B 42%, #D0D0D0 58%)", label: "Two Tone" },
                 };
-                const sw = swatchMap[selectedGoldColour || product.customization.goldColours[0]] || swatchMap.YELLOW;
+                const colourKey = (selectedGoldColour || product.customization.goldColours[0] || "YELLOW").toUpperCase();
+                const sw = swatchMap[colourKey] || swatchMap.YELLOW;
                 const purity = selectedGoldType || product.customization.goldTypes[0] || "";
+                // Purity choices: 14KT & 18KT, plus whatever the product stores (DB value).
+                const purityOpts = Array.from(new Set(["14KT", "18KT", purity].filter(Boolean)));
                 return (
                   <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
 
@@ -656,58 +659,20 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       </div>
                     </div>
 
-                    {/* Single row: Purity | Colour */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {product.customization.goldTypes.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>Purity</span>
-                          <div className="flex gap-1.5">
-                            {product.customization.goldTypes.map((opt) => {
-                              const active = selectedGoldType === opt;
-                              return (
-                                <button key={opt} onClick={() => setSelectedGoldType(opt)}
-                                  className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
-                                  style={{
-                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.22), rgba(212,168,67,0.07))" : "var(--sf-glass-bg)",
-                                    border: active ? "1.5px solid rgba(212,168,67,0.58)" : "1px solid var(--sf-glass-border)",
-                                    color: active ? "#D4A843" : "var(--sf-text-secondary)",
-                                    boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.1), 0 4px 12px rgba(212,168,67,0.2)" : "none",
-                                    transform: active ? "translateY(-1px)" : "none",
-                                  }}>{opt}</button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {product.customization.goldTypes.length > 0 && product.customization.goldColours.length > 0 && (
-                        <div className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
-                      )}
-
-                      {product.customization.goldColours.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>Colour</span>
-                          <div className="flex gap-1.5">
-                            {product.customization.goldColours.map((opt) => {
-                              const active = selectedGoldColour === opt;
-                              const s = swatchMap[opt] || swatchMap.YELLOW;
-                              return (
-                                <button key={opt} onClick={() => setSelectedGoldColour(opt)}
-                                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
-                                  style={{
-                                    background: active ? "linear-gradient(135deg, rgba(212,168,67,0.18), rgba(212,168,67,0.05))" : "var(--sf-glass-bg)",
-                                    border: active ? "1.5px solid rgba(212,168,67,0.52)" : "1px solid var(--sf-glass-border)",
-                                    boxShadow: active ? "0 0 0 3px rgba(212,168,67,0.08), 0 4px 12px rgba(212,168,67,0.18)" : "none",
-                                    transform: active ? "translateY(-1px)" : "none",
-                                  }}>
-                                  <span className="w-4 h-4 rounded-full shrink-0" style={{ background: s.bg }} />
-                                  <span className="text-[11px] font-bold" style={{ color: active ? "#D4A843" : "var(--sf-text-secondary)" }}>{s.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                    {/* Purity + Colour — radio buttons */}
+                    <div className="flex flex-col gap-3.5">
+                      <GlassRadio
+                        label="Purity"
+                        value={purity || "18KT"}
+                        options={purityOpts.map((v) => ({ value: v, label: v }))}
+                        onChange={setSelectedGoldType}
+                      />
+                      <GlassRadio
+                        label="Colour"
+                        value={colourKey}
+                        options={Object.entries(swatchMap).map(([value, s]) => ({ value, label: s.label, bg: s.bg }))}
+                        onChange={setSelectedGoldColour}
+                      />
                     </div>
                   </div>
                 );
@@ -1657,6 +1622,53 @@ function AvailabilityBadge({ status }: { status: string }) {
     >
       {s.label}
     </Badge>
+  );
+}
+
+/* Labelled radio-button group — optional colour swatch per option.
+   Case-insensitive value matching. */
+function GlassRadio({
+  label, value, options, onChange, accent = "#D4A843",
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string; bg?: string }[];
+  onChange: (v: string) => void;
+  accent?: string;
+}) {
+  const norm = (v: string) => (v || "").toUpperCase();
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0 w-12" style={{ color: "var(--sf-text-muted)" }}>
+        {label}
+      </span>
+      <div className="flex gap-1.5 flex-wrap">
+        {options.map((o) => {
+          const active = norm(o.value) === norm(value);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              className="flex items-center gap-2 pl-2 pr-3 py-2 rounded-lg transition-all duration-200"
+              style={{
+                background: active ? `${accent}1A` : "var(--sf-glass-bg)",
+                border: active ? `1.5px solid ${accent}` : "1px solid var(--sf-glass-border)",
+              }}
+            >
+              {/* Radio indicator */}
+              <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                style={{ border: `1.5px solid ${active ? accent : "var(--sf-text-muted)"}` }}>
+                {active && <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />}
+              </span>
+              {o.bg && <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: o.bg }} />}
+              <span className="text-[11px] font-bold" style={{ color: active ? accent : "var(--sf-text-secondary)" }}>{o.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
