@@ -555,7 +555,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           <Separator className="mb-5" style={{ backgroundColor: "var(--sf-divider)" }} />
 
           {/* Price */}
-          <div className="mb-6">
+          <div className="mb-5">
             <p className="text-xs mb-1" style={{ color: "var(--sf-text-muted)" }}>
               Estimated Price
             </p>
@@ -582,7 +582,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           </div>
 
           {/* ── Customization ────────────────────────── */}
-          <div className="rounded-2xl border mb-5 overflow-hidden"
+          <div className="order-2 rounded-2xl border mb-5 overflow-hidden"
             style={{
               backgroundColor: "var(--sf-bg-surface-1)",
               borderColor: existingOrder ? "var(--sf-amber-border)" : "var(--sf-divider)",
@@ -734,30 +734,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         </div>
                       )}
                     </div>
-
-                    {/* All diamonds — chips overview (click to select), full-width row */}
-                    {multiDiamond && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {product.diamonds.map((dd, i) => {
-                          const s = [dd.shape, dd.color, dd.clarity, dd.carat != null ? `${Number(dd.carat)} ct` : ""].filter(Boolean).join(" · ");
-                          const active = i === Math.min(selectedDiamondIdx, product.diamonds.length - 1);
-                          return (
-                            <button key={i} type="button"
-                              onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); }}
-                              className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
-                              style={{
-                                background: active ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
-                                border: active ? "1.5px solid var(--sf-teal)" : "1px solid var(--sf-glass-border)",
-                                color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
-                                cursor: "pointer",
-                              }}
-                              title={[dd.type, s].filter(Boolean).join(" · ")}>
-                              {s || `Diamond ${i + 1}`}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
 
                     {/* Multiple diamonds — pick one from a dropdown, details show below */}
                     {multiDiamond && (() => {
@@ -1051,7 +1027,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           </div>
 
           {/* ── Note Section ─────────────────────────── */}
-          <div className="mb-5">
+          <div className="order-2 mb-5">
             <button
               onClick={() => setShowNote(!showNote)}
               className="flex items-center gap-2 text-sm font-medium mb-2"
@@ -1085,7 +1061,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           </div>
 
           {/* ── Action Buttons ───────────────────────── */}
-          <div className="flex gap-3 mb-8">
+          <div className="order-2 flex gap-3 mb-8">
             {product.availability === "out-of-stock" ? (
               /* Product is locked / out-of-stock */
               <Button
@@ -1175,7 +1151,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           </div>
 
           {/* ── Specifications Tabs ──────────────────── */}
-          <Tabs defaultValue="specs">
+          <Tabs defaultValue="specs" className="order-1 mb-5">
 
             {/* Tab switcher — glassmorphism pill bar */}
             <TabsList
@@ -1239,7 +1215,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   { icon: <Ruler />, accent: "var(--sf-teal)", gradient: "48,184,191", label: "Dimensions", value: [product.specs.width, product.specs.height].filter(s => s !== "-").join(" × ") || "-" },
                   { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Setting", value: product.specs.settingType },
                   { icon: <Shield />, accent: "#27AE60", gradient: "39,174,96", label: "Hallmark", value: product.specs.hallmark },
-                ] as const).map((row, i) => (
+                ] as const).filter((row) => row.value && row.value !== "-").map((row, i) => (
                   <motion.div
                     key={row.label}
                     initial={{ opacity: 0, x: -12 }}
