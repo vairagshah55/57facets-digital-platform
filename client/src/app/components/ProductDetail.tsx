@@ -23,6 +23,7 @@ import {
   Shield,
   Award,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -47,6 +48,10 @@ import img7 from "../../assets/Images/7.jpg";
 const FALLBACK_IMAGES = [img1, img3, img5, img7];
 
 const CARAT_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
+const DIAMOND_SHAPES = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Solitaire", "Emerald", "Cushion", "Radiant"];
+const DIAMOND_SHADES = ["EF", "FG", "GH", "HI", "IJ"];
+const DIAMOND_QUALITIES = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
+const DIAMOND_TYPES = ["Natural", "Lab-grown"];
 
 interface ProductData {
   id: string;
@@ -188,6 +193,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [selectedDiamondQuality, setSelectedDiamondQuality] = useState("");
   const [selectedColorStone, setSelectedColorStone] = useState("");
   const [selectedColorStoneQuality, setSelectedColorStoneQuality] = useState("");
+  const [selectedDiamondType, setSelectedDiamondType] = useState("");
   const [selectedDiamondIdx, setSelectedDiamondIdx] = useState(0);
   const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -631,10 +637,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   "TWO TONE": { bg: "linear-gradient(145deg, #F5D66B 42%, #D0D0D0 58%)", label: "Two Tone" },
                 };
                 const colourKey = (selectedGoldColour || product.customization.goldColours[0] || "YELLOW").toUpperCase();
-                const sw = swatchMap[colourKey] || swatchMap.YELLOW;
                 const purity = selectedGoldType || product.customization.goldTypes[0] || "";
                 // Purity choices: 14KT & 18KT, plus whatever the product stores (DB value).
                 const purityOpts = Array.from(new Set(["14KT", "18KT", purity].filter(Boolean)));
+                // Right-side pill = the product's actual DB-stored metal (purity · colour),
+                // independent of the radio selection.
+                const dbPurity = product.customization.goldTypes[0] || product.specs.metalType || "";
+                const dbColourRaw = product.customization.goldColours[0] || "";
+                const dbColourSw = swatchMap[dbColourRaw.toUpperCase()];
+                const dbColourLabel = dbColourSw?.label || dbColourRaw;
                 return (
                   <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
 
@@ -652,9 +663,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       </div>
                       <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
                         style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.26)" }}>
-                        <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sw.bg }} />
+                        {dbColourSw && <span className="w-3 h-3 rounded-full shrink-0" style={{ background: dbColourSw.bg }} />}
                         <span className="text-[11px] font-bold" style={{ color: "#D4A843" }}>
-                          {[purity, sw.label].filter(Boolean).join(" · ")}
+                          {[dbPurity, dbColourLabel].filter(Boolean).join(" · ") || "—"}
                         </span>
                       </div>
                     </div>
@@ -701,31 +712,63 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         </div>
                         <div>
                           <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
-                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? "All diamonds in this design" : "Select cut, shade & clarity"}</p>
+                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? `${product.diamonds.length} diamonds in this design` : "Select cut, shade & clarity"}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
-                        style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
-                        <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
-                          {multiDiamond
-                            ? `${product.diamonds.length} diamonds`
-                            : [shape, shade, clarity].filter(Boolean).join(" · ")}
-                        </span>
-                      </div>
+                      {multiDiamond ? (
+                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full shrink-0"
+                          style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
+                          <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: "var(--sf-teal)" }}>
+                            {(() => {
+                              const t = product.diamonds.reduce((s, dd) => s + (Number(dd.carat) || 0), 0);
+                              return t > 0 ? `${Number(t.toFixed(3))} ct total` : `${product.diamonds.length} stones`;
+                            })()}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
+                          style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
+                          <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
+                            {[shape, shade, clarity].filter(Boolean).join(" · ")}
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* All diamonds — chips overview (click to select), full-width row */}
+                    {multiDiamond && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {product.diamonds.map((dd, i) => {
+                          const s = [dd.shape, dd.color, dd.clarity, dd.carat != null ? `${Number(dd.carat)} ct` : ""].filter(Boolean).join(" · ");
+                          const active = i === Math.min(selectedDiamondIdx, product.diamonds.length - 1);
+                          return (
+                            <button key={i} type="button"
+                              onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); }}
+                              className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
+                              style={{
+                                background: active ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
+                                border: active ? "1.5px solid var(--sf-teal)" : "1px solid var(--sf-glass-border)",
+                                color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
+                                cursor: "pointer",
+                              }}
+                              title={[dd.type, s].filter(Boolean).join(" · ")}>
+                              {s || `Diamond ${i + 1}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Multiple diamonds — pick one from a dropdown, details show below */}
                     {multiDiamond && (() => {
                       const idx = Math.min(selectedDiamondIdx, product.diamonds.length - 1);
                       const d = product.diamonds[idx];
+                      // Read-only rows (Shape, Shade, Clarity & Type are editable dropdowns, rendered separately)
                       const detailRows = [
-                        { label: "Shape", value: d.shape },
-                        { label: "Shade", value: d.color },
-                        { label: "Clarity", value: d.clarity },
                         { label: "Carat", value: d.carat != null ? `${Number(d.carat)} ct` : "" },
-                        { label: "Type", value: d.type },
                         { label: "Certification", value: d.certification },
                       ].filter((r) => r.value);
+                      const typeOptions = Array.from(new Set([...DIAMOND_TYPES, d.type].filter(Boolean))) as string[];
                       return (
                         <div className="mb-5">
                           {/* Diamond picker — custom themed dropdown */}
@@ -774,7 +817,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                                       const active = i === idx;
                                       return (
                                         <button key={i} type="button"
-                                          onClick={() => { setSelectedDiamondIdx(i); setDiamondMenuOpen(false); }}
+                                          onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); setDiamondMenuOpen(false); }}
                                           className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors"
                                           style={{ background: active ? "var(--sf-teal-glass)" : "transparent", border: active ? "1px solid var(--sf-teal-border)" : "1px solid transparent" }}
                                           onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
@@ -803,13 +846,19 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             </AnimatePresence>
                           </div>
 
-                          {/* Selected diamond — full grade */}
+                          {/* Selected diamond — Shape & Shade are dropdowns, rest read-only */}
                           <div className="grid grid-cols-2 gap-2">
+                            <GridSelect label="Shape" value={selectedDiamondShape || d.shape || ""} options={DIAMOND_SHAPES} onChange={setSelectedDiamondShape} />
+                            <GridSelect label="Shade" value={selectedDiamondShade || d.color || ""} options={DIAMOND_SHADES} onChange={setSelectedDiamondShade} />
+                            <GridSelect label="Clarity" value={selectedDiamondQuality || d.clarity || ""} options={DIAMOND_QUALITIES} onChange={setSelectedDiamondQuality} />
+                            <GridSelect label="Type" value={selectedDiamondType || d.type || ""} options={typeOptions} onChange={setSelectedDiamondType} />
                             {detailRows.map((r) => (
-                              <div key={r.label} className="flex items-center justify-between px-3 py-2.5 rounded-lg"
-                                style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border)" }}>
-                                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
-                                <span className="text-[12px] font-bold" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
+                              <div key={r.label}>
+                                <span className="block text-[9px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
+                                <div className="w-full flex items-center h-10 px-3 rounded-lg"
+                                  style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border-strong)" }}>
+                                  <span className="text-[13px] font-bold truncate" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1668,6 +1717,99 @@ function GlassRadio({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* Searchable compact dropdown (combobox) used inside the diamond detail grid:
+   label left, selected value on the right; menu has a search box that filters
+   the options. Case-insensitive value matching. */
+function GridSelect({
+  label, value, options, onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const norm = (v: string) => (v || "").toUpperCase();
+  const filtered = options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()));
+
+  const close = () => { setOpen(false); setQuery(""); };
+
+  return (
+    <div className="relative">
+      <span className="block text-[9px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{label}</span>
+      <button
+        type="button"
+        onClick={() => (open ? close() : setOpen(true))}
+        className="w-full flex items-center gap-2 h-10 px-3 rounded-lg transition-all"
+        style={{
+          background: open ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
+          border: `1px solid ${open ? "var(--sf-teal)" : "var(--sf-glass-border-strong)"}`,
+          boxShadow: open ? "0 0 0 3px var(--sf-teal-subtle)" : "none",
+          cursor: "pointer",
+        }}
+      >
+        <span className="text-[13px] font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{value || "Select"}</span>
+        <ChevronRight className="w-4 h-4 ml-auto shrink-0 transition-transform" style={{ color: "var(--sf-teal)", transform: open ? "rotate(-90deg)" : "rotate(90deg)" }} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={close} />
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl overflow-hidden"
+              style={{ background: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-glass-border-strong)", boxShadow: "0 16px 44px rgba(0,0,0,0.45)" }}
+            >
+              {/* Search box */}
+              <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sf-text-muted)" }} />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Search ${label.toLowerCase()}…`}
+                  className="w-full bg-transparent outline-none text-[12px]"
+                  style={{ color: "var(--sf-text-primary)" }}
+                />
+              </div>
+
+              {/* Options */}
+              <div className="sf-thin-scroll p-1.5 max-h-52 overflow-y-auto">
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-3 text-center text-[11px]" style={{ color: "var(--sf-text-muted)" }}>No matches</div>
+                ) : (
+                  filtered.map((o) => {
+                    const active = norm(o) === norm(value);
+                    return (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => { onChange(o); close(); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors"
+                        style={{ background: active ? "var(--sf-teal-glass)" : "transparent" }}
+                        onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
+                        onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <span className="text-[12.5px] font-bold" style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{o}</span>
+                        {active && <Check className="w-3.5 h-3.5 ml-auto" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

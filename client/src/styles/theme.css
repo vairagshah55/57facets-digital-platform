@@ -356,3 +356,15 @@
     line-height: 1.5;
   }
 }
+/* Thin, themed scrollbar — apply `.sf-thin-scroll` to any scroll container. */
+.sf-thin-scroll {
+  scrollbar-width: thin;                                  /* Firefox */
+  scrollbar-color: var(--sf-glass-border-strong) transparent;
+}
+.sf-thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.sf-thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.sf-thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--sf-glass-border-strong);
+  border-radius: 9999px;
+}
+.sf-thin-scroll::-webkit-scrollbar-thumb:hover { background: var(--sf-teal-border); }
