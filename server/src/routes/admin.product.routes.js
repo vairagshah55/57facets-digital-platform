@@ -104,7 +104,7 @@ router.get("/", async (req, res, next) => {
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ${where}
-       ORDER BY p.created_at DESC
+       ORDER BY p.created_at DESC, p.id DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, parseInt(limit), offset]
     );

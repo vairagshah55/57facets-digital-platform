@@ -70,7 +70,7 @@ router.get("/", authenticate, async (req, res, next) => {
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ${where}
-       ORDER BY p.created_at DESC
+       ORDER BY p.created_at DESC, p.id DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, parseInt(limit), offset]
     );
@@ -118,7 +118,7 @@ router.get("/categories", authenticate, async (req, res, next) => {
           (SELECT pi.image_url FROM product_images pi
            JOIN products p ON p.id = pi.product_id
            WHERE p.category_id = c.id AND pi.is_primary = true AND p.is_active = true
-           ORDER BY p.created_at DESC LIMIT 1)
+           ORDER BY p.created_at DESC, p.id DESC LIMIT 1)
         ) AS image_url
        FROM categories c ORDER BY c.sort_order`
     );
@@ -138,7 +138,7 @@ router.get("/new-arrivals", authenticate, async (req, res, next) => {
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE p.is_new = true AND p.is_active = true
-       ORDER BY p.created_at DESC LIMIT 12`
+       ORDER BY p.created_at DESC, p.id DESC LIMIT 12`
     );
     res.json(rows);
   } catch (err) {
