@@ -133,21 +133,23 @@ async function downloadSampleFile() {
 
   // The xlsx template is served as a static asset from client/public.
   // To update the template, replace client/public/product_import_template.xlsx.
-  const res = await fetch(`${import.meta.env.BASE_URL}product_import_template.xlsx`);
+  const base = import.meta.env.BASE_URL;
+  const res = await fetch(`${base}product_import_template.xlsx`);
   const xlsxBlob = await res.blob();
   zip.file("product_import_template.xlsx", xlsxBlob);
 
-  // Placeholder images for the filenames listed in the example row's
-  // "images" column, so the bundled sample imports cleanly end-to-end.
-  const canvas = document.createElement("canvas");
-  canvas.width = 100; canvas.height = 100;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#e0e0e0"; ctx.fillRect(0,0,100,100);
-  ctx.fillStyle = "#999"; ctx.font = "12px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("Sample", 50, 55);
-  const imgBytes = Uint8Array.from(atob(canvas.toDataURL("image/jpeg",0.8).split(",")[1]), c=>c.charCodeAt(0));
-  zip.file("ring-front.jpg", imgBytes);
-  zip.file("ring-side.jpg", imgBytes);
+  // Real sample product images, served from client/public/sample-images.
+  // To add/replace images: drop files there and update this list (the names
+  // must match the "images" column values in the template).
+  const SAMPLE_IMAGES = [
+    "01250495.png", "01250496.png", "01250813.png", "01260050.jpg", "01260051.png",
+  ];
+  for (const name of SAMPLE_IMAGES) {
+    try {
+      const imgRes = await fetch(`${base}sample-images/${name}`);
+      if (imgRes.ok) zip.file(name, await imgRes.blob());
+    } catch { /* skip if missing */ }
+  }
 
   zip.file("README.txt",
 `PRODUCT IMPORT TEMPLATE
@@ -155,16 +157,12 @@ async function downloadSampleFile() {
 HOW TO USE:
 1. Open product_import_template.xlsx and fill in your product data
 2. Row 2 (hints) will be auto-skipped during import
-3. Coloured (required) columns must carry a value or the row is skipped:
-   sku, category, base_price, metal_weight, diamond_type, diamond_shape,
-   diamond_color, diamond_clarity, carat, color_stone_name,
-   color_stone_quality, max_order_qty, is_new, images
-4. Optional columns may be left blank:
-   name, description, metal_type, gold_colour, diamond_certification,
-   availability, occasion_tags
+3. Required columns must carry a value or the row is skipped:
+   sku
+4. Optional columns may be left blank.
 
 IMAGES:
-- Place product images (JPG, PNG, WEBP) in this ZIP alongside the xlsx
+- Product images are bundled in this ZIP alongside the xlsx
 - In the "images" column, list filenames separated by commas
 - First image listed becomes the primary/thumbnail
 `);

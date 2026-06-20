@@ -42,25 +42,28 @@ type Collection  = { id: string; name: string };
 type FieldErrors = Record<string, string>;
 
 type DiamondRow = {
-  diamond_type: string; diamond_shape: string; diamond_color: string;
-  diamond_clarity: string; diamond_certification: string; carat: string;
+  diamond_type: string; diamond_shape: string; diamond_size: string;
+  diamond_color: string; diamond_clarity: string; diamond_certification: string;
+  carat: string; diamond_pcs: string; stone_name: string; stone_quality: string;
 };
 const EMPTY_DIAMOND: DiamondRow = {
-  diamond_type: "", diamond_shape: "", diamond_color: "",
-  diamond_clarity: "", diamond_certification: "", carat: "",
+  diamond_type: "", diamond_shape: "", diamond_size: "",
+  diamond_color: "", diamond_clarity: "", diamond_certification: "",
+  carat: "", diamond_pcs: "", stone_name: "", stone_quality: "",
 };
 
 type FormData = {
-  name: string; sku: string; description: string; category_id: string;
+  name: string; sku: string; mfg_code: string; description: string; category_id: string;
   collection_ids: string[]; occasion_tags: string;
   metal_type: string; gold_colour: string; metal_weight: string;
+  gross_weight: string; net_weight: string;
+  color_stone_carat: string; color_stone_pcs: string;
   diamonds: DiamondRow[];
   finish_options: string; diamond_type: string; diamond_shape: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
   gold_purity_options: string; carat: string; carat_range_min: string;
   carat_range_max: string; carat_options: number[];
-  color_stones: { name: string; quality: string }[];
   base_price: string; price_modifiers: string;
   availability: string; lead_time_days: string; min_order_qty: string; max_order_qty: string;
   is_new: boolean; is_active: boolean;
@@ -101,14 +104,14 @@ const COLOR_STONE_QUALITY_MAP: Record<string, string[]> = {
 const MAX_IMAGES = 10;
 
 const EMPTY: FormData = {
-  name: "", sku: "", description: "", category_id: "", collection_ids: [],
+  name: "", sku: "", mfg_code: "", description: "", category_id: "", collection_ids: [],
   occasion_tags: "", metal_type: "", gold_colour: "", metal_weight: "",
+  gross_weight: "", net_weight: "", color_stone_carat: "", color_stone_pcs: "",
   diamonds: [],
   finish_options: "", diamond_type: "", diamond_shape: "", diamond_color: "",
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "",
   carat: "", carat_range_min: "", carat_range_max: "", carat_options: [],
-  color_stones: [],
   base_price: "", price_modifiers: "", availability: "in-stock",
   lead_time_days: "", min_order_qty: "", max_order_qty: "",
   is_new: false, is_active: true,
@@ -120,30 +123,41 @@ const EMPTY: FormData = {
 
 function detailToForm(d: ProductDetail): FormData {
   return {
-    name: d.name || "", sku: d.sku || "", description: d.description || "",
+    name: d.name || "", sku: d.sku || "", mfg_code: (d as any).mfg_code || "", description: d.description || "",
     category_id: d.category_id || "",
     collection_ids: d.collections?.map((c) => c.id) || [],
     occasion_tags: Array.isArray(d.occasion_tags) ? d.occasion_tags.join(", ") : (d.occasion_tags || ""),
     metal_type: d.metal_type || "", gold_colour: d.gold_colour || "",
     metal_weight: d.metal_weight != null ? String(d.metal_weight) : "",
+    gross_weight: (d as any).gross_weight != null ? String((d as any).gross_weight) : "",
+    net_weight: (d as any).net_weight != null ? String((d as any).net_weight) : "",
+    color_stone_carat: (d as any).color_stone_carat != null ? String((d as any).color_stone_carat) : "",
+    color_stone_pcs: (d as any).color_stone_pcs != null ? String((d as any).color_stone_pcs) : "",
     finish_options: Array.isArray(d.finish_options) ? d.finish_options.join(", ") : (d.finish_options || ""),
     diamonds: (() => {
       const arr = Array.isArray((d as any).diamonds) ? (d as any).diamonds : [];
       if (arr.length) {
         return arr.map((r: any) => ({
           diamond_type: r.diamond_type || "", diamond_shape: r.diamond_shape || "",
+          diamond_size: r.diamond_size || "",
           diamond_color: r.diamond_color || "", diamond_clarity: r.diamond_clarity || "",
           diamond_certification: r.diamond_certification || "",
           carat: r.carat != null ? String(r.carat) : "",
+          diamond_pcs: r.diamond_pcs != null ? String(r.diamond_pcs) : "",
+          stone_name: r.stone_name || "", stone_quality: r.stone_quality || "",
         }));
       }
       // Legacy product with single diamond fields → seed one row
       if (d.diamond_type || d.diamond_shape || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat != null) {
         return [{
           diamond_type: d.diamond_type || "", diamond_shape: d.diamond_shape || "",
+          diamond_size: (d as any).diamond_size || "",
           diamond_color: d.diamond_color || "", diamond_clarity: d.diamond_clarity || "",
           diamond_certification: d.diamond_certification || "",
           carat: d.carat != null ? String(d.carat) : "",
+          diamond_pcs: (d as any).diamond_pcs != null ? String((d as any).diamond_pcs) : "",
+          stone_name: (d.color_stone_name || "").split(",")[0]?.trim() || "",
+          stone_quality: (d.color_stone_quality || "").split(",")[0]?.trim() || "",
         }];
       }
       return [];
@@ -159,11 +173,6 @@ function detailToForm(d: ProductDetail): FormData {
     carat_range_min: d.carat_range_min != null ? String(d.carat_range_min) : "",
     carat_range_max: d.carat_range_max != null ? String(d.carat_range_max) : "",
     carat_options: Array.isArray(d.carat_options) ? d.carat_options.map(Number) : [],
-    color_stones: (() => {
-      const names = (d.color_stone_name || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-      const quals = (d.color_stone_quality || "").split(",").map((s: string) => s.trim());
-      return names.map((name: string, i: number) => ({ name, quality: quals[i] || "" }));
-    })(),
     base_price: d.base_price != null ? String(d.base_price) : "",
     price_modifiers: d.price_modifiers ? (typeof d.price_modifiers === "object" ? JSON.stringify(d.price_modifiers) : d.price_modifiers) : "",
     availability: d.availability || "in-stock",
@@ -176,21 +185,30 @@ function detailToForm(d: ProductDetail): FormData {
 
 function formToPayload(f: FormData) {
   return {
-    name: f.name.trim(), sku: f.sku.trim(), description: f.description.trim() || null,
+    name: f.name.trim(), sku: f.sku.trim(), mfg_code: f.mfg_code.trim() || null,
+    description: f.description.trim() || null,
     category_id: f.category_id || null, collection_ids: f.collection_ids,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
     metal_weight: f.metal_weight ? parseFloat(f.metal_weight) : null,
+    gross_weight: f.gross_weight ? parseFloat(f.gross_weight) : null,
+    net_weight: f.net_weight ? parseFloat(f.net_weight) : null,
+    color_stone_carat: f.color_stone_carat ? parseFloat(f.color_stone_carat) : null,
+    color_stone_pcs: f.color_stone_pcs ? parseInt(f.color_stone_pcs, 10) : null,
     finish_options: f.finish_options ? f.finish_options.split(",").map((t) => t.trim()).filter(Boolean) : [],
     diamonds: f.diamonds
-      .filter((d) => d.diamond_type || d.diamond_shape || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat)
+      .filter((d) => d.diamond_type || d.diamond_shape || d.diamond_size || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat || d.diamond_pcs || d.stone_name || d.stone_quality)
       .map((d) => ({
         diamond_type: d.diamond_type.trim() || null,
         diamond_shape: d.diamond_shape || null,
+        diamond_size: d.diamond_size.trim() || null,
         diamond_color: d.diamond_color || null,
         diamond_clarity: d.diamond_clarity || null,
         diamond_certification: d.diamond_certification.trim() || null,
         carat: d.carat ? parseFloat(d.carat) : null,
+        diamond_pcs: d.diamond_pcs ? parseInt(d.diamond_pcs, 10) : null,
+        stone_name: d.stone_name || null,
+        stone_quality: d.stone_quality || null,
       })),
     diamond_type: f.diamond_type.trim() || null, diamond_shape: f.diamond_shape || null,
     diamond_color: f.diamond_color || null, diamond_clarity: f.diamond_clarity || null,
@@ -203,8 +221,8 @@ function formToPayload(f: FormData) {
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
     carat_options: f.carat_options.length ? f.carat_options : null,
-    color_stone_name: f.color_stones.length ? f.color_stones.map(s => s.name).join(",") : null,
-    color_stone_quality: f.color_stones.length ? f.color_stones.map(s => s.quality).join(",") : null,
+    color_stone_name: (() => { const s = f.diamonds.filter((d) => d.stone_name); return s.length ? s.map((d) => d.stone_name).join(",") : null; })(),
+    color_stone_quality: (() => { const s = f.diamonds.filter((d) => d.stone_name); return s.length ? s.map((d) => d.stone_quality).join(",") : null; })(),
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
     price_modifiers: f.price_modifiers.trim() || null,
     availability: f.availability,
@@ -342,6 +360,8 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
           value={form.name} onChange={f("name")} error={errors.name} />
         <FInput label="SKU" required placeholder="e.g. RNG-18K-001"
           value={form.sku} onChange={f("sku")} error={errors.sku} />
+        <FInput label="MFG Code" placeholder="e.g. M-12345" hint="Manufacturing code"
+          value={form.mfg_code} onChange={f("mfg_code")} />
       </div>
       <FTextarea label="Description" placeholder="Describe the product — material, style, occasion…"
         value={form.description} onChange={f("description")} />
@@ -498,10 +518,8 @@ function DiaSelect({ value, onChange, placeholder, options }: {
   );
 }
 
-function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat, setPendingCarat }: {
+function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
   form: FormData; setForm: React.Dispatch<React.SetStateAction<FormData>>;
-  pendingStone: { name: string; quality: string };
-  setPendingStone: React.Dispatch<React.SetStateAction<{ name: string; quality: string }>>;
   pendingCarat: string; setPendingCarat: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const f = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -519,7 +537,9 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
             onValueChange={(v) => setForm((p) => ({ ...p, gold_colour: v }))}>
             {GOLD_COLOURS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FInput label="Metal Weight (g)" type="number" placeholder="4.5" value={form.metal_weight} onChange={f("metal_weight")} />
+          <FInput label="Metal Weight (g)" type="number" placeholder="4.5" value={form.metal_weight} onChange={f("metal_weight")} hint="Used for pricing" />
+          <FInput label="Gross Weight (g)" type="number" placeholder="5.2" value={form.gross_weight} onChange={f("gross_weight")} />
+          <FInput label="Net Weight (g)" type="number" placeholder="4.8" value={form.net_weight} onChange={f("net_weight")} />
           <FInput label="Finish Options" placeholder="Polished, Matte, Brushed" value={form.finish_options} onChange={f("finish_options")} hint="Comma-separated" />
         </div>
       </div>
@@ -532,7 +552,7 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--sf-divider)" }}>
-                {["Type", "Shape", "Shade", "Quality", "Certification", "Carat"].map((h) => (
+                {["Type", "Shape", "Size", "Shade", "Quality", "Certification", "Carat", "Pcs", "Stone Name", "Stone Quality"].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold px-2 py-2 whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>{h}</th>
                 ))}
                 <th className="w-10" />
@@ -540,7 +560,7 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
             </thead>
             <tbody>
               {form.diamonds.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No diamonds yet — click "Add diamond" below.</td></tr>
+                <tr><td colSpan={11} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No diamonds yet — click "Add diamond" below.</td></tr>
               ) : form.diamonds.map((d, i) => {
                 const upd = (key: keyof DiamondRow, v: string) =>
                   setForm((p) => ({ ...p, diamonds: p.diamonds.map((x, j) => (j === i ? { ...x, [key]: v } : x)) }));
@@ -551,12 +571,28 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
                         className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
                     </td>
                     <td className="p-1" style={{ minWidth: 130 }}><DiaSelect value={d.diamond_shape} onChange={(v) => upd("diamond_shape", v)} placeholder="Shape" options={DIAMOND_SHAPES} /></td>
+                    <td className="p-1" style={{ minWidth: 80 }}>
+                      <input value={d.diamond_size} onChange={(e) => upd("diamond_size", e.target.value)} placeholder="-2"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
                     <td className="p-1" style={{ minWidth: 95 }}><DiaSelect value={d.diamond_color} onChange={(v) => upd("diamond_color", v)} placeholder="Shade" options={DIAMOND_SHADES} /></td>
                     <td className="p-1" style={{ minWidth: 110 }}><DiaSelect value={d.diamond_clarity} onChange={(v) => upd("diamond_clarity", v)} placeholder="Quality" options={DIAMOND_QUALITIES} /></td>
                     <td className="p-1" style={{ minWidth: 100 }}><DiaSelect value={d.diamond_certification} onChange={(v) => upd("diamond_certification", v)} placeholder="Cert" options={["GIA", "GSI", "IGI"]} /></td>
                     <td className="p-1" style={{ minWidth: 85 }}>
                       <input type="number" value={d.carat} onChange={(e) => upd("carat", e.target.value)} placeholder="1.5"
                         className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 70 }}>
+                      <input type="number" value={d.diamond_pcs} onChange={(e) => upd("diamond_pcs", e.target.value)} placeholder="1"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 150 }}>
+                      <DiaSelect value={d.stone_name}
+                        onChange={(v) => setForm((p) => ({ ...p, diamonds: p.diamonds.map((x, j) => (j === i ? { ...x, stone_name: v, stone_quality: "" } : x)) }))}
+                        placeholder="Stone" options={COLOR_STONE_NAMES} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 150 }}>
+                      <DiaSelect value={d.stone_quality} onChange={(v) => upd("stone_quality", v)} placeholder="Quality" options={COLOR_STONE_QUALITY_MAP[d.stone_name] || []} />
                     </td>
                     <td className="px-1 text-center">
                       <button onClick={() => setForm((p) => ({ ...p, diamonds: p.diamonds.filter((_, j) => j !== i) }))}
@@ -585,38 +621,13 @@ function StepSpecs({ form, setForm, pendingStone, setPendingStone, pendingCarat,
 
       <div>
         <GroupLabel>Color Stones</GroupLabel>
-        {form.color_stones.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {form.color_stones.map((s, i) => (
-              <div key={i} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                style={{ backgroundColor: "rgba(168,85,247,0.12)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.25)" }}>
-                {s.name} — {s.quality}
-                <button type="button" onClick={() => setForm((p) => ({ ...p, color_stones: p.color_stones.filter((_, idx) => idx !== i) }))}>
-                  <X className="h-3 w-3 ml-0.5 opacity-70" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
+          Stone name &amp; quality are set per diamond in the Diamond grid above. These are the colour-stone totals for the piece.
+        </p>
         <div className="grid grid-cols-2 gap-4">
-          <FSelect label="Stone Name" placeholder="Select stone" value={pendingStone.name}
-            onValueChange={(v) => setPendingStone({ name: v, quality: "" })}>
-            {COLOR_STONE_NAMES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
-          <FSelect label="Stone Quality" placeholder={pendingStone.name ? "Select quality" : "Select stone first"}
-            value={pendingStone.quality} onValueChange={(v) => setPendingStone((p) => ({ ...p, quality: v }))}>
-            {(COLOR_STONE_QUALITY_MAP[pendingStone.name] || [])
-              .filter(q => !form.color_stones.filter(s => s.name === pendingStone.name).map(s => s.quality).includes(q))
-              .map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
+          <FInput label="Color Stone Carat" type="number" placeholder="0.5" value={form.color_stone_carat} onChange={f("color_stone_carat")} />
+          <FInput label="Color Stone Pcs" type="number" placeholder="2" value={form.color_stone_pcs} onChange={f("color_stone_pcs")} />
         </div>
-        <button type="button"
-          disabled={!pendingStone.name || !pendingStone.quality}
-          onClick={() => { setForm((p) => ({ ...p, color_stones: [...p.color_stones, pendingStone] })); setPendingStone({ name: "", quality: "" }); }}
-          className="mt-3 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity"
-          style={{ backgroundColor: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.4)", cursor: "pointer", opacity: (!pendingStone.name || !pendingStone.quality) ? 0.4 : 1 }}>
-          <Plus className="h-3 w-3" /> Add Stone
-        </button>
       </div>
 
       <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
@@ -865,7 +876,6 @@ export function AdminProductWizard() {
   const clearError = (key: string) => setFieldErrors((p) => { const n = { ...p }; delete n[key]; return n; });
   const [globalError,    setGlobalError]    = useState<string | null>(null);
   const [form,           setForm]           = useState<FormData>({ ...EMPTY });
-  const [pendingStone,   setPendingStone]   = useState({ name: "", quality: "" });
   const [pendingCarat,   setPendingCarat]   = useState("");
   const [categories,     setCategories]     = useState<Category[]>([]);
   const [collections,    setCollections]    = useState<Collection[]>([]);
@@ -1197,8 +1207,7 @@ export function AdminProductWizard() {
                   removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary} />
               )}
               {step === 3 && (
-                <StepSpecs form={form} setForm={setForm} pendingStone={pendingStone}
-                  setPendingStone={setPendingStone} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />
+                <StepSpecs form={form} setForm={setForm} pendingCarat={pendingCarat} setPendingCarat={setPendingCarat} />
               )}
               {step === 4 && <StepPricing form={form} setForm={setForm} errors={fieldErrors} clearError={clearError} productId={id} />}
               {step === 5 && <StepStatus form={form} setForm={setForm} />}

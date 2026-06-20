@@ -152,7 +152,7 @@ router.get("/:id", async (req, res, next) => {
 
     // Diamonds (multiple per product)
     const { rows: diamonds } = await query(
-      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat
+      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality
        FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
       [req.params.id]
     );
@@ -188,6 +188,7 @@ router.post("/", async (req, res, next) => {
       min_order_qty, max_order_qty,
       color_stone_name, color_stone_quality, carat_options,
       collection_ids, diamonds,
+      mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
     } = req.body;
 
     if (!sku) throw new AppError("SKU is required");
@@ -205,6 +206,8 @@ router.post("/", async (req, res, next) => {
     const dClarity = d0.diamond_clarity ?? diamond_clarity;
     const dCert = d0.diamond_certification ?? diamond_certification;
     const dCarat = (d0.carat != null && d0.carat !== "") ? d0.carat : carat;
+    const dSize = d0.diamond_size ?? null;
+    const dPcs = (d0.diamond_pcs != null && d0.diamond_pcs !== "") ? d0.diamond_pcs : null;
 
     const { rows } = await query(
       `INSERT INTO products (
@@ -215,10 +218,13 @@ router.post("/", async (req, res, next) => {
         is_new, occasion_tags, gold_purity_options,
         carat_range_min, carat_range_max, finish_options,
         price_modifiers, lead_time_days, min_order_qty, max_order_qty,
-        color_stone_name, color_stone_quality, carat_options
+        color_stone_name, color_stone_quality, carat_options,
+        mfg_code, gross_weight, net_weight, diamond_size, diamond_pcs,
+        color_stone_carat, color_stone_pcs
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
+        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,
+        $33,$34,$35,$36,$37,$38,$39
       ) RETURNING *`,
       [
         name || "", sku, description || null, category_id || null,
@@ -234,6 +240,8 @@ router.post("/", async (req, res, next) => {
         lead_time_days || null, min_order_qty || 1, max_order_qty || 100,
         color_stone_name || null, color_stone_quality || null,
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
+        mfg_code || null, gross_weight || null, net_weight || null,
+        dSize || null, dPcs, color_stone_carat || null, color_stone_pcs || null,
       ]
     );
 
@@ -243,11 +251,13 @@ router.post("/", async (req, res, next) => {
       for (const d of diamonds) {
         if (!d || (!d.diamond_type && !d.diamond_shape && !d.diamond_color && !d.diamond_clarity && !d.diamond_certification && (d.carat == null || d.carat === ""))) continue;
         await query(
-          `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [rows[0].id, d.diamond_type || null, d.diamond_shape || null, d.diamond_color || null,
            d.diamond_clarity || null, d.diamond_certification || null,
-           (d.carat === "" || d.carat == null) ? null : d.carat, order++]
+           (d.carat === "" || d.carat == null) ? null : d.carat,
+           d.diamond_size || null, (d.diamond_pcs === "" || d.diamond_pcs == null) ? null : d.diamond_pcs,
+           d.stone_name || null, d.stone_quality || null, order++]
         );
       }
     }
@@ -302,6 +312,7 @@ router.put("/:id", async (req, res, next) => {
       min_order_qty, max_order_qty,
       color_stone_name, color_stone_quality, carat_options,
       collection_ids, diamonds,
+      mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
     } = req.body;
 
     // First diamond row bridges to the product-level diamond_* columns.
@@ -312,6 +323,8 @@ router.put("/:id", async (req, res, next) => {
     const dClarity = d0.diamond_clarity ?? diamond_clarity;
     const dCert = d0.diamond_certification ?? diamond_certification;
     const dCarat = (d0.carat != null && d0.carat !== "") ? d0.carat : carat;
+    const dSize = d0.diamond_size ?? null;
+    const dPcs = (d0.diamond_pcs != null && d0.diamond_pcs !== "") ? d0.diamond_pcs : null;
 
     const { rows } = await query(
       `UPDATE products SET
@@ -347,8 +360,15 @@ router.put("/:id", async (req, res, next) => {
         color_stone_name = COALESCE($30, color_stone_name),
         color_stone_quality = COALESCE($31, color_stone_quality),
         carat_options = $32,
+        mfg_code = COALESCE($33, mfg_code),
+        gross_weight = COALESCE($34, gross_weight),
+        net_weight = COALESCE($35, net_weight),
+        diamond_size = COALESCE($36, diamond_size),
+        diamond_pcs = COALESCE($37, diamond_pcs),
+        color_stone_carat = COALESCE($38, color_stone_carat),
+        color_stone_pcs = COALESCE($39, color_stone_pcs),
         updated_at = NOW()
-       WHERE id = $33 RETURNING *`,
+       WHERE id = $40 RETURNING *`,
       [
         name, description, category_id,
         base_price, dCarat, metal_type, gold_colour, metal_weight,
@@ -361,6 +381,8 @@ router.put("/:id", async (req, res, next) => {
         lead_time_days, min_order_qty, max_order_qty,
         color_stone_name, color_stone_quality,
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
+        mfg_code ?? null, gross_weight ?? null, net_weight ?? null,
+        dSize ?? null, dPcs ?? null, color_stone_carat ?? null, color_stone_pcs ?? null,
         req.params.id,
       ]
     );
@@ -384,11 +406,13 @@ router.put("/:id", async (req, res, next) => {
       for (const d of diamonds) {
         if (!d || (!d.diamond_type && !d.diamond_shape && !d.diamond_color && !d.diamond_clarity && !d.diamond_certification && (d.carat == null || d.carat === ""))) continue;
         await query(
-          `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [req.params.id, d.diamond_type || null, d.diamond_shape || null, d.diamond_color || null,
            d.diamond_clarity || null, d.diamond_certification || null,
-           (d.carat === "" || d.carat == null) ? null : d.carat, order++]
+           (d.carat === "" || d.carat == null) ? null : d.carat,
+           d.diamond_size || null, (d.diamond_pcs === "" || d.diamond_pcs == null) ? null : d.diamond_pcs,
+           d.stone_name || null, d.stone_quality || null, order++]
         );
       }
     }
@@ -610,6 +634,21 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
       return cleaned.split(/\s+-\s+/)[0].trim();
     });
     const col = (name) => headers.indexOf(name);
+    // nth occurrence of a (duplicated) header — the template repeats "pcs"/"carat"
+    // across the diamond and colour-stone sections.
+    const colNth = (name, nth) => { let c = 0; for (let k = 0; k < headers.length; k++) { if (headers[k] === name) { if (c === nth) return k; c++; } } return -1; };
+    const colAny = (...names) => { for (const n of names) { const i = headers.indexOf(n); if (i !== -1) return i; } return -1; };
+    // Extra template fields (the yellow columns). Prefer unique names; otherwise
+    // resolve the repeated "pcs"/"carat" headers by 1st (diamond) / 2nd (stone).
+    const mfgIdx     = colAny("mfg_code", "mfg code", "mfg");
+    const grossWtIdx = colAny("gross_weight", "gross weight");
+    const netWtIdx   = colAny("net_weight", "net weight");
+    const diaSizeIdx = colAny("diamond_size", "diamond size");
+    const diaPcsIdx  = colAny("diamond_pcs") !== -1 ? colAny("diamond_pcs") : colNth("pcs", 0);
+    const csPcsIdx   = colAny("color_stone_pcs", "cs_pcs") !== -1 ? colAny("color_stone_pcs", "cs_pcs") : colNth("pcs", 1);
+    const csCaratIdx = colAny("color_stone_carat", "cs_carat") !== -1 ? colAny("color_stone_carat", "cs_carat") : colNth("carat", 1);
+    // Pricing uses metal_weight — fall back to net weight when the template only has gross/net.
+    const metalWtIdx = col("metal_weight") !== -1 ? col("metal_weight") : netWtIdx;
 
     // Field requirement tiers — driven by the colour-coded import template:
     //  • RED columns were removed from the template and are NOT imported
@@ -663,8 +702,14 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
         diamond_clarity: getVal(cols, col("diamond_clarity")),
         diamond_certification: getVal(cols, col("diamond_certification")),
         carat: getNum(cols, col("carat")),
+        diamond_size: getVal(cols, diaSizeIdx),
+        diamond_pcs: getNum(cols, diaPcsIdx),
+        stone_name: getVal(cols, col("color_stone_name")),
+        stone_quality: getVal(cols, col("color_stone_quality")),
       };
-      const diaHas = !!(dia.diamond_type || dia.diamond_shape || dia.diamond_color || dia.diamond_clarity || dia.diamond_certification || dia.carat != null);
+      const diaHas = !!(dia.diamond_type || dia.diamond_shape || dia.diamond_color || dia.diamond_clarity || dia.diamond_certification || dia.carat != null || dia.diamond_size || dia.diamond_pcs != null);
+      // Default certification to GSI when a diamond is present but its cert is blank.
+      if (diaHas && !dia.diamond_certification) dia.diamond_certification = "GSI";
 
       // No SKU → continuation row: an extra diamond for the most-recent product.
       // (A genuinely blank row is skipped quietly.)
@@ -673,9 +718,9 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
           await client.query("SAVEPOINT dia_sp");
           try {
             await client.query(
-              `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, sort_order)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-              [currentProductId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, currentDiaOrder++]
+              `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+              [currentProductId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, dia.stone_name, dia.stone_quality, currentDiaOrder++]
             );
             await client.query("RELEASE SAVEPOINT dia_sp");
             diamondsImported++;
@@ -739,9 +784,12 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             metal_type, gold_colour, metal_weight, diamond_type, diamond_shape,
             diamond_color, diamond_clarity, diamond_certification, carat,
             color_stone_name, color_stone_quality,
-            availability, max_order_qty, is_new, occasion_tags
+            availability, max_order_qty, is_new, occasion_tags,
+            mfg_code, gross_weight, net_weight, diamond_size, diamond_pcs,
+            color_stone_carat, color_stone_pcs
           ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+            $21,$22,$23,$24,$25,$26,$27
           ) RETURNING id`,
           [
             name || "", sku,
@@ -750,12 +798,12 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             getNum(cols, col("base_price")) || 0,
             getVal(cols, col("metal_type")),
             getVal(cols, col("gold_colour")),
-            getNum(cols, col("metal_weight")),
+            getNum(cols, metalWtIdx),
             getVal(cols, col("diamond_type")),
             getVal(cols, col("diamond_shape")),
             getVal(cols, col("diamond_color")),
             getVal(cols, col("diamond_clarity")),
-            getVal(cols, col("diamond_certification")),
+            dia.diamond_certification,
             getNum(cols, col("carat")),
             getVal(cols, col("color_stone_name")),
             getVal(cols, col("color_stone_quality")),
@@ -763,6 +811,13 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             getNum(cols, col("max_order_qty")) || 100,
             getVal(cols, col("is_new")) === "true",
             getVal(cols, col("occasion_tags")) ? `{${getVal(cols, col("occasion_tags")).split(",").map((t) => `"${t.trim()}"`).join(",")}}` : "{}",
+            getVal(cols, mfgIdx),
+            getNum(cols, grossWtIdx),
+            getNum(cols, netWtIdx),
+            dia.diamond_size,
+            dia.diamond_pcs,
+            getNum(cols, csCaratIdx),
+            getNum(cols, csPcsIdx),
           ]
         );
 
@@ -773,9 +828,9 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
         // This row's diamond → product_diamonds (product-level columns already set above)
         if (diaHas) {
           await client.query(
-            `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, sort_order)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            [productId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, currentDiaOrder++]
+            `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [productId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, dia.stone_name, dia.stone_quality, currentDiaOrder++]
           );
           diamondsImported++;
         }
