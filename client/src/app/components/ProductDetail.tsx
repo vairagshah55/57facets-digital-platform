@@ -635,7 +635,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   YELLOW: { bg: "linear-gradient(145deg, #F5D66B, #B8860B)", label: "Yellow" },
                   ROSE: { bg: "linear-gradient(145deg, #EDAFB8, #8B4557)", label: "Rose" },
                   WHITE: { bg: "linear-gradient(145deg, #F0F0F0, #9E9E9E)", label: "White" },
-                  "TWO TONE": { bg: "linear-gradient(145deg, #F5D66B 42%, #D0D0D0 58%)", label: "Two Tone" },
+                  "YELLOW WHITE": { bg: "linear-gradient(145deg, #F5D66B 50%, #D0D0D0 50%)", label: "Yellow White" },
+                  "ROSE WHITE": { bg: "linear-gradient(145deg, #EDAFB8 50%, #D0D0D0 50%)", label: "Rose White" },
+                  "THREE TONE": { bg: "linear-gradient(145deg, #EDAFB8 33%, #F0F0F0 33% 66%, #F5D66B 66%)", label: "Three Tone" },
                 };
                 const colourKey = (selectedGoldColour || product.customization.goldColours[0] || "YELLOW").toUpperCase();
                 const purity = selectedGoldType || product.customization.goldTypes[0] || "";

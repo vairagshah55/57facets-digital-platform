@@ -88,7 +88,7 @@ const AVAILABILITY_OPTIONS = [
 ] as const;
 
 const GOLD_TYPES         = ["14KT", "18KT", "22KT"];
-const GOLD_COLOURS       = ["YELLOW", "ROSE", "WHITE", "TWO TONE"];
+const GOLD_COLOURS       = ["YELLOW", "ROSE", "WHITE", "YELLOW WHITE", "ROSE WHITE", "THREE TONE"];
 const DIAMOND_SHAPES     = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Emerald", "Cushion", "Radiant"];
 const DIAMOND_SHADES     = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES  = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
