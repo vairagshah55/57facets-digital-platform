@@ -115,7 +115,8 @@ function mapApiProduct(raw: any): ProductData {
 
   return {
     id: raw.id,
-    name: raw.name || "Untitled Product",
+    // Fall back to SKU as the name when the product has no name.
+    name: (raw.name && String(raw.name).trim()) ? raw.name : (raw.sku || "Untitled Product"),
     description: raw.description || "",
     category: raw.category || "",
     sku: raw.sku || "",
