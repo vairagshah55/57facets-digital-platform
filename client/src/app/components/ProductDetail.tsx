@@ -1445,12 +1445,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 const bd = product.priceBreakdown;
                 const diamondVal = bd ? Math.round(bd.diamondCost || 0) : Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
                 const metalVal = bd ? Math.round(bd.metalCost || 0) : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
-                const makingVal = bd ? Math.round(bd.makingCost || 0) : Math.round(product.basePrice * 0.12);
-                const subtotal = (diamondVal + metalVal + makingVal) || 1;
+                // Making charges hidden from the product-detail breakdown.
+                // const makingVal = bd ? Math.round(bd.makingCost || 0) : Math.round(product.basePrice * 0.12);
+                const subtotal = (diamondVal + metalVal) || 1;
                 const rows = [
                   { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${product.specs.diamondCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
                   { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
-                  { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
+                  // { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
                 ];
                 return (
                   <motion.div
