@@ -86,7 +86,7 @@ const AVAILABILITY_OPTIONS = [
 
 const GOLD_TYPES         = ["14KT", "18KT", "22KT"];
 const GOLD_COLOURS       = ["YELLOW", "ROSE", "WHITE", "TWO TONE"];
-const DIAMOND_SHAPES     = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Solitaire", "Emerald", "Cushion", "Radiant"];
+const DIAMOND_SHAPES     = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Emerald", "Cushion", "Radiant"];
 const DIAMOND_SHADES     = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES  = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
 const COLOR_STONE_NAMES  = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Beads", "Kundan"];

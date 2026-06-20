@@ -48,7 +48,7 @@ import img7 from "../../assets/Images/7.jpg";
 const FALLBACK_IMAGES = [img1, img3, img5, img7];
 
 const CARAT_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
-const DIAMOND_SHAPES = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Solitaire", "Emerald", "Cushion", "Radiant"];
+const DIAMOND_SHAPES = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Emerald", "Cushion", "Radiant"];
 const DIAMOND_SHADES = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
 const DIAMOND_TYPES = ["Natural", "Lab-grown"];
