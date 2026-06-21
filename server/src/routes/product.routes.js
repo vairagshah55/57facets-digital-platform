@@ -63,8 +63,10 @@ router.get("/", authenticate, async (req, res, next) => {
 
     const { rows } = await query(
       `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
-              p.availability, p.is_new, p.diamond_shape, p.diamond_color, p.diamond_clarity,
-              p.color_stone_name, p.color_stone_quality,
+              p.gross_weight, p.net_weight,
+              p.availability, p.is_new, p.diamond_shape, p.diamond_size, p.diamond_pcs,
+              p.diamond_color, p.diamond_clarity,
+              p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
        FROM products p
