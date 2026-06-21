@@ -635,9 +635,9 @@ function CollectionProductRow({
           <Badge
             className="text-[9px] font-medium"
             style={{
-              backgroundColor: product.availability === "in-stock" ? "var(--sf-status-in-stock-bg)"     : "var(--sf-status-mto-bg)",
-              color:           product.availability === "in-stock" ? "var(--sf-status-in-stock-text)"   : "var(--sf-status-mto-text)",
-              border:          product.availability === "in-stock" ? "1px solid var(--sf-status-in-stock-border)" : "1px solid var(--sf-status-mto-border)",
+              backgroundColor: product.availability === "in-stock" ? "#16a34a" : "#ea580c",
+              color:           "#ffffff",
+              border:          product.availability === "in-stock" ? "1px solid #15803d" : "1px solid #c2410c",
             }}
           >
             {product.availability === "in-stock" ? "In Stock" : "Made to Order"}

@@ -1541,10 +1541,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
    ═══════════════════════════════════════════════════════ */
 
 function AvailabilityBadge({ status }: { status: string }) {
+  // Solid, theme-independent colours — readable on both light and dark backgrounds
+  // (the badge can render outside the retailer theme, e.g. the admin preview page).
   const map: Record<string, { bg: string; text: string; border: string; label: string }> = {
-    "in-stock": { bg: "var(--sf-status-in-stock-bg)", text: "var(--sf-status-in-stock-text)", border: "var(--sf-status-in-stock-border)", label: "In Stock" },
-    "made-to-order": { bg: "var(--sf-status-mto-bg)", text: "var(--sf-status-mto-text)", border: "var(--sf-status-mto-border)", label: "Made to Order" },
-    "out-of-stock": { bg: "var(--sf-status-oos-bg)", text: "var(--sf-status-oos-text)", border: "var(--sf-status-oos-border)", label: "Out of Stock" },
+    "in-stock": { bg: "#16a34a", text: "#ffffff", border: "#15803d", label: "In Stock" },
+    "made-to-order": { bg: "#ea580c", text: "#ffffff", border: "#c2410c", label: "Made to Order" },
+    "out-of-stock": { bg: "#dc2626", text: "#ffffff", border: "#b91c1c", label: "Out of Stock" },
   };
   const s = map[status] || map["in-stock"];
   return (
