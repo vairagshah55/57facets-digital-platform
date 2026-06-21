@@ -92,6 +92,7 @@ const GOLD_COLOURS       = ["YELLOW", "ROSE", "WHITE", "YELLOW WHITE", "ROSE WHI
 const DIAMOND_SHAPES     = ["Round", "Princess", "Pear", "Baguette", "Marquise", "Oval", "Emerald", "Cushion", "Radiant"];
 const DIAMOND_SHADES     = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES  = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
+const CS_CARAT_OPTIONS   = ["0.10", "0.25", "0.50", "0.75", "1.00", "1.50", "2.00", "2.50", "3.00", "4.00", "5.00"];
 const COLOR_STONE_NAMES  = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Beads", "Kundan"];
 const COLOR_STONE_QUALITY_MAP: Record<string, string[]> = {
   "Precious Stones":      ["EMERALD", "Ruby", "BLUE SAPPHIRE", "YELLOW SAPPHIRE", "NAVRATNA"],
@@ -625,8 +626,11 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
           Stone name &amp; quality are set per diamond in the Diamond grid above. These are the colour-stone totals for the piece.
         </p>
         <div className="grid grid-cols-2 gap-4">
-          <FInput label="Color Stone Carat" type="number" placeholder="0.5" value={form.color_stone_carat} onChange={f("color_stone_carat")} />
-          <FInput label="Color Stone Pcs" type="number" placeholder="2" value={form.color_stone_pcs} onChange={f("color_stone_pcs")} />
+          <FSelect label="Color Stone Carat" placeholder="Select carat" value={form.color_stone_carat}
+            onValueChange={(v) => setForm((p) => ({ ...p, color_stone_carat: v }))}>
+            {Array.from(new Set([form.color_stone_carat, ...CS_CARAT_OPTIONS].filter(Boolean))).map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+          </FSelect>
+          <FInput label="Color Stone Pcs" type="number" placeholder="2" value={form.color_stone_pcs} onChange={f("color_stone_pcs")} hint="Stone cost = rate/ct × carat × pcs" />
         </div>
       </div>
 

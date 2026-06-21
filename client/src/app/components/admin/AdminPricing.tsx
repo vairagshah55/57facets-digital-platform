@@ -18,8 +18,7 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType; color: string
   { key: "diamond",   label: "Diamond Rates",icon: Gem,        color: "#a855f7" },
   { key: "stones",    label: "Stone Rates",  icon: Sparkles,   color: "#22c55e" },
   { key: "making",    label: "Making",       icon: Hammer,     color: "#3b82f6" },
-  { key: "retailers", label: "Retailers",    icon: Users,      color: "var(--sf-teal)" },
-  { key: "preview",   label: "Price Preview",icon: Calculator, color: "#ec4899" },
+  { key: "preview",   label: "SKU Price",    icon: Calculator, color: "#ec4899" },
 ];
 
 const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
@@ -130,7 +129,6 @@ export function AdminPricing() {
           {tab === "diamond" && <DiamondTab />}
           {tab === "stones" && <StonesTab />}
           {tab === "making" && <MakingTab />}
-          {tab === "retailers" && <RetailersTab />}
           {tab === "preview" && <PreviewTab />}
         </motion.div>
       </ScopeContext.Provider>
@@ -302,8 +300,12 @@ function EditableTable({ cols, rows, setRows, addTemplate }: any) {
             <tr key={r.id || i} style={{ borderBottom: "1px solid var(--sf-divider)" }}>
               {cols.map((c: any) => (
                 <td key={c.key} className="px-3 py-1.5" style={{ minWidth: c.width || 90 }}>
-                  <Cell value={r[c.key]} type={c.type} options={c.options} placeholder={c.placeholder}
-                    onChange={(v: any) => update(i, c.key, v)} />
+                  {c.compute ? (
+                    <span className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>{c.compute(r)}</span>
+                  ) : (
+                    <Cell value={r[c.key]} type={c.type} options={c.options} placeholder={c.placeholder}
+                      onChange={(v: any) => update(i, c.key, v)} />
+                  )}
                 </td>
               ))}
               <td className="px-2">
@@ -713,17 +715,26 @@ function StonesTab() {
   };
 
   return (
-    <Card title="Stone rates" sub="Rate per stone — matched against the product's color stone"
+    <Card title="Stone rates" sub="Price = rate × carat × pcs (unit: carat) · rate × pcs (unit: piece)"
       action={<SaveBtn onClick={save} saving={saving} />}>
-      {loading ? <SkeletonRows cols={5} n={6} /> : (
+      {loading ? <SkeletonRows cols={6} n={6} /> : (
         <EditableTable rows={rows} setRows={setRows}
-          addTemplate={{ category: "Precious Stones", stone_name: "", quality: "", rate: "", unit: "carat" }}
+          addTemplate={{ category: "Precious Stones", stone_name: "", rate: "", unit: "carat", pcs: "" }}
           cols={[
-            { key: "category", label: "Category", options: STONE_CATS, width: 180 },
-            { key: "stone_name", label: "Stone name", width: 160 },
-            { key: "quality", label: "Quality (opt)" },
-            { key: "rate", label: "Rate", type: "number" },
-            { key: "unit", label: "Unit", options: ["carat", "piece", "gram"] },
+            { key: "category", label: "Category", options: STONE_CATS, width: 170 },
+            { key: "stone_name", label: "Stone name", width: 150 },
+            { key: "pcs", label: "Number of Pieces", type: "number", width: 130 },
+            { key: "rate", label: "Rate (/ct)", type: "number", width: 90 },
+            { key: "_price", label: "Price", width: 100,
+              compute: (r: any) => {
+                const isCarat = (r.unit || "carat") === "carat";
+                const ct = Number(r.carat) || 1;   // default 1 when not picked
+                const pcs = Number(r.pcs) || 1;    // default 1 when blank
+                // carat unit → rate × carat × pcs ; piece unit → rate × pcs
+                const v = (Number(r.rate) || 0) * (isCarat ? ct : 1) * pcs;
+                return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              } },
+            { key: "unit", label: "Unit", options: ["carat", "piece"], width: 90 },
           ]} />
       )}
     </Card>
@@ -737,9 +748,25 @@ function MakingTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Fixed making rows for every gold type (+ a 'default' fallback) — for everyone.
+  const MAKING_SCOPES = ["default", "14KT", "18KT", "22KT", "24KT"];
+
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.makingCharges(scope).then((d: any) => setRows(d)).catch(() => {}).finally(() => setLoading(false));
+    adminPricing.makingCharges(scope).then((d: any) => {
+      const data = d || [];
+      const byScope = new Map(data.map((r: any) => [r.scope, r]));
+      // Always-present rows for everyone, pre-filled from saved values.
+      const seeded = MAKING_SCOPES.map((s) => {
+        const ex: any = byScope.get(s);
+        return { scope: s, mode: ex?.mode || "gross", value: ex && ex.value != null ? ex.value : "" };
+      });
+      // Any extra custom scopes the admin already added (e.g. a category).
+      const extra = data
+        .filter((r: any) => !MAKING_SCOPES.includes(r.scope))
+        .map((r: any) => ({ scope: r.scope, mode: r.mode || "gross", value: r.value != null ? r.value : "" }));
+      setRows([...seeded, ...extra]);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
@@ -747,22 +774,24 @@ function MakingTab() {
   const save = async () => {
     setSaving(true);
     try {
-      await adminPricing.saveMakingCharges(rows.filter((r) => r.scope && r.mode)
-        .map((r) => ({ scope: r.scope, mode: r.mode, value: Number(r.value) || 0 })), scope);
+      // Only persist rows that actually have a value (blanks inherit Global / default).
+      await adminPricing.saveMakingCharges(
+        rows.filter((r) => r.scope && r.mode && r.value !== "" && r.value != null)
+          .map((r) => ({ scope: r.scope, mode: r.mode, value: Number(r.value) || 0 })), scope);
       toast.success("Making charges saved"); load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
   return (
-    <Card title="Making / labour charges" sub="'default' applies to all; add a gold type or category scope to override"
+    <Card title="Making / labour charges" sub="Making = value (₹/g) × product's gross/net weight (g)"
       action={<SaveBtn onClick={save} saving={saving} />}>
-      {loading ? <SkeletonRows cols={3} n={3} /> : (
+      {loading ? <SkeletonRows cols={3} n={5} /> : (
         <EditableTable rows={rows} setRows={setRows}
-          addTemplate={{ scope: "", mode: "percent", value: "" }}
+          addTemplate={{ scope: "", mode: "gross", value: "" }}
           cols={[
-            { key: "scope", label: "Scope", placeholder: "default / 18KT / Ring", width: 200 },
-            { key: "mode", label: "Mode", options: ["percent", "flat"] },
-            { key: "value", label: "Value (% or ₹)", type: "number", width: 140 },
+            { key: "scope", label: "Scope", placeholder: "14KT / Ring", width: 200 },
+            { key: "mode", label: "Weight", options: ["gross", "net"] },
+            { key: "value", label: "Value (₹/g)", type: "number", width: 140 },
           ]} />
       )}
     </Card>
@@ -950,19 +979,80 @@ function PreviewTab() {
   }, [pid, rid]);
 
   const d = result?.breakdown?.detail;
+  const makingInfo = (m: any) =>
+    m.mode === "percent" ? `${m.value}% of metal`
+    : m.mode === "gross" ? `${fmt(m.value)}/g × gross wt`
+    : m.mode === "net"   ? `${fmt(m.value)}/g × net wt`
+    : `flat ${fmt(m.value)}`;
   const lines = d ? [
-    { label: "Metal", v: d.gold, cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
-    { label: "Diamond", v: d.diamond, cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${d.diamond.sieve} · ${d.diamond.shade}-${d.diamond.clarity} · ${fmt(d.diamond.rate_per_carat)}/ct × ${d.diamond.carat}ct` : "no rate matched" },
-    { label: "Stone", v: d.stone, cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${fmt(d.stone.rate)}/${d.stone.unit}` : "no stone / no rate" },
-    { label: "Making", v: d.making, cost: d.making.cost, info: d.making.mode === "percent" ? `${d.making.value}% of metal` : `flat ${fmt(d.making.value)}` },
+    { label: "Metal", cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
+    { label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${d.diamond.sieve} · ${d.diamond.shade}-${d.diamond.clarity} · ${fmt(d.diamond.rate_per_carat)}/ct × ${d.diamond.carat}ct` : "no rate matched" },
+    { label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${fmt(d.stone.rate)}/${d.stone.unit}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" },
+    { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
   ] : [];
 
+  // Dynamic per-section total (metal + diamond + stone + making). With no retailer
+  // this IS the price — never the static stored base_price. A retailer applies its
+  // own factors / overrides, so trust the server's computed price in that case.
+  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost : 0;
+  const shownPrice = rid ? result?.price : dynamicTotal;
+  const shownSource = rid ? result?.source : "dynamic";
+
+  // Product details (from DB) and selected retailer's pricing values (master table).
+  const p = result?.product;
+  const ri = result?.retailer_info;
+  const dash = (v: any) => {
+    if (v === null || v === undefined || v === "") return "—";
+    if (typeof v === "object") {
+      try { const s = JSON.stringify(v); return s === "{}" || s === "[]" ? "—" : s; } catch { return "—"; }
+    }
+    return v;
+  };
+  // Show every product column from the DB (minus internal / non-display keys).
+  const HIDE_KEYS = new Set(["id", "category_id", "diamonds", "created_at", "updated_at", "search_vector"]);
+  const labelize = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bMfg\b/, "Mfg").replace(/\bSku\b/, "SKU");
+  const fmtVal = (v: any) => {
+    if (v === true) return "Yes";
+    if (v === false) return "No";
+    return dash(v);
+  };
+  const productRows: [string, any][] = p
+    ? Object.keys(p).filter((k) => !HIDE_KEYS.has(k)).map((k) => [labelize(k), fmtVal(p[k])])
+    : [];
+  const diamonds: any[] = p?.diamonds || [];
+  const retailerRows = ri ? [
+    ["Retailer", ri.name], ["Company", dash(ri.company_name)],
+    ["Price factor", `×${dash(ri.price_factor)}`], ["Flat markup", fmt(Number(ri.flat_markup || 0))],
+    ["Gold factor", `×${dash(ri.gold_factor)}`], ["Diamond factor", `×${dash(ri.diamond_factor)}`],
+    ["Stone factor", `×${dash(ri.stone_factor)}`], ["Making factor", `×${dash(ri.making_factor)}`],
+  ] as [string, any][] : [];
+
+  // ── Step-by-step calculation (every operand spelled out) ──────────
+  const isOverride = result?.source === "override";
+  const fnum = (v: any, d2 = 1) => (v == null || v === "" ? d2 : Number(v));
+  const gf = fnum(ri?.gold_factor), df = fnum(ri?.diamond_factor), sf = fnum(ri?.stone_factor), mf = fnum(ri?.making_factor);
+  const pf = fnum(ri?.price_factor), fm = fnum(ri?.flat_markup, 0);
+  const hasFactors = !!ri && (gf !== 1 || df !== 1 || sf !== 1 || mf !== 1);
+  const factoredBase = d ? d.gold.cost * gf + d.diamond.cost * df + d.stone.cost * sf + d.making.cost * mf : 0;
+  const calcSteps = d && !isOverride ? [
+    { k: "Gold", eq: `${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0} g`, res: d.gold.cost },
+    { k: "Diamond", eq: d.diamond.matched ? `${fmt(d.diamond.rate_per_carat)}/ct × ${d.diamond.carat} ct` : "no rate matched", res: d.diamond.cost },
+    { k: "Stone", eq: d.stone.matched ? `${fmt(d.stone.rate)}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat} ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs} pcs` : ""}` : "no rate matched", res: d.stone.cost },
+    { k: "Making", eq:
+        d.making.mode === "percent" ? `${d.making.value}% × ${fmt(d.gold.cost)} (metal)`
+        : d.making.mode === "gross" ? `${fmt(d.making.value)}/g × ${p?.gross_weight || 0} g (gross)`
+        : d.making.mode === "net"   ? `${fmt(d.making.value)}/g × ${p?.net_weight || 0} g (net)`
+        : `flat`, res: d.making.cost },
+  ] : [];
+  const subtotalEq = d ? `${fmt(d.gold.cost)} + ${fmt(d.diamond.cost)} + ${fmt(d.stone.cost)} + ${fmt(d.making.cost)}` : "";
+
   return (
-    <Card title="Price preview" sub="Pick a product and retailer to see the full cost breakdown">
+    <Card title="SKU price breakdown" sub="Pick a product SKU to see per-section details and price (metal / diamond / stone / making)">
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Product</label>
+            <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Product SKU</label>
             <div className="relative mt-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
               <Input placeholder="Search SKU / name to filter…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8 h-9 text-sm mb-2"
@@ -989,6 +1079,12 @@ function PreviewTab() {
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} /></div>
         ) : result ? (
+          <>
+          {ri && result.source === "override" && (
+            <div className="rounded-xl px-4 py-2.5 text-xs" style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>
+              This retailer has a fixed price override for this SKU — the section breakdown below is the base computation and is not used for the final price.
+            </div>
+          )}
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
             {lines.map((ln) => (
               <div key={ln.label} className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
@@ -1003,11 +1099,103 @@ function PreviewTab() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Final price</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                  style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>{result.source}</span>
+                  style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>{shownSource}</span>
               </div>
-              <span className="text-lg font-bold" style={{ color: "var(--sf-teal)" }}>{fmt(result.price)}</span>
+              <span className="text-lg font-bold" style={{ color: "var(--sf-teal)" }}>{fmt(shownPrice)}</span>
             </div>
           </div>
+
+          {!isOverride && d && (
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+              <div className="px-4 py-2 text-xs font-semibold" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
+                Step-by-step calculation
+              </div>
+              {calcSteps.map((s) => (
+                <div key={s.k} className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{s.k}</span>
+                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{s.eq} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(s.res)}</b></span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Subtotal</span>
+                <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{subtotalEq} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(dynamicTotal)}</b></span>
+              </div>
+              {hasFactors && (
+                <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>× section factors</span>
+                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>
+                    {fmt(d.gold.cost)}×{gf} + {fmt(d.diamond.cost)}×{df} + {fmt(d.stone.cost)}×{sf} + {fmt(d.making.cost)}×{mf} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(factoredBase)}</b>
+                  </span>
+                </div>
+              )}
+              {ri && (pf !== 1 || fm !== 0 || hasFactors) && (
+                <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>× price factor + markup</span>
+                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>
+                    {fmt(hasFactors ? factoredBase : dynamicTotal)} × {pf} + {fmt(fm)} = <b style={{ color: "var(--sf-teal)" }}>{fmt(shownPrice)}</b>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {ri && (
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+                <div className="px-4 py-2 text-xs font-semibold" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
+                  Retailer pricing (master)
+                </div>
+                {retailerRows.map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
+                    <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {p && (
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+                <div className="px-4 py-2 text-xs font-semibold" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
+                  Product details (DB)
+                </div>
+                {productRows.map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
+                    <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {diamonds.length > 0 && (
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+              <div className="px-4 py-2 text-xs font-semibold" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
+                Diamonds ({diamonds.length})
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]" style={{ color: "var(--sf-text-primary)" }}>
+                  <thead>
+                    <tr style={{ color: "var(--sf-text-muted)" }}>
+                      {["Type", "Shape", "Size", "Shade", "Clarity", "Cert", "Carat", "Pcs", "Stone", "Stone qual"].map((h) => (
+                        <th key={h} className="px-3 py-1.5 text-left font-medium whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diamonds.map((dm, i) => (
+                      <tr key={i}>
+                        {[dm.diamond_type, dm.diamond_shape, dm.diamond_size, dm.diamond_color, dm.diamond_clarity, dm.diamond_certification, dm.carat, dm.diamond_pcs, dm.stone_name, dm.stone_quality].map((v, j) => (
+                          <td key={j} className="px-3 py-1.5 whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{dash(v)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          </>
         ) : (
           <p className="text-xs text-center py-10" style={{ color: "var(--sf-text-muted)" }}>Select a product to preview its price.</p>
         )}

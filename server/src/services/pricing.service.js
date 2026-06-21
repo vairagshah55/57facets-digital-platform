@@ -85,7 +85,7 @@ async function loadGlobalRows() {
     query("SELECT gold_type, rate_per_gram FROM metal_rates"),
     query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM diamond_sieve_map"),
-    query("SELECT category, stone_name, quality, rate, unit FROM stone_rates"),
+    query("SELECT category, stone_name, quality, rate, unit, carat, pcs FROM stone_rates"),
     query("SELECT scope, mode, value FROM making_charges"),
   ]);
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
@@ -96,7 +96,7 @@ async function loadRetailerRows(retailerId) {
     query("SELECT gold_type, rate_per_gram FROM retailer_metal_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM retailer_sieve_map WHERE retailer_id = $1", [retailerId]),
-    query("SELECT category, stone_name, quality, rate, unit FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
+    query("SELECT category, stone_name, quality, rate, unit, carat, pcs FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT scope, mode, value FROM retailer_making_charges WHERE retailer_id = $1", [retailerId]),
   ]);
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
@@ -129,7 +129,11 @@ function buildChart(g, r) {
   // Stone: name+quality key, plus a name-only fallback (retailer rows override).
   const stoneMap = new Map();
   const addStone = (row, override) => {
-    const rec = { rate: num(row.rate), unit: row.unit || "carat" };
+    const rec = {
+      rate: num(row.rate), unit: row.unit || "carat",
+      carat: row.carat == null ? null : num(row.carat),
+      pcs: row.pcs == null ? null : num(row.pcs),
+    };
     stoneMap.set(skey(row.stone_name, row.quality), rec);
     const nameOnly = skey(row.stone_name, null);
     if (override || !stoneMap.has(nameOnly)) stoneMap.set(nameOnly, rec);
@@ -213,26 +217,45 @@ function computeBreakdown(product, chart) {
   let diamondMatched = false;
   if (carat > 0 && product.diamond_shape) {
     shapeGroup = toShapeGroup(product.diamond_shape);
-    sieve = chart.sieveFor(shapeGroup, carat);
+    // Prefer the product's explicit sieve size (matches a matrix row directly);
+    // otherwise derive the sieve bucket from carat via the carat→sieve map.
+    const explicitSieve = product.diamond_size ? String(product.diamond_size).trim() : null;
+    sieve = explicitSieve || chart.sieveFor(shapeGroup, carat);
     if (sieve) {
       const r = chart.diamondRate(shapeGroup, sieve, shade, clarity);
       if (r != null) { diamondRate = r; diamondCost = r * carat; diamondMatched = true; }
     }
   }
 
-  // Stone — no per-stone weight column, so a 'carat' rate is applied per piece (×1).
+  // Stone — cost = rate (per carat) × carat × pieces. Missing carat/pcs default
+  // to 1 so a stone with only a rate still contributes (backward compatible).
   // Products keep the stone name in color_stone_quality (category in color_stone_name),
   // so try color_stone_quality first, then color_stone_name as a fallback.
   let stoneCost = 0, stoneRate = 0, stoneUnit = null, stoneMatched = false, stoneNameUsed = null;
+  let stoneCarat = num(product.color_stone_carat, 0);
+  let stonePcs = num(product.color_stone_pcs, 0);
   for (const cand of [product.color_stone_quality, product.color_stone_name]) {
     if (!cand) continue;
     const sr = chart.stoneRate(cand);
-    if (sr) { stoneRate = sr.rate; stoneUnit = sr.unit; stoneCost = sr.rate; stoneMatched = true; stoneNameUsed = cand; break; }
+    if (sr) {
+      stoneRate = sr.rate; stoneUnit = sr.unit;
+      // Carat & pcs come from the (retailer) rate-chart row when set, else the product's.
+      if (sr.carat != null && sr.carat > 0) stoneCarat = sr.carat;
+      if (sr.pcs != null && sr.pcs > 0) stonePcs = sr.pcs;
+      // Multiply by carat only when the rate is per-carat; per-piece rates skip carat.
+      const caratMul = (sr.unit || "carat") === "carat" ? (stoneCarat > 0 ? stoneCarat : 1) : 1;
+      stoneCost = sr.rate * caratMul * (stonePcs > 0 ? stonePcs : 1);
+      stoneMatched = true; stoneNameUsed = cand; break;
+    }
   }
 
-  // Making
+  // Making — flat ₹, percent of metal, or per-gram × gross/net weight (from product).
   const making = chart.makingFor(product);
-  const makingCost = making.mode === "percent" ? metalCost * (making.value / 100) : making.value;
+  const makingCost =
+    making.mode === "percent" ? metalCost * (making.value / 100) :
+    making.mode === "gross"   ? making.value * num(product.gross_weight, 0) :
+    making.mode === "net"     ? making.value * num(product.net_weight, 0) :
+    making.value; // flat
 
   const baseCost = metalCost + diamondCost + stoneCost + makingCost;
 
@@ -241,7 +264,7 @@ function computeBreakdown(product, chart) {
     detail: {
       gold: { gold_type: goldType, rate_per_gram: goldRate, weight, cost: metalCost },
       diamond: { shape_group: shapeGroup, sieve, shade, clarity, rate_per_carat: diamondRate, carat, cost: diamondCost, matched: diamondMatched },
-      stone: { name: stoneNameUsed, rate: stoneRate, unit: stoneUnit, cost: stoneCost, matched: stoneMatched },
+      stone: { name: stoneNameUsed, rate: stoneRate, unit: stoneUnit, carat: stoneCarat, pcs: stonePcs, cost: stoneCost, matched: stoneMatched },
       making: { mode: making.mode, value: making.value, cost: makingCost },
     },
   };

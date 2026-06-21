@@ -163,8 +163,8 @@ router.get("/stone-rates", async (req, res, next) => {
   try {
     const { retailerId } = req.query;
     const { rows } = retailerId
-      ? await query("SELECT category, stone_name, quality, rate, unit, updated_at FROM retailer_stone_rates WHERE retailer_id = $1 ORDER BY category, stone_name", [retailerId])
-      : await query("SELECT id, category, stone_name, quality, rate, unit, updated_at FROM stone_rates ORDER BY category, stone_name");
+      ? await query("SELECT category, stone_name, quality, rate, unit, carat, pcs, updated_at FROM retailer_stone_rates WHERE retailer_id = $1 ORDER BY category, stone_name", [retailerId])
+      : await query("SELECT id, category, stone_name, quality, rate, unit, carat, pcs, updated_at FROM stone_rates ORDER BY category, stone_name");
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -178,20 +178,22 @@ router.put("/stone-rates", async (req, res, next) => {
       let n = 0;
       if (retailerId) await c.query("DELETE FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
-        const { category, stone_name, quality, rate, unit } = it;
+        const { category, stone_name, quality, rate, unit, carat, pcs } = it;
         if (!category || !stone_name) throw new AppError("Each stone needs category and stone_name");
+        const caratVal = (carat === "" || carat == null) ? null : Number(carat);
+        const pcsVal = (pcs === "" || pcs == null) ? null : parseInt(pcs, 10);
         if (retailerId) {
           await c.query(
-            `INSERT INTO retailer_stone_rates (retailer_id, category, stone_name, quality, rate, unit, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [retailerId, category, stone_name, quality || null, Number(rate) || 0, unit || "carat", req.admin.id]);
+            `INSERT INTO retailer_stone_rates (retailer_id, category, stone_name, quality, rate, unit, carat, pcs, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [retailerId, category, stone_name, quality || null, Number(rate) || 0, unit || "carat", caratVal, pcsVal, req.admin.id]);
         } else {
           await c.query(
-            `INSERT INTO stone_rates (category, stone_name, quality, rate, unit, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6)
+            `INSERT INTO stone_rates (category, stone_name, quality, rate, unit, carat, pcs, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
              ON CONFLICT (category, stone_name, COALESCE(quality, ''))
-             DO UPDATE SET rate = EXCLUDED.rate, unit = EXCLUDED.unit, updated_by = EXCLUDED.updated_by`,
-            [category, stone_name, quality || null, Number(rate) || 0, unit || "carat", req.admin.id]);
+             DO UPDATE SET rate = EXCLUDED.rate, unit = EXCLUDED.unit, carat = EXCLUDED.carat, pcs = EXCLUDED.pcs, updated_by = EXCLUDED.updated_by`,
+            [category, stone_name, quality || null, Number(rate) || 0, unit || "carat", caratVal, pcsVal, req.admin.id]);
         }
         n++;
       }
@@ -286,7 +288,7 @@ router.put("/making-charges", async (req, res, next) => {
       for (const it of items) {
         const { scope, mode, value } = it;
         if (!scope || !mode) throw new AppError("Each making charge needs scope and mode");
-        if (!["flat", "percent"].includes(mode)) throw new AppError("mode must be 'flat' or 'percent'");
+        if (!["flat", "percent", "gross", "net"].includes(mode)) throw new AppError("mode must be flat, percent, gross or net");
         if (retailerId) {
           await c.query(
             `INSERT INTO retailer_making_charges (retailer_id, scope, mode, value, updated_by) VALUES ($1,$2,$3,$4,$5)`,
@@ -390,14 +392,25 @@ router.get("/preview", async (req, res, next) => {
     const { productId, retailerId } = req.query;
     if (!productId) throw new AppError("productId is required");
     const { rows } = await query(
-      `SELECT p.id, p.base_price, p.carat, p.metal_type, p.metal_weight,
-              p.diamond_shape, p.diamond_color, p.diamond_clarity,
-              p.color_stone_name, p.color_stone_quality, c.name AS category
+      `SELECT p.*, c.name AS category
        FROM products p LEFT JOIN categories c ON c.id = p.category_id
        WHERE p.id = $1`, [productId]);
     if (!rows.length) throw new AppError("Product not found", 404);
+    const diamonds = await query(
+      `SELECT diamond_type, diamond_shape, diamond_size, diamond_color, diamond_clarity,
+              diamond_certification, carat, diamond_pcs, stone_name, stone_quality
+       FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`, [productId]);
+    rows[0].diamonds = diamonds.rows;
+    let retailer = null;
+    if (retailerId) {
+      const r = await query(
+        `SELECT id, name, company_name, price_factor, flat_markup,
+                gold_factor, diamond_factor, stone_factor, making_factor
+         FROM retailers WHERE id = $1`, [retailerId]);
+      retailer = r.rows[0] || null;
+    }
     const result = await pricing.priceForRetailer(rows[0], retailerId || null);
-    res.json({ product_id: productId, retailer_id: retailerId || null, ...result });
+    res.json({ product_id: productId, retailer_id: retailerId || null, product: rows[0], retailer_info: retailer, ...result });
   } catch (e) { next(e); }
 });
 
