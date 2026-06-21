@@ -17,7 +17,9 @@ import {
   ChevronRight,
   Plus,
   GripVertical,
+  Expand,
 } from "lucide-react";
+import { ImageViewer } from "./ImageViewer";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -828,6 +830,7 @@ function WishlistCard({
 }) {
   const { addItem, items: cartItems } = useCart();
   const alreadyInCart = cartItems.some((c) => c.productId === product.id);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const isLocked = product.availability === "out-of-stock";
 
@@ -909,6 +912,24 @@ function WishlistCard({
             >
               <Heart className="w-4 h-4" fill="#ef4444" />
             </button>
+          </div>
+        )}
+
+        {/* Expand / zoom — bottom-right, no overlap with the wishlist action (top-right) */}
+        {!selectionMode && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewerOpen(true); }}
+            title="View & zoom"
+            aria-label="View & zoom"
+            className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none", cursor: "pointer" }}
+          >
+            <Expand className="w-4 h-4" />
+          </button>
+        )}
+        {viewerOpen && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <ImageViewer images={[imgSrc]} onClose={() => setViewerOpen(false)} />
           </div>
         )}
         {/* Availability badge */}

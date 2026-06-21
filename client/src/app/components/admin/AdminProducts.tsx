@@ -24,7 +24,9 @@ import {
   FileSpreadsheet,
   SlidersHorizontal,
   X,
+  Expand,
 } from "lucide-react";
+import { ImageViewer } from "../ImageViewer";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -219,6 +221,7 @@ export function AdminProducts() {
   const [imgDialogPid,   setImgDialogPid]   = useState<string | null>(null);
   const [imgDialogName,  setImgDialogName]  = useState("");
   const [imgList,        setImgList]        = useState<ProductImage[]>([]);
+  const [imgViewerIdx,   setImgViewerIdx]   = useState<number | null>(null);
   const [imgLoading,     setImgLoading]     = useState(false);
   const [imgUploading,   setImgUploading]   = useState(false);
   const [imgDragOver,    setImgDragOver]    = useState(false);
@@ -965,6 +968,14 @@ export function AdminProducts() {
                     {/* Hover actions */}
                     <div className="absolute inset-0 flex items-end justify-end gap-1 p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
                       style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }}>
+                      <button
+                        onClick={() => setImgViewerIdx(imgList.findIndex((i) => i.id === img.id))}
+                        title="View & zoom"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors mr-auto"
+                        style={{ backgroundColor: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer" }}
+                      >
+                        <Expand className="w-3.5 h-3.5 text-white" />
+                      </button>
                       {!img.is_primary && (
                         <button
                           onClick={() => handleImgSetPrimary(img.id)}
@@ -987,6 +998,14 @@ export function AdminProducts() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {imgViewerIdx !== null && imgList.length > 0 && (
+              <ImageViewer
+                images={imgList.map((i) => imageUrl(i.image_url))}
+                startIndex={imgViewerIdx}
+                onClose={() => setImgViewerIdx(null)}
+              />
             )}
 
             {/* Upload zone */}
