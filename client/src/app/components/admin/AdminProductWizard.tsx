@@ -759,7 +759,7 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
             >
               <SelectItem value="__none__">No retailer (base computed)</SelectItem>
               {retailers.map((r) => (
-                <SelectItem key={r.id} value={r.id}>{r.name || "Unnamed retailer"} (×{r.price_factor})</SelectItem>
+                <SelectItem key={r.id} value={r.id}>{r.name || "Unnamed retailer"}</SelectItem>
               ))}
             </FSelect>
           </div>

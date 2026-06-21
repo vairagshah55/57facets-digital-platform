@@ -35,7 +35,7 @@ export function AdminProductPreview() {
           style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 220 }}>
           <option value="">Base / global price</option>
           {retailers.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}{r.price_factor ? ` (×${r.price_factor})` : ""}</option>
+            <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>
       </div>

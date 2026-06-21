@@ -111,7 +111,7 @@ export function AdminPricing() {
             style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 220 }}>
             <option value="">🌐 Global default (everyone)</option>
             {retailers.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}{r.price_factor ? ` (×${r.price_factor})` : ""}</option>
+              <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
           {scope && (
@@ -1023,18 +1023,12 @@ function PreviewTab() {
   const diamonds: any[] = p?.diamonds || [];
   const retailerRows = ri ? [
     ["Retailer", ri.name], ["Company", dash(ri.company_name)],
-    ["Price factor", `×${dash(ri.price_factor)}`], ["Flat markup", fmt(Number(ri.flat_markup || 0))],
-    ["Gold factor", `×${dash(ri.gold_factor)}`], ["Diamond factor", `×${dash(ri.diamond_factor)}`],
-    ["Stone factor", `×${dash(ri.stone_factor)}`], ["Making factor", `×${dash(ri.making_factor)}`],
   ] as [string, any][] : [];
 
   // ── Step-by-step calculation (every operand spelled out) ──────────
+  // Price comes straight from the rate chart (master + retailer scope). There is
+  // no factor/markup multiplier layer.
   const isOverride = result?.source === "override";
-  const fnum = (v: any, d2 = 1) => (v == null || v === "" ? d2 : Number(v));
-  const gf = fnum(ri?.gold_factor), df = fnum(ri?.diamond_factor), sf = fnum(ri?.stone_factor), mf = fnum(ri?.making_factor);
-  const pf = fnum(ri?.price_factor), fm = fnum(ri?.flat_markup, 0);
-  const hasFactors = !!ri && (gf !== 1 || df !== 1 || sf !== 1 || mf !== 1);
-  const factoredBase = d ? d.gold.cost * gf + d.diamond.cost * df + d.stone.cost * sf + d.making.cost * mf : 0;
   // Diamond steps: one row per diamond when the product has several, else a single line.
   const diaLines: any[] = d?.diamond?.lines || [];
   const diamondSteps = !d ? [] : diaLines.length > 1
@@ -1080,7 +1074,7 @@ function PreviewTab() {
               className="w-full h-9 px-2 mt-1 rounded-md text-sm border outline-none"
               style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }}>
               <option value="">No retailer (base computed)</option>
-              {retailers.map((r) => <option key={r.id} value={r.id}>{r.name} (×{r.price_factor})</option>)}
+              {retailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
         </div>
@@ -1126,25 +1120,9 @@ function PreviewTab() {
                 </div>
               ))}
               <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Subtotal</span>
-                <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{subtotalEq} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(dynamicTotal)}</b></span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--sf-text-primary)" }}>Total</span>
+                <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{subtotalEq} = <b style={{ color: "var(--sf-teal)" }}>{fmt(dynamicTotal)}</b></span>
               </div>
-              {hasFactors && (
-                <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>× section factors</span>
-                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>
-                    {fmt(d.gold.cost)}×{gf} + {fmt(d.diamond.cost)}×{df} + {fmt(d.stone.cost)}×{sf} + {fmt(d.making.cost)}×{mf} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(factoredBase)}</b>
-                  </span>
-                </div>
-              )}
-              {ri && (pf !== 1 || fm !== 0 || hasFactors) && (
-                <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>× price factor + markup</span>
-                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>
-                    {fmt(hasFactors ? factoredBase : dynamicTotal)} × {pf} + {fmt(fm)} = <b style={{ color: "var(--sf-teal)" }}>{fmt(shownPrice)}</b>
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
@@ -1152,7 +1130,7 @@ function PreviewTab() {
             {ri && (
               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
                 <div className="px-4 py-2 text-xs font-semibold" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
-                  Retailer pricing (master)
+                  Retailer
                 </div>
                 {retailerRows.map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>

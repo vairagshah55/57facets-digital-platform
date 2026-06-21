@@ -3,8 +3,9 @@
    chart and applies the per-retailer pricing layers.
 
      price = metal + diamond + stone + making        (master chart)
-     retailer_price = Σ(component × componentFactor) × price_factor + flat_markup
-     ... unless a retailer_product_price override exists (highest precedence).
+     A retailer is priced from its own chart scope (global rows + retailer
+     overlay). No factor/markup multipliers. A retailer_product_price override,
+     when present, wins over the computed price (highest precedence).
 
    Optimised for catalog use: the (small) rate tables are loaded once and
    cached in memory with a short TTL, so pricing a page of products costs
@@ -294,26 +295,10 @@ function computeBreakdown(product, chart) {
   };
 }
 
-/* ── Apply per-retailer factors (Layer 1 + Layer 2) ────────────── */
-function applyRetailer(bd, retailer) {
-  const f = retailer || {};
-  const base =
-    bd.metalCost   * (f.gold_factor    != null ? num(f.gold_factor, 1)    : 1) +
-    bd.diamondCost * (f.diamond_factor != null ? num(f.diamond_factor, 1) : 1) +
-    bd.stoneCost   * (f.stone_factor   != null ? num(f.stone_factor, 1)   : 1) +
-    bd.makingCost  * (f.making_factor  != null ? num(f.making_factor, 1)  : 1);
-  return base * num(f.price_factor, 1) + num(f.flat_markup, 0);
-}
-
-const RETAILER_FACTOR_COLS =
-  "price_factor, flat_markup, diamond_factor, gold_factor, stone_factor, making_factor";
-
-async function getRetailerFactors(retailerId) {
-  if (!retailerId) return {};
-  const { rows } = await query(
-    `SELECT ${RETAILER_FACTOR_COLS} FROM retailers WHERE id = $1`, [retailerId]);
-  return rows[0] || {};
-}
+/* NOTE: retailer price_factor / flat_markup / component-factor multipliers have
+   been REMOVED. Price comes purely from the rate chart (global rows + the
+   retailer's own chart scope). The retailer chart scope is the single mechanism
+   for per-retailer pricing; a fixed retailer_product_price override still wins. */
 
 /* ════════════════════════════════════════════════════════════════
    Public API
@@ -343,22 +328,22 @@ async function priceForRetailer(product, retailerId) {
       return { price: num(ov.rows[0].price), source: "override", breakdown: null, retailer: null };
     }
   }
-  const [retailer, chart] = await Promise.all([getRetailerFactors(retailerId), getRateChart(retailerId)]);
+  const chart = await getRateChart(retailerId);
   // Price every diamond on the product — fetch the rows unless already attached.
   if (!Array.isArray(product.diamonds) && product.id) {
     const m = await loadDiamonds([product.id]);
     product = { ...product, diamonds: m.get(product.id) || [] };
   }
   const bd = computeBreakdown(product, chart);
-  const price = finalize(bd, product, retailer);
-  return { price: price.value, source: price.source, breakdown: bd, retailer };
+  const price = finalize(bd, product);
+  return { price: price.value, source: price.source, breakdown: bd, retailer: null };
 }
 
 /** Batch: attach `price` + `price_source` to each product for one retailer.
  *  Costs ~2 queries total regardless of how many products. */
 async function priceProductsForRetailer(products, retailerId) {
   if (!products.length) return products;
-  const [retailer, chart] = await Promise.all([getRetailerFactors(retailerId), getRateChart(retailerId)]);
+  const chart = await getRateChart(retailerId);
 
   const ids = products.map((p) => p.id);
   const overrides = new Map();
@@ -374,19 +359,18 @@ async function priceProductsForRetailer(products, retailerId) {
   return products.map((p) => {
     if (overrides.has(p.id)) return { ...p, price: overrides.get(p.id), price_source: "override" };
     const bd = computeBreakdown({ ...p, diamonds: diaMap.get(p.id) || [] }, chart);
-    const price = finalize(bd, p, retailer);
+    const price = finalize(bd, p);
     return { ...p, price: price.value, price_source: price.source };
   });
 }
 
-/** Apply retailer factors; fall back to base_price when the chart produced
- *  nothing (e.g. Kundan/Beads with no per-carat rate). Rounded to rupee. */
-function finalize(bd, product, retailer) {
+/** Price = the rate-chart total. Falls back to base_price only when the chart
+ *  produced nothing (e.g. Kundan/Beads with no per-carat rate). Rounded to rupee. */
+function finalize(bd, product) {
   if (bd.baseCost > 0) {
-    return { value: Math.round(applyRetailer(bd, retailer)), source: "computed" };
+    return { value: Math.round(bd.baseCost), source: "computed" };
   }
-  const fallback = num(product.base_price) * num(retailer?.price_factor, 1) + num(retailer?.flat_markup, 0);
-  return { value: Math.round(fallback), source: "base_fallback" };
+  return { value: Math.round(num(product.base_price)), source: "base_fallback" };
 }
 
 module.exports = {
