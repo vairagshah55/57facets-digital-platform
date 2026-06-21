@@ -215,15 +215,16 @@ function computeBreakdown(product, chart) {
   const clarity = normalizeClarity(product.diamond_clarity);
   let diamondCost = 0, diamondRate = 0, sieve = null, shapeGroup = null;
   let diamondMatched = false;
-  if (carat > 0 && product.diamond_shape) {
+  if (product.diamond_shape && (carat > 0 || product.diamond_size)) {
     shapeGroup = toShapeGroup(product.diamond_shape);
     // Prefer the product's explicit sieve size (matches a matrix row directly);
     // otherwise derive the sieve bucket from carat via the carat→sieve map.
     const explicitSieve = product.diamond_size ? String(product.diamond_size).trim() : null;
-    sieve = explicitSieve || chart.sieveFor(shapeGroup, carat);
+    sieve = explicitSieve || (carat > 0 ? chart.sieveFor(shapeGroup, carat) : null);
     if (sieve) {
       const r = chart.diamondRate(shapeGroup, sieve, shade, clarity);
-      if (r != null) { diamondRate = r; diamondCost = r * carat; diamondMatched = true; }
+      // Diamond cost = the matched rate as-is (NOT multiplied by carat).
+      if (r != null) { diamondRate = r; diamondCost = r; diamondMatched = true; }
     }
   }
 

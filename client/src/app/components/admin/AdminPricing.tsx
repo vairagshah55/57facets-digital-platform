@@ -986,7 +986,7 @@ function PreviewTab() {
     : `flat ${fmt(m.value)}`;
   const lines = d ? [
     { label: "Metal", cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
-    { label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${d.diamond.sieve} · ${d.diamond.shade}-${d.diamond.clarity} · ${fmt(d.diamond.rate_per_carat)}/ct × ${d.diamond.carat}ct` : "no rate matched" },
+    { label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${d.diamond.sieve} · ${d.diamond.shade}-${d.diamond.clarity} · rate ${fmt(d.diamond.rate_per_carat)}` : "no rate matched" },
     { label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${fmt(d.stone.rate)}/${d.stone.unit}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" },
     { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
   ] : [];
@@ -1037,7 +1037,7 @@ function PreviewTab() {
   const factoredBase = d ? d.gold.cost * gf + d.diamond.cost * df + d.stone.cost * sf + d.making.cost * mf : 0;
   const calcSteps = d && !isOverride ? [
     { k: "Gold", eq: `${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0} g`, res: d.gold.cost },
-    { k: "Diamond", eq: d.diamond.matched ? `${fmt(d.diamond.rate_per_carat)}/ct × ${d.diamond.carat} ct` : "no rate matched", res: d.diamond.cost },
+    { k: "Diamond", eq: d.diamond.matched ? `rate ${fmt(d.diamond.rate_per_carat)} (flat, no carat)` : "no rate matched", res: d.diamond.cost },
     { k: "Stone", eq: d.stone.matched ? `${fmt(d.stone.rate)}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat} ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs} pcs` : ""}` : "no rate matched", res: d.stone.cost },
     { k: "Making", eq:
         d.making.mode === "percent" ? `${d.making.value}% × ${fmt(d.gold.cost)} (metal)`
