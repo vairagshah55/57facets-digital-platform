@@ -734,6 +734,23 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
 
   const inr = (n: any) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
 
+  const d = result?.breakdown?.detail;
+  const makingInfo = (m: any) =>
+    m.mode === "percent" ? `${m.value}% of metal`
+    : m.mode === "gross" ? `${inr(m.value)}/g × gross wt`
+    : m.mode === "net"   ? `${inr(m.value)}/g × net wt`
+    : `flat ${inr(m.value)}`;
+  const lines = d ? [
+    { label: "Metal", cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${inr(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
+    { label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? (d.diamond.count > 1 ? `${d.diamond.count} diamonds (sum of all)` : `${d.diamond.shade}-${d.diamond.clarity} · ${d.diamond.sieve} · rate ${inr(d.diamond.rate_per_carat)}`) : "no rate matched" },
+    { label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${inr(d.stone.rate)}/${d.stone.unit}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" },
+    { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
+  ] : [];
+  // No retailer → price is the dynamic per-section sum (never the static base_price).
+  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost : 0;
+  const shownPrice = rid ? result?.price : dynamicTotal;
+  const shownSource = rid ? result?.source : "dynamic";
+
   return (
     <div className="rounded-xl p-4" style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}>
       <p className="text-xs font-semibold mb-1" style={{ color: "var(--sf-teal)" }}>Retailer price preview</p>
@@ -765,14 +782,34 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
             </div>
           ) : result ? (
             <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold" style={{ color: "var(--sf-text-primary)" }}>{inr(result.price)}</span>
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="text-2xl font-semibold" style={{ color: "var(--sf-text-primary)" }}>{inr(shownPrice)}</span>
                 <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded"
-                  style={{ background: "var(--sf-bg-surface)", color: "var(--sf-text-muted)" }}>{result.source}</span>
+                  style={{ background: "var(--sf-bg-surface)", color: "var(--sf-text-muted)" }}>{shownSource}</span>
               </div>
-              {result.breakdown && (
-                <p className="text-[11px] mt-1.5" style={{ color: "var(--sf-text-muted)" }}>
-                  Metal {inr(result.breakdown.metalCost)} · Diamond {inr(result.breakdown.diamondCost)} · Stone {inr(result.breakdown.stoneCost)} · Making {inr(result.breakdown.makingCost)}
+              {d ? (
+                <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+                  {lines.map((ln) => (
+                    <div key={ln.label} className="flex items-center justify-between gap-3 px-3 py-1.5"
+                      style={{ borderBottom: "1px solid var(--sf-divider)" }}>
+                      <div className="min-w-0">
+                        <p className="text-[11px]" style={{ color: "var(--sf-text-primary)" }}>{ln.label}</p>
+                        <p className="text-[10px] truncate" style={{ color: "var(--sf-text-muted)" }}>{ln.info}</p>
+                      </div>
+                      <span className="text-[11px] font-medium whitespace-nowrap"
+                        style={{ color: ln.cost > 0 ? "var(--sf-text-primary)" : "var(--sf-text-muted)" }}>{inr(ln.cost)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-3 py-1.5" style={{ background: "var(--sf-bg-surface)" }}>
+                    <span className="text-[11px] font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                      {rid ? "Retailer price" : "Dynamic total"}
+                    </span>
+                    <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>{inr(shownPrice)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                  {result.source === "override" ? "Fixed price override for this retailer." : "No breakdown available."}
                 </p>
               )}
             </div>

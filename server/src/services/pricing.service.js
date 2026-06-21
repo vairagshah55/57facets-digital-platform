@@ -210,23 +210,40 @@ function computeBreakdown(product, chart) {
   const goldRate = chart.metalRate(goldType);
   const metalCost = goldRate * weight;
 
-  // Diamond
-  const shade = normalizeShade(product.diamond_color);
-  const clarity = normalizeClarity(product.diamond_clarity);
-  let diamondCost = 0, diamondRate = 0, sieve = null, shapeGroup = null;
-  let diamondMatched = false;
-  if (product.diamond_shape && (carat > 0 || product.diamond_size)) {
-    shapeGroup = toShapeGroup(product.diamond_shape);
-    // Prefer the product's explicit sieve size (matches a matrix row directly);
-    // otherwise derive the sieve bucket from carat via the carat→sieve map.
-    const explicitSieve = product.diamond_size ? String(product.diamond_size).trim() : null;
-    sieve = explicitSieve || (carat > 0 ? chart.sieveFor(shapeGroup, carat) : null);
-    if (sieve) {
-      const r = chart.diamondRate(shapeGroup, sieve, shade, clarity);
-      // Diamond cost = the matched rate as-is (NOT multiplied by carat).
-      if (r != null) { diamondRate = r; diamondCost = r; diamondMatched = true; }
+  // Diamonds — price EVERY diamond on the product and sum the costs. When no
+  // diamond rows are attached, fall back to the bridged single diamond_* columns.
+  const diamondRows = (Array.isArray(product.diamonds) && product.diamonds.length)
+    ? product.diamonds
+    : [{
+        diamond_shape: product.diamond_shape, diamond_size: product.diamond_size,
+        diamond_color: product.diamond_color, diamond_clarity: product.diamond_clarity,
+        carat: product.carat, diamond_pcs: product.diamond_pcs,
+      }];
+
+  let diamondCost = 0, diamondMatched = false;
+  const diamondLines = [];
+  for (const dr of diamondRows) {
+    const dCarat = num(dr.carat);
+    if (!dr.diamond_shape || !(dCarat > 0 || dr.diamond_size)) continue;
+    const grp = toShapeGroup(dr.diamond_shape);
+    // Prefer the row's explicit sieve size; else derive it from carat via the map.
+    const explicit = dr.diamond_size ? String(dr.diamond_size).trim() : null;
+    const sv = explicit || (dCarat > 0 ? chart.sieveFor(grp, dCarat) : null);
+    const sh = normalizeShade(dr.diamond_color);
+    const cl = normalizeClarity(dr.diamond_clarity);
+    const pcs = num(dr.diamond_pcs, 0);
+    let rate = 0, matched = false;
+    if (sv) {
+      const r = chart.diamondRate(grp, sv, sh, cl);
+      if (r != null) { rate = r; matched = true; }
     }
+    // Diamond cost = matched rate as-is (NOT × carat) × piece count for this row.
+    const lineCost = matched ? rate * (pcs > 0 ? pcs : 1) : 0;
+    diamondCost += lineCost;
+    if (matched) diamondMatched = true;
+    diamondLines.push({ shape_group: grp, sieve: sv, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
   }
+  const firstDia = diamondLines.find((l) => l.matched) || diamondLines[0] || {};
 
   // Stone — cost = rate (per carat) × carat × pieces. Missing carat/pcs default
   // to 1 so a stone with only a rate still contributes (backward compatible).
@@ -264,7 +281,13 @@ function computeBreakdown(product, chart) {
     metalCost, diamondCost, stoneCost, makingCost, baseCost,
     detail: {
       gold: { gold_type: goldType, rate_per_gram: goldRate, weight, cost: metalCost },
-      diamond: { shape_group: shapeGroup, sieve, shade, clarity, rate_per_carat: diamondRate, carat, cost: diamondCost, matched: diamondMatched },
+      diamond: {
+        shape_group: firstDia.shape_group ?? null, sieve: firstDia.sieve ?? null,
+        shade: firstDia.shade ?? null, clarity: firstDia.clarity ?? null,
+        rate_per_carat: firstDia.rate_per_carat ?? 0, carat: firstDia.carat ?? carat,
+        cost: diamondCost, matched: diamondMatched,
+        count: diamondLines.filter((l) => l.matched).length, lines: diamondLines,
+      },
       stone: { name: stoneNameUsed, rate: stoneRate, unit: stoneUnit, carat: stoneCarat, pcs: stonePcs, cost: stoneCost, matched: stoneMatched },
       making: { mode: making.mode, value: making.value, cost: makingCost },
     },
@@ -296,6 +319,20 @@ async function getRetailerFactors(retailerId) {
    Public API
    ════════════════════════════════════════════════════════════════ */
 
+/** Fetch all diamond rows for the given product ids, grouped by product_id. */
+async function loadDiamonds(ids) {
+  const map = new Map();
+  if (!ids || !ids.length) return map;
+  const { rows } = await query(
+    `SELECT product_id, diamond_shape, diamond_size, diamond_color, diamond_clarity, carat, diamond_pcs
+     FROM product_diamonds WHERE product_id = ANY($1) ORDER BY sort_order, created_at`, [ids]);
+  for (const r of rows) {
+    if (!map.has(r.product_id)) map.set(r.product_id, []);
+    map.get(r.product_id).push(r);
+  }
+  return map;
+}
+
 /** Full price + breakdown for one product / retailer (used by preview). */
 async function priceForRetailer(product, retailerId) {
   if (retailerId) {
@@ -307,6 +344,11 @@ async function priceForRetailer(product, retailerId) {
     }
   }
   const [retailer, chart] = await Promise.all([getRetailerFactors(retailerId), getRateChart(retailerId)]);
+  // Price every diamond on the product — fetch the rows unless already attached.
+  if (!Array.isArray(product.diamonds) && product.id) {
+    const m = await loadDiamonds([product.id]);
+    product = { ...product, diamonds: m.get(product.id) || [] };
+  }
   const bd = computeBreakdown(product, chart);
   const price = finalize(bd, product, retailer);
   return { price: price.value, source: price.source, breakdown: bd, retailer };
@@ -318,18 +360,20 @@ async function priceProductsForRetailer(products, retailerId) {
   if (!products.length) return products;
   const [retailer, chart] = await Promise.all([getRetailerFactors(retailerId), getRateChart(retailerId)]);
 
+  const ids = products.map((p) => p.id);
   const overrides = new Map();
   if (retailerId) {
-    const ids = products.map((p) => p.id);
     const { rows } = await query(
       "SELECT product_id, price FROM retailer_product_price WHERE retailer_id = $1 AND product_id = ANY($2)",
       [retailerId, ids]);
     for (const r of rows) overrides.set(r.product_id, num(r.price));
   }
+  // One query for every product's diamonds, then sum per product in computeBreakdown.
+  const diaMap = await loadDiamonds(ids);
 
   return products.map((p) => {
     if (overrides.has(p.id)) return { ...p, price: overrides.get(p.id), price_source: "override" };
-    const bd = computeBreakdown(p, chart);
+    const bd = computeBreakdown({ ...p, diamonds: diaMap.get(p.id) || [] }, chart);
     const price = finalize(bd, p, retailer);
     return { ...p, price: price.value, price_source: price.source };
   });
