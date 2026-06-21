@@ -18,6 +18,7 @@ import {
   Megaphone,
   Check,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
@@ -119,10 +120,49 @@ export function RetailerLayout() {
         }}
       >
         <RetailerHeader />
+        <BackPill />
         <Outlet />
         <CartBar />
       </div>
     </CartProvider>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLOATING BACK PILL — sticky, top-left over content
+   ═══════════════════════════════════════════════════════ */
+
+function BackPill() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // No "previous page" from the dashboard home.
+  if (pathname === "/retailer/dashboard") return null;
+  return (
+    // Sticky strip that reserves its own height (content sits below, never behind).
+    // Background matches the page so content scrolls cleanly underneath when pinned.
+    <div
+      className="sticky z-40"
+      style={{ top: "64px", backgroundColor: "var(--sf-bg-base)" }}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 pb-1">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Go back to previous page"
+          className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer"
+          style={{
+            color: "var(--sf-text-secondary)",
+            backgroundColor: "var(--sf-bg-surface-1)",
+            border: "1px solid var(--sf-divider)",
+            boxShadow: "0 6px 18px var(--sf-shadow-lg)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--sf-teal)"; e.currentTarget.style.borderColor = "var(--sf-teal-border)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--sf-text-secondary)"; e.currentTarget.style.borderColor = "var(--sf-divider)"; }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+      </div>
+    </div>
   );
 }
 
