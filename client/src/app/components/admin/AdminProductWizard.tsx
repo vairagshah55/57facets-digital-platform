@@ -693,19 +693,6 @@ function StepPricing({ form, setForm, errors, clearError, productId }: {
   };
   return (
     <div className="space-y-5">
-      <div className="max-w-xs">
-        <FInput label="Base Price (₹)" hint="Optional" type="number" placeholder="45000"
-          value={form.base_price} onChange={f("base_price")} error={errors.base_price} />
-      </div>
-      <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
-        <p className="text-xs font-semibold mb-1" style={{ color: "#22c55e" }}>Price Modifiers (optional)</p>
-        <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
-          JSON multipliers applied per material. Example: {`{"18K": 1.0, "22K": 1.25}`}
-        </p>
-        <FTextarea label="" placeholder={'{\n  "18K": 1.0,\n  "22K": 1.25,\n  "Platinum": 1.5\n}'}
-          value={form.price_modifiers} onChange={f("price_modifiers")}
-          className="font-mono text-xs min-h-[120px]" />
-      </div>
       <RetailerPricePreview productId={productId} />
     </div>
   );
