@@ -144,7 +144,15 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
       try {
         if (activeTab === "viewed") {
           const data: ApiProduct[] = await productsApi.recentlyViewed();
-          const result = (data || []).map(mapProduct);
+          let result = (data || []).map(mapProduct);
+          // Recently-viewed is fetched unfiltered, so apply the active filters client-side.
+          if (activeCategory !== "All") result = result.filter((p) => p.category === activeCategory);
+          const s = debouncedSearch.trim().toLowerCase();
+          if (s) result = result.filter((p) => `${p.sku} ${p.name}`.toLowerCase().includes(s));
+          const activeAvail = Object.entries(availability).filter(([, v]) => v).map(([k]) => k);
+          if (activeAvail.length > 0) result = result.filter((p) => activeAvail.includes(p.availability));
+          if (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) result = result.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
+          if (caratRange[0] > CARAT_MIN || caratRange[1] < CARAT_MAX) result = result.filter((p) => p.carat >= caratRange[0] && p.carat <= caratRange[1]);
           if (!cancelled) { setProducts(result); setTotalProducts(result.length); setTotalPages(1); }
         } else {
           const params: Record<string, string> = {};

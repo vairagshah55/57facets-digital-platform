@@ -152,7 +152,10 @@ router.get("/new-arrivals", authenticate, async (req, res, next) => {
 router.get("/recently-viewed", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.availability,
+      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
+              p.gross_weight, p.net_weight, p.availability, p.is_new,
+              p.diamond_shape, p.diamond_size, p.diamond_pcs, p.diamond_color, p.diamond_clarity,
+              p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               rv.viewed_at
@@ -163,7 +166,9 @@ router.get("/recently-viewed", authenticate, async (req, res, next) => {
        ORDER BY rv.viewed_at DESC LIMIT 20`,
       [req.retailer.id]
     );
-    res.json(rows);
+    // Attach the per-retailer dynamic price (same as the catalog list).
+    const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
+    res.json(priced);
   } catch (err) {
     next(err);
   }
