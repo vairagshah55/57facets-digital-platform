@@ -24,7 +24,9 @@ import {
   Award,
   Sparkles,
   Search,
+  Expand,
 } from "lucide-react";
+import { ImageViewer } from "./ImageViewer";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
@@ -181,6 +183,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
   // Image gallery
   const [activeImage, setActiveImage] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -402,6 +405,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
+          {viewerOpen && product.images.length > 0 && (
+            <ImageViewer images={product.images} startIndex={activeImage} onClose={() => setViewerOpen(false)} />
+          )}
+
           {/* Main Image / Video */}
           <div
             className="relative aspect-square rounded-2xl overflow-hidden mb-3"
@@ -430,10 +437,26 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   transition={{ duration: 0.3 }}
                   src={product.images[activeImage]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  onClick={() => setViewerOpen(true)}
+                  className="w-full h-full object-cover cursor-zoom-in"
                 />
               )}
             </AnimatePresence>
+
+            {/* Expand / zoom */}
+            {!showVideo && product.images.length > 0 && (
+              <button
+                onClick={() => setViewerOpen(true)}
+                title="View & zoom"
+                aria-label="View & zoom"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+                style={{ backgroundColor: "rgba(0,0,0,0.45)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.65)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.45)"; }}
+              >
+                <Expand className="w-[18px] h-[18px]" />
+              </button>
+            )}
 
             {/* Nav arrows */}
             {!showVideo && (

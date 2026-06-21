@@ -16,7 +16,9 @@ import {
   ShoppingCart,
   Check,
   Lock,
+  Expand,
 } from "lucide-react";
+import { ImageViewer } from "./ImageViewer";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -574,6 +576,7 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
   const [images, setImages] = useState<string[]>([product.image]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [fetched, setFetched] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const alreadyInCart = cartItems.some((i) => i.productId === String(product.id));
 
@@ -649,11 +652,28 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
       <div className="aspect-square" style={{ position: "relative", overflow: "hidden" }}>
         <img src={images[activeIdx] || product.image} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
 
+        {/* Expand / zoom — bottom-right so it never overlaps the wishlist heart (top-right) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); loadImages(); setViewerOpen(true); }}
+          title="View & zoom"
+          aria-label="View & zoom"
+          className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
+        >
+          <Expand className="w-3.5 h-3.5" />
+        </button>
+
+        {viewerOpen && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <ImageViewer images={images.length ? images : [product.image]} startIndex={activeIdx} onClose={() => setViewerOpen(false)} />
+          </div>
+        )}
+
         {/* Left arrow — appears on hover */}
         <button
           onClick={prev}
           className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -662,7 +682,7 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
         <button
           onClick={next}
           className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-primary)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -670,8 +690,8 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
         {/* Image counter — appears on hover */}
         {images.length > 1 && (
           <div
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ backgroundColor: "var(--sf-overlay-bg)", color: "var(--sf-text-secondary)" }}
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", color: "#fff" }}
           >
             {activeIdx + 1} / {images.length}
           </div>
