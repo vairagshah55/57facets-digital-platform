@@ -934,15 +934,15 @@ function WishlistCard({
         )}
         {/* Availability badge */}
         <Badge
-          className="absolute bottom-2 left-2 text-[10px] font-semibold backdrop-blur-md"
+          className="absolute bottom-2 left-2 text-[10px] font-semibold backdrop-blur-md inline-flex items-center gap-1.5"
           style={{
             backgroundColor: "rgba(0,0,0,0.55)",
-            color: avail.text,
+            color: "#fff",
             border: "none",
-            borderLeft: `3px solid ${avail.border}`,
             boxShadow: "0 1px 6px rgba(0,0,0,0.4)",
           }}
         >
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: avail.bg }} />
           {avail.label}
         </Badge>
       </div>

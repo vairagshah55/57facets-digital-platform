@@ -386,13 +386,13 @@ export function CartBar() {
                     height: 52,
                     background: success
                       ? "linear-gradient(135deg, #22c55e, #16a34a)"
-                      : "linear-gradient(135deg, var(--sf-teal) 0%, #1a9fa6 100%)",
+                      : "linear-gradient(135deg, var(--sf-blue-primary) 0%, var(--sf-blue-secondary) 100%)",
                     color: "#fff",
                     border: "none",
                     cursor: placing || success ? "default" : "pointer",
                     boxShadow: success
                       ? "0 4px 20px rgba(34,197,94,0.4)"
-                      : `0 4px 20px var(--sf-shadow-teal)`,
+                      : `0 4px 20px rgba(38,96,160,0.35)`,
                     opacity: placing ? 0.8 : 1,
                   }}
                 >
