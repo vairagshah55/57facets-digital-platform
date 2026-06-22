@@ -7,8 +7,9 @@ const pricing = require("../services/pricing.service");
 
 // Columns the pricing engine needs to compute a per-retailer price.
 const PRICING_COLS =
-  "id, availability, base_price, carat, metal_type, metal_weight, " +
-  "diamond_shape, diamond_color, diamond_clarity, color_stone_name, color_stone_quality";
+  "id, availability, base_price, carat, metal_type, metal_weight, net_weight, gross_weight, " +
+  "diamond_shape, diamond_size, diamond_pcs, diamond_color, diamond_clarity, " +
+  "color_stone_name, color_stone_quality, color_stone_carat, color_stone_pcs";
 
 router.use(authenticate);
 

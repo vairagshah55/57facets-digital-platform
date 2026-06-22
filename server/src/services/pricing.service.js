@@ -204,7 +204,8 @@ const skey = (name, q) => `${up(name)}|${up(q)}`;
    ════════════════════════════════════════════════════════════════ */
 function computeBreakdown(product, chart) {
   const carat = num(product.carat);
-  const weight = num(product.metal_weight);
+  // Metal cost is based on NET weight (falls back to legacy metal_weight for old rows).
+  const weight = num(product.net_weight) || num(product.metal_weight);
 
   // Metal
   const goldType = normalizeGoldType(product.metal_type);

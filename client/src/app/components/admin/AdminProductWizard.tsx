@@ -191,7 +191,8 @@ function formToPayload(f: FormData) {
     category_id: f.category_id || null, collection_ids: f.collection_ids,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
-    metal_weight: f.metal_weight ? parseFloat(f.metal_weight) : null,
+    // Metal weight is no longer entered separately — it tracks Net Weight (used for pricing).
+    metal_weight: f.net_weight ? parseFloat(f.net_weight) : null,
     gross_weight: f.gross_weight ? parseFloat(f.gross_weight) : null,
     net_weight: f.net_weight ? parseFloat(f.net_weight) : null,
     color_stone_carat: f.color_stone_carat ? parseFloat(f.color_stone_carat) : null,
@@ -538,9 +539,9 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
             onValueChange={(v) => setForm((p) => ({ ...p, gold_colour: v }))}>
             {GOLD_COLOURS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
           </FSelect>
-          <FInput label="Metal Weight (g)" type="number" placeholder="4.5" value={form.metal_weight} onChange={f("metal_weight")} hint="Used for pricing" />
+          {/* Metal Weight removed — Net Weight (g) is used for metal pricing. */}
           <FInput label="Gross Weight (g)" type="number" placeholder="5.2" value={form.gross_weight} onChange={f("gross_weight")} />
-          <FInput label="Net Weight (g)" type="number" placeholder="4.8" value={form.net_weight} onChange={f("net_weight")} />
+          <FInput label="Net Weight (g)" type="number" placeholder="4.8" value={form.net_weight} onChange={f("net_weight")} hint="Used for metal pricing" />
           <FInput label="Finish Options" placeholder="Polished, Matte, Brushed" value={form.finish_options} onChange={f("finish_options")} hint="Comma-separated" />
         </div>
       </div>

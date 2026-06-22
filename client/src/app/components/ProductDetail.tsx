@@ -143,7 +143,7 @@ function mapApiProduct(raw: any): ProductData {
       : [],
     specs: {
       metalType: raw.metal_type || "18K White Gold",
-      metalWeight: raw.metal_weight ? `${raw.metal_weight} g` : "0 g",
+      metalWeight: (raw.net_weight ?? raw.metal_weight) ? `${raw.net_weight ?? raw.metal_weight} g` : "0 g",
       diamondType: raw.diamond_type || "Natural Diamond",
       diamondShape: raw.diamond_shape || "Round Brilliant",
       diamondClarity: raw.diamond_clarity || "-",
@@ -1237,7 +1237,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               >
                 {([
                   { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", value: [selectedGoldType, selectedGoldColour].filter(Boolean).join(" · ") || product.specs.metalType },
-                  { icon: <Weight />, accent: "#A569BD", gradient: "165,105,189", label: "Weight", value: product.specs.metalWeight },
+                  { icon: <Weight />, accent: "#A569BD", gradient: "165,105,189", label: "Net Weight", value: product.specs.metalWeight },
                   { icon: <Ruler />, accent: "var(--sf-teal)", gradient: "48,184,191", label: "Dimensions", value: [product.specs.width, product.specs.height].filter(s => s !== "-").join(" × ") || "-" },
                   { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Setting", value: product.specs.settingType },
                   { icon: <Shield />, accent: "#27AE60", gradient: "39,174,96", label: "Hallmark", value: product.specs.hallmark },
