@@ -1134,12 +1134,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               <Button
                 className="flex-1 h-12 text-base font-semibold gap-2 transition-all duration-200"
                 style={{
-                  backgroundColor: addedToCart ? "#22c55e" : "var(--sf-teal)",
-                  color: "var(--sf-bg-base)",
+                  backgroundColor: addedToCart ? "#22c55e" : "var(--sf-blue-primary)",
+                  color: "#ffffff",
                   border: "none",
                   boxShadow: addedToCart
                     ? "0 4px 20px rgba(34,197,94,0.4)"
-                    : "0 4px 20px var(--sf-shadow-teal)",
+                    : "0 4px 20px rgba(38,96,160,0.35)",
                 }}
                 onClick={handleAddToCart}
               >

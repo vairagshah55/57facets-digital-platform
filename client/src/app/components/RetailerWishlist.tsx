@@ -593,7 +593,7 @@ export function RetailerWishlist() {
                           <Button
                             className="h-8 text-xs gap-1"
                             style={{
-                              backgroundColor: isDisabled ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
+                              backgroundColor: isDisabled ? "var(--sf-bg-surface-2)" : "var(--sf-blue-primary)",
                               color: isDisabled ? "var(--sf-text-muted)" : "var(--sf-bg-base)",
                             }}
                             disabled={isDisabled}
@@ -971,7 +971,7 @@ function WishlistCard({
               style={{
                 color: isLocked || existingOrder || alreadyInCart
                   ? "var(--sf-text-muted)"
-                  : "var(--sf-teal)",
+                  : "var(--sf-blue-primary)",
                 cursor: isLocked || existingOrder || alreadyInCart ? "default" : "pointer",
               }}
               onClick={isLocked || existingOrder ? undefined : handleAddToCart}

@@ -1,5 +1,5 @@
 import { useNavigate, useLocation, Outlet } from "react-router";
-import { CartProvider } from "../../context/CartContext";
+import { CartProvider, useCart } from "../../context/CartContext";
 import { CartBar } from "./CartBar";
 import {
   Bell,
@@ -109,6 +109,17 @@ const NAV_ITEMS = [
    LAYOUT
    ═══════════════════════════════════════════════════════ */
 
+/* Page content — reserves bottom space so the floating CartBar never covers
+   the last row of products when the cart has items. */
+function LayoutBody() {
+  const { totalItems } = useCart();
+  return (
+    <main style={{ paddingBottom: totalItems > 0 ? 96 : 0 }}>
+      <Outlet />
+    </main>
+  );
+}
+
 export function RetailerLayout() {
   return (
     <CartProvider>
@@ -121,7 +132,7 @@ export function RetailerLayout() {
       >
         <RetailerHeader />
         <BackPill />
-        <Outlet />
+        <LayoutBody />
         <CartBar />
       </div>
     </CartProvider>

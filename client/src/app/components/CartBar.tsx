@@ -74,8 +74,8 @@ export function CartBar() {
         <div
           className="flex items-center justify-between px-5 py-3.5 rounded-2xl"
           style={{
-            background: "linear-gradient(135deg, var(--sf-teal) 0%, #1a9fa6 100%)",
-            boxShadow: `0 8px 32px var(--sf-shadow-teal), 0 2px 8px var(--sf-shadow-lg)`,
+            background: "linear-gradient(135deg, var(--sf-blue-primary) 0%, var(--sf-blue-secondary) 100%)",
+            boxShadow: `0 8px 32px rgba(38,96,160,0.35), 0 2px 8px var(--sf-shadow-lg)`,
           }}
         >
           {/* Left: item count badge */}

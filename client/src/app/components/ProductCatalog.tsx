@@ -754,9 +754,9 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
             onClick={isLocked || !!existingOrder ? undefined : handleAddToCart}
             className="w-full h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
             style={{
-              backgroundColor: isLocked || existingOrder || alreadyInCart || addedToCart ? "var(--sf-bg-surface-2)" : "var(--sf-teal)",
-              color: isLocked || existingOrder || alreadyInCart || addedToCart ? "var(--sf-text-muted)" : "#fff",
-              border: isLocked || existingOrder || alreadyInCart || addedToCart ? "1px solid var(--sf-divider)" : "none",
+              backgroundColor: isLocked || existingOrder ? "var(--sf-bg-surface-2)" : (alreadyInCart || addedToCart) ? "rgba(38,96,160,0.14)" : "var(--sf-blue-primary)",
+              color: isLocked || existingOrder ? "var(--sf-text-muted)" : (alreadyInCart || addedToCart) ? "var(--sf-blue-primary)" : "#fff",
+              border: isLocked || existingOrder ? "1px solid var(--sf-divider)" : (alreadyInCart || addedToCart) ? "1px solid rgba(38,96,160,0.45)" : "none",
               cursor: isLocked || existingOrder || alreadyInCart || addedToCart ? "default" : "pointer",
               transition: "all 0.2s ease",
             }}
