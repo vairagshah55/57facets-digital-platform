@@ -38,14 +38,8 @@ router.get("/", authenticate, async (req, res, next) => {
       conditions.push(`p.availability = $${idx++}`);
       params.push(availability);
     }
-    if (min_price) {
-      conditions.push(`p.base_price >= $${idx++}`);
-      params.push(min_price);
-    }
-    if (max_price) {
-      conditions.push(`p.base_price <= $${idx++}`);
-      params.push(max_price);
-    }
+    // NOTE: price is computed dynamically from the rate chart (not a column),
+    // so the price-range filter is applied AFTER pricing, in JS (below).
     if (min_carat) {
       conditions.push(`p.carat >= $${idx++}`);
       params.push(min_carat);
@@ -58,52 +52,52 @@ router.get("/", authenticate, async (req, res, next) => {
       conditions.push("p.is_new = true");
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const pageNum = parseInt(page), lim = parseInt(limit);
+    const offset = (pageNum - 1) * lim;
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
-    const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
+    const COLS = `p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
               p.gross_weight, p.net_weight,
               p.availability, p.is_new, p.diamond_shape, p.diamond_size, p.diamond_pcs,
               p.diamond_color, p.diamond_clarity,
               p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
-              (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
-       FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
-       ${where}
-       ORDER BY p.created_at DESC, p.id DESC
-       LIMIT $${idx++} OFFSET $${idx++}`,
-      [...params, parseInt(limit), offset]
-    );
+              (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image`;
+    const baseQuery = `SELECT ${COLS} FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where} ORDER BY p.created_at DESC, p.id DESC`;
 
-    // Attach the per-retailer computed price (price + price_source) to each row.
-    const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
+    const minP = min_price ? Number(min_price) : null;
+    const maxP = max_price ? Number(max_price) : null;
+    const hasPriceFilter = minP != null || maxP != null;
 
-    // Total count
-    const { rows: countRows } = await query(
-      `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}`,
-      params
-    );
+    let pageProducts, total;
+    if (hasPriceFilter) {
+      // Price every matching product, filter by computed price, then paginate in JS.
+      const { rows: allRows } = await query(baseQuery, params);
+      let priced = await pricing.priceProductsForRetailer(allRows, req.retailer?.id);
+      priced = priced.filter((p) => (minP == null || p.price >= minP) && (maxP == null || p.price <= maxP));
+      total = priced.length;
+      pageProducts = priced.slice(offset, offset + lim);
+    } else {
+      const { rows } = await query(`${baseQuery} LIMIT $${idx++} OFFSET $${idx++}`, [...params, lim, offset]);
+      pageProducts = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
+      const { rows: countRows } = await query(
+        `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}`, params);
+      total = parseInt(countRows[0].count);
+    }
 
     if (search && req.retailer?.id) {
       auditLog({
         actorType: "retailer",
         actorId: req.retailer.id,
         action: "product.searched",
-        details: {
-          query: search,
-          category: category || null,
-          result_count: parseInt(countRows[0].count),
-        },
+        details: { query: search, category: category || null, result_count: total },
       });
     }
 
     res.json({
-      products: priced,
-      total: parseInt(countRows[0].count),
-      page: parseInt(page),
-      totalPages: Math.ceil(parseInt(countRows[0].count) / parseInt(limit)),
+      products: pageProducts,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / lim),
     });
   } catch (err) {
     next(err);
