@@ -13,6 +13,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
+import { toast } from "sonner";
 import { adminProducts, adminPricing } from "../../../lib/adminApi";
 import { imageUrl } from "../../../lib/api";
 
@@ -934,6 +935,9 @@ export function AdminProductWizard() {
         const d: ProductDetail = await adminProducts.detail(id!);
         setForm(detailToForm(d));
         setExistingImages(d.images || []);
+        // Editing an existing product: every step is already filled, so make them
+        // all reachable/clickable from the stepper.
+        setCompletedSteps(new Set(STEPS.map((s) => s.id)));
       } catch (e: any) {
         setGlobalError(e.message || "Failed to load product");
       } finally {
@@ -966,11 +970,17 @@ export function AdminProductWizard() {
     catch { /* silent */ }
   }
 
-  function goNext() {
+  async function goNext() {
     const errs = validateStep(step, form);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
     setGlobalError(null);
+    // In edit mode, persist this step's changes to the backend before advancing.
+    if (isEdit) {
+      const ok = await persist();
+      if (!ok) return;
+      toast.success("Saved");
+    }
     setCompletedSteps((p) => new Set([...p, step]));
     setDirection(1);
     setStep((s) => Math.min(STEPS.length, s + 1));
@@ -987,7 +997,7 @@ export function AdminProductWizard() {
 
   function jumpTo(s: number) {
     if (s === step) return;
-    if (completedSteps.has(s) || s < step) {
+    if (isEdit || completedSteps.has(s) || s < step) {
       setFieldErrors({});
       setGlobalError(null);
       setDirection(s > step ? 1 : -1);
@@ -995,9 +1005,8 @@ export function AdminProductWizard() {
     }
   }
 
-  async function handleSave() {
-    const errs = validateStep(step, form);
-    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+  // Persist to the backend (update or create + image upload). No navigation.
+  async function persist(): Promise<boolean> {
     setSaving(true); setGlobalError(null);
     try {
       const payload = formToPayload(form);
@@ -1008,13 +1017,31 @@ export function AdminProductWizard() {
         setUploading(true);
         try { await adminProducts.uploadImages(pid, newFiles); } catch { /* silent */ } finally { setUploading(false); }
       }
-      newPreviews.forEach((u) => URL.revokeObjectURL(u));
-      navigate("/admin/products");
+      return true;
     } catch (e: any) {
       setGlobalError(e.message || "Failed to save product");
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  // Save and finish (leave the wizard) — used by the final Create/Update button.
+  async function handleSave() {
+    const errs = validateStep(step, form);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    const ok = await persist();
+    if (!ok) return;
+    newPreviews.forEach((u) => URL.revokeObjectURL(u));
+    navigate("/admin/products");
+  }
+
+  // Save but stay in the wizard — used by the top-bar Save while editing.
+  async function handleSaveStay() {
+    const errs = validateStep(step, form);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    const ok = await persist();
+    if (ok) toast.success("Saved");
   }
 
   const isLastStep    = step === STEPS.length;
@@ -1058,11 +1085,11 @@ export function AdminProductWizard() {
           </p>
         </div>
 
-        {/* Save shortcut in top bar */}
-        {isLastStep && (
+        {/* Save shortcut in top bar — on the last step (create) or any step (edit). */}
+        {(isLastStep || isEdit) && (
           <button
             disabled={isBusy}
-            onClick={handleSave}
+            onClick={isEdit ? handleSaveStay : handleSave}
             className="flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-60"
             style={{ backgroundColor: currentStep.color === "var(--sf-teal)" ? "var(--sf-teal)" : currentStep.color, color: "#fff", border: "none", cursor: isBusy ? "not-allowed" : "pointer" }}
           >
@@ -1071,7 +1098,7 @@ export function AdminProductWizard() {
               : <><Save className="w-3.5 h-3.5" />{isEdit ? "Update" : "Create"}</>}
           </button>
         )}
-        {!isLastStep && <div className="w-24" />}
+        {!isLastStep && !isEdit && <div className="w-24" />}
       </div>
 
       {/* ── Step progress bar ────────────────────────── */}
@@ -1092,7 +1119,7 @@ export function AdminProductWizard() {
             {STEPS.map((s) => {
               const isDone     = completedSteps.has(s.id);
               const isActive   = step === s.id;
-              const isReachable = isDone || s.id <= step;
+              const isReachable = isEdit || isDone || s.id <= step;
               const Icon       = s.icon;
 
               return (

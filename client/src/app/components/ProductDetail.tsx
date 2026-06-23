@@ -747,7 +747,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: "var(--sf-teal)" }}>
                             {(() => {
                               const t = product.diamonds.reduce((s, dd) => s + (Number(dd.carat) || 0), 0);
-                              return t > 0 ? `${Number(t.toFixed(3))} ct total` : `${product.diamonds.length} stones`;
+                              return t > 0 ? `${Number(t.toFixed(3))} ct total` : "—";
                             })()}
                           </span>
                         </div>
@@ -1312,10 +1312,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                         style={{ background: "rgba(93,173,226,0.12)", color: "#5DADE2" }}>
-                        {product.diamonds.length} {product.diamonds.length === 1 ? "stone" : "stones"}
                         {(() => {
                           const total = product.diamonds.reduce((s, d) => s + (d.carat || 0), 0);
-                          return total > 0 ? ` · ${Number(total.toFixed(3))} ct` : "";
+                          return total > 0 ? `${Number(total.toFixed(3))} ct total` : "—";
                         })()}
                       </span>
                     </div>
