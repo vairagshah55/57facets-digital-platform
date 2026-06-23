@@ -783,9 +783,10 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
   }, [productId]);
 
   useEffect(() => {
-    if (!productId) { setResult(null); return; }
+    // Require a retailer selection before showing a price.
+    if (!productId || !rid) { setResult(null); return; }
     setLoading(true);
-    adminPricing.preview(productId, rid || undefined)
+    adminPricing.preview(productId, rid)
       .then((d: any) => setResult(d))
       .catch(() => setResult(null))
       .finally(() => setLoading(false));
@@ -796,7 +797,7 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
   const d = result?.breakdown?.detail;
   const makingInfo = (m: any) =>
     m.mode === "percent" ? `${m.value}% of metal`
-    : (m.mode === "gross" || m.mode === "net") ? `${inr(m.value)}/g × net wt`
+    : (m.mode === "gross" || m.mode === "net") ? `${inr(m.value)}/g × ${Number(d?.gold?.weight) || 0} g (net wt)`
     : `flat ${inr(m.value)}`;
   const diaLines: any[] = d?.diamond?.lines || [];
   const stnLines: any[] = d?.stone?.lines || [];
@@ -833,11 +834,11 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
           <div className="max-w-xs mb-3">
             <FSelect
               label=""
-              placeholder="No retailer (base computed)"
+              placeholder="Select a retailer…"
               value={rid || "__none__"}
               onValueChange={(v) => setRid(v === "__none__" ? "" : v)}
             >
-              <SelectItem value="__none__">No retailer (base computed)</SelectItem>
+              <SelectItem value="__none__">Select a retailer…</SelectItem>
               {retailers.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.name || "Unnamed retailer"}</SelectItem>
               ))}
@@ -880,7 +881,11 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
                 </p>
               )}
             </div>
-          ) : null}
+          ) : (
+            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+              Select a retailer above to view the price.
+            </p>
+          )}
         </>
       )}
     </div>
@@ -977,7 +982,12 @@ export function AdminProductWizard() {
   const navigate = useNavigate();
   const isEdit   = !!id;
 
-  const [step,           setStep]           = useState(1);
+  const stepKey = id ? `sf_wizard_step_${id}` : null;
+  const [step,           setStep]           = useState<number>(() => {
+    if (!stepKey) return 1;
+    const saved = parseInt(localStorage.getItem(stepKey) || "", 10);
+    return saved >= 1 && saved <= STEPS.length ? saved : 1;
+  });
   const [direction,      setDirection]      = useState(1);   // 1=forward, -1=backward
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [fieldErrors,    setFieldErrors]    = useState<FieldErrors>({});
@@ -1005,6 +1015,9 @@ export function AdminProductWizard() {
       } catch { /* silent */ }
     })();
   }, []);
+
+  // Remember the active step across reloads (per product, edit only).
+  useEffect(() => { if (stepKey) localStorage.setItem(stepKey, String(step)); }, [stepKey, step]);
 
   useEffect(() => {
     if (!isEdit) return;

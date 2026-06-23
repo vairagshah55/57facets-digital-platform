@@ -33,19 +33,28 @@ export function AdminProductPreview() {
         <select value={retailerId} onChange={(e) => setRetailerId(e.target.value)}
           className="h-9 text-sm rounded-lg px-2"
           style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 220 }}>
-          <option value="">Base / global price</option>
+          <option value="">Select a retailer…</option>
           {retailers.map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>
       </div>
 
-      {/* The real retailer product page, read-only */}
-      <div style={{ pointerEvents: "auto" }}>
-        <CartProvider>
-          <ProductDetail adminPreview previewRetailerId={retailerId || undefined} />
-        </CartProvider>
-      </div>
+      {/* The real retailer product page, read-only — requires a retailer selection. */}
+      {retailerId ? (
+        <div style={{ pointerEvents: "auto" }}>
+          <CartProvider>
+            <ProductDetail adminPreview previewRetailerId={retailerId} />
+          </CartProvider>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center rounded-2xl py-20 px-6"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)" }}>
+          <Eye className="w-7 h-7 mb-3" style={{ color: "var(--sf-text-muted)" }} />
+          <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Select a retailer to preview</p>
+          <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>Choose a retailer above to see the product and its pricing as they would.</p>
+        </div>
+      )}
     </div>
   );
 }
