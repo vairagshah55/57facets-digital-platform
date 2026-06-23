@@ -796,13 +796,21 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
   const d = result?.breakdown?.detail;
   const makingInfo = (m: any) =>
     m.mode === "percent" ? `${m.value}% of metal`
-    : m.mode === "gross" ? `${inr(m.value)}/g × gross wt`
-    : m.mode === "net"   ? `${inr(m.value)}/g × net wt`
+    : (m.mode === "gross" || m.mode === "net") ? `${inr(m.value)}/g × net wt`
     : `flat ${inr(m.value)}`;
+  const diaLines: any[] = d?.diamond?.lines || [];
+  const stnLines: any[] = d?.stone?.lines || [];
+  // One row per diamond / stone when there are several, else a single summary row.
+  const diamondRows = !d ? [] : diaLines.length > 1
+    ? diaLines.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${inr(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
+    : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shade}-${d.diamond.clarity} · ${d.diamond.sieve} · ${inr(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
+  const stoneRows = !d ? [] : stnLines.length > 1
+    ? stnLines.map((l, i) => ({ label: `Stone #${i + 1}`, cost: l.cost, info: l.matched ? `${l.name} · ${inr(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat}ct` : ""}${l.pcs > 1 ? ` × ${l.pcs}pcs` : ""}` : "no rate matched" }))
+    : [{ label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${inr(d.stone.rate)}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs > 1 ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" }];
   const lines = d ? [
     { label: "Metal", cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${inr(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
-    { label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? (d.diamond.count > 1 ? `${d.diamond.count} diamonds (sum of all)` : `${d.diamond.shade}-${d.diamond.clarity} · ${d.diamond.sieve} · rate ${inr(d.diamond.rate_per_carat)}`) : "no rate matched" },
-    { label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${inr(d.stone.rate)}/${d.stone.unit}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" },
+    ...diamondRows,
+    ...stoneRows,
     { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
   ] : [];
   // No retailer → price is the dynamic per-section sum (never the static base_price).

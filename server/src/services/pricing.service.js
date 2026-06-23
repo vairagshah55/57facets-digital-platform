@@ -239,8 +239,8 @@ function computeBreakdown(product, chart) {
       const r = chart.diamondRate(grp, sv, sh, cl);
       if (r != null) { rate = r; matched = true; }
     }
-    // Diamond cost = matched rate as-is (NOT × carat) × piece count for this row.
-    const lineCost = matched ? rate * (pcs > 0 ? pcs : 1) : 0;
+    // Diamond cost = rate × carat (carat is the total weight; pcs is informational).
+    const lineCost = matched ? rate * (dCarat > 0 ? dCarat : 1) : 0;
     diamondCost += lineCost;
     if (matched) diamondMatched = true;
     diamondLines.push({ shape_group: grp, sieve: sv, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
@@ -276,12 +276,12 @@ function computeBreakdown(product, chart) {
   }
   const firstStone = stoneLines.find((l) => l.matched) || stoneLines[0] || {};
 
-  // Making — flat ₹, percent of metal, or per-gram × gross/net weight (from product).
+  // Making — flat ₹, percent of metal, or per-gram × NET weight.
+  // Weight-based making always uses NET weight (business rule).
   const making = chart.makingFor(product);
   const makingCost =
     making.mode === "percent" ? metalCost * (making.value / 100) :
-    making.mode === "gross"   ? making.value * num(product.gross_weight, 0) :
-    making.mode === "net"     ? making.value * num(product.net_weight, 0) :
+    (making.mode === "gross" || making.mode === "net") ? making.value * num(product.net_weight, 0) :
     making.value; // flat
 
   const baseCost = metalCost + diamondCost + stoneCost + makingCost;

@@ -401,6 +401,10 @@ router.get("/preview", async (req, res, next) => {
               diamond_certification, carat, diamond_pcs, stone_name, stone_quality
        FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`, [productId]);
     rows[0].diamonds = diamonds.rows;
+    const stones = await query(
+      `SELECT stone_name, quality, carat, pcs
+       FROM product_stones WHERE product_id = $1 ORDER BY sort_order, created_at`, [productId]);
+    rows[0].stones = stones.rows;
     let retailer = null;
     if (retailerId) {
       const r = await query(
