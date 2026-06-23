@@ -163,6 +163,12 @@ HOW TO USE:
    sku
 4. Optional columns may be left blank.
 
+MULTIPLE DIAMONDS / STONES (one product, many rows):
+- Put the product on its SKU row (fill sku + the first diamond + first stone).
+- Add extra diamonds/stones on the FOLLOWING rows, leaving the sku blank.
+  Each blank-sku row appends one more diamond (diamond_* columns) and/or one
+  more stone (color_stone_name, color_stone_quality, and the 2nd pcs/carat pair).
+
 IMAGES:
 - Product images are bundled in this ZIP alongside the xlsx
 - In the "images" column, list filenames separated by commas

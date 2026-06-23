@@ -247,27 +247,34 @@ function computeBreakdown(product, chart) {
   }
   const firstDia = diamondLines.find((l) => l.matched) || diamondLines[0] || {};
 
-  // Stone — cost = rate (per carat) × carat × pieces. Missing carat/pcs default
-  // to 1 so a stone with only a rate still contributes (backward compatible).
-  // Products keep the stone name in color_stone_quality (category in color_stone_name),
-  // so try color_stone_quality first, then color_stone_name as a fallback.
-  let stoneCost = 0, stoneRate = 0, stoneUnit = null, stoneMatched = false, stoneNameUsed = null;
-  let stoneCarat = num(product.color_stone_carat, 0);
-  let stonePcs = num(product.color_stone_pcs, 0);
-  for (const cand of [product.color_stone_quality, product.color_stone_name]) {
-    if (!cand) continue;
-    const sr = chart.stoneRate(cand);
-    if (sr) {
-      stoneRate = sr.rate; stoneUnit = sr.unit;
-      // Carat & pcs come from the (retailer) rate-chart row when set, else the product's.
-      if (sr.carat != null && sr.carat > 0) stoneCarat = sr.carat;
-      if (sr.pcs != null && sr.pcs > 0) stonePcs = sr.pcs;
-      // Multiply by carat only when the rate is per-carat; per-piece rates skip carat.
-      const caratMul = (sr.unit || "carat") === "carat" ? (stoneCarat > 0 ? stoneCarat : 1) : 1;
-      stoneCost = sr.rate * caratMul * (stonePcs > 0 ? stonePcs : 1);
-      stoneMatched = true; stoneNameUsed = cand; break;
+  // Stones — price EVERY stone on the product and sum. cost = rate × carat × pcs
+  // (carat only when the rate is per-carat). Falls back to the single bridged
+  // color_stone_* columns when no stone rows are attached.
+  const stoneRows = (Array.isArray(product.stones) && product.stones.length)
+    ? product.stones.map((s) => ({ cands: [s.stone_name, s.quality], carat: num(s.carat, 0), pcs: num(s.pcs, 0) }))
+    : [{ cands: [product.color_stone_quality, product.color_stone_name], carat: num(product.color_stone_carat, 0), pcs: num(product.color_stone_pcs, 0) }];
+
+  let stoneCost = 0, stoneMatched = false;
+  const stoneLines = [];
+  for (const row of stoneRows) {
+    let matched = false, rate = 0, unit = null, name = null, sCarat = row.carat, sPcs = row.pcs;
+    for (const cand of row.cands) {
+      if (!cand) continue;
+      const sr = chart.stoneRate(cand);
+      if (sr) {
+        rate = sr.rate; unit = sr.unit; name = cand; matched = true;
+        if (sr.carat != null && sr.carat > 0) sCarat = sr.carat;
+        if (sr.pcs != null && sr.pcs > 0) sPcs = sr.pcs;
+        break;
+      }
     }
+    const caratMul = (unit || "carat") === "carat" ? (sCarat > 0 ? sCarat : 1) : 1;
+    const lineCost = matched ? rate * caratMul * (sPcs > 0 ? sPcs : 1) : 0;
+    stoneCost += lineCost;
+    if (matched) stoneMatched = true;
+    stoneLines.push({ name, rate, unit, carat: sCarat, pcs: sPcs > 0 ? sPcs : 1, cost: lineCost, matched });
   }
+  const firstStone = stoneLines.find((l) => l.matched) || stoneLines[0] || {};
 
   // Making — flat ₹, percent of metal, or per-gram × gross/net weight (from product).
   const making = chart.makingFor(product);
@@ -290,7 +297,12 @@ function computeBreakdown(product, chart) {
         cost: diamondCost, matched: diamondMatched,
         count: diamondLines.filter((l) => l.matched).length, lines: diamondLines,
       },
-      stone: { name: stoneNameUsed, rate: stoneRate, unit: stoneUnit, carat: stoneCarat, pcs: stonePcs, cost: stoneCost, matched: stoneMatched },
+      stone: {
+        name: firstStone.name ?? null, rate: firstStone.rate ?? 0, unit: firstStone.unit ?? null,
+        carat: firstStone.carat ?? 0, pcs: firstStone.pcs ?? 0,
+        cost: stoneCost, matched: stoneMatched,
+        count: stoneLines.filter((l) => l.matched).length, lines: stoneLines,
+      },
       making: { mode: making.mode, value: making.value, cost: makingCost },
     },
   };
@@ -319,6 +331,20 @@ async function loadDiamonds(ids) {
   return map;
 }
 
+/** Fetch all stone rows for the given product ids, grouped by product_id. */
+async function loadStones(ids) {
+  const map = new Map();
+  if (!ids || !ids.length) return map;
+  const { rows } = await query(
+    `SELECT product_id, stone_name, quality, carat, pcs
+     FROM product_stones WHERE product_id = ANY($1) ORDER BY sort_order, created_at`, [ids]);
+  for (const r of rows) {
+    if (!map.has(r.product_id)) map.set(r.product_id, []);
+    map.get(r.product_id).push(r);
+  }
+  return map;
+}
+
 /** Full price + breakdown for one product / retailer (used by preview). */
 async function priceForRetailer(product, retailerId) {
   if (retailerId) {
@@ -330,10 +356,14 @@ async function priceForRetailer(product, retailerId) {
     }
   }
   const chart = await getRateChart(retailerId);
-  // Price every diamond on the product — fetch the rows unless already attached.
+  // Price every diamond/stone on the product — fetch the rows unless already attached.
   if (!Array.isArray(product.diamonds) && product.id) {
     const m = await loadDiamonds([product.id]);
     product = { ...product, diamonds: m.get(product.id) || [] };
+  }
+  if (!Array.isArray(product.stones) && product.id) {
+    const m = await loadStones([product.id]);
+    product = { ...product, stones: m.get(product.id) || [] };
   }
   const bd = computeBreakdown(product, chart);
   const price = finalize(bd, product);
@@ -354,12 +384,12 @@ async function priceProductsForRetailer(products, retailerId) {
       [retailerId, ids]);
     for (const r of rows) overrides.set(r.product_id, num(r.price));
   }
-  // One query for every product's diamonds, then sum per product in computeBreakdown.
-  const diaMap = await loadDiamonds(ids);
+  // One query each for diamonds + stones, then sum per product in computeBreakdown.
+  const [diaMap, stoneMap] = await Promise.all([loadDiamonds(ids), loadStones(ids)]);
 
   return products.map((p) => {
     if (overrides.has(p.id)) return { ...p, price: overrides.get(p.id), price_source: "override" };
-    const bd = computeBreakdown({ ...p, diamonds: diaMap.get(p.id) || [] }, chart);
+    const bd = computeBreakdown({ ...p, diamonds: diaMap.get(p.id) || [], stones: stoneMap.get(p.id) || [] }, chart);
     const price = finalize(bd, p);
     return { ...p, price: price.value, price_source: price.source };
   });

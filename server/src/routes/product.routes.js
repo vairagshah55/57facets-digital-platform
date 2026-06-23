@@ -202,6 +202,13 @@ router.get("/:id", authenticate, async (req, res, next) => {
       [req.params.id]
     );
 
+    // Stones (multiple per product)
+    const { rows: stones } = await query(
+      `SELECT id, stone_name, quality, carat, pcs
+       FROM product_stones WHERE product_id = $1 ORDER BY sort_order, created_at`,
+      [req.params.id]
+    );
+
     // Track recently viewed (one row per retailer/product, last viewed)
     await query(
       `INSERT INTO recently_viewed (retailer_id, product_id) VALUES ($1, $2)
@@ -228,6 +235,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
       price_breakdown: priced.breakdown,
       images,
       diamonds,
+      stones,
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });
   } catch (err) {

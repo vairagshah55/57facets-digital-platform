@@ -157,6 +157,13 @@ router.get("/:id", async (req, res, next) => {
       [req.params.id]
     );
 
+    // Stones (multiple per product — own name/quality/carat/pcs)
+    const { rows: stones } = await query(
+      `SELECT id, stone_name, quality, carat, pcs
+       FROM product_stones WHERE product_id = $1 ORDER BY sort_order, created_at`,
+      [req.params.id]
+    );
+
     // Stats
     const { rows: stats } = await query(
       `SELECT
@@ -166,7 +173,7 @@ router.get("/:id", async (req, res, next) => {
       [req.params.id]
     );
 
-    res.json({ ...rows[0], images, collections, diamonds, stats: stats[0] });
+    res.json({ ...rows[0], images, collections, diamonds, stones, stats: stats[0] });
   } catch (err) {
     next(err);
   }
@@ -187,7 +194,7 @@ router.post("/", async (req, res, next) => {
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
       color_stone_name, color_stone_quality, carat_options,
-      collection_ids, diamonds,
+      collection_ids, diamonds, stones,
       mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
     } = req.body;
 
@@ -196,6 +203,14 @@ router.post("/", async (req, res, next) => {
     // Check SKU uniqueness (only active products)
     const { rows: existing } = await query("SELECT id FROM products WHERE sku = $1 AND is_active = true", [sku]);
     if (existing.length > 0) throw new AppError("SKU already exists");
+
+    // Multiple stones: the FIRST row bridges to the product-level color_stone_*
+    // columns (pricing fallback + display).
+    const s0 = (Array.isArray(stones) && stones.length) ? stones[0] : {};
+    const csName  = s0.stone_name ?? color_stone_name;
+    const csQual  = s0.stone_quality ?? color_stone_quality;
+    const csCarat = (s0.carat != null && s0.carat !== "") ? s0.carat : color_stone_carat;
+    const csPcs   = (s0.pcs != null && s0.pcs !== "") ? s0.pcs : color_stone_pcs;
 
     // Multiple diamonds: the FIRST row also fills the product-level diamond_*
     // columns, kept for the current pricing/display path.
@@ -238,12 +253,27 @@ router.post("/", async (req, res, next) => {
         carat_range_min || null, carat_range_max || null, finish_options || [],
         price_modifiers ? JSON.stringify(price_modifiers) : "{}",
         lead_time_days || null, min_order_qty || 1, max_order_qty || 100,
-        color_stone_name || null, color_stone_quality || null,
+        csName || null, csQual || null,
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         mfg_code || null, gross_weight || null, net_weight || null,
-        dSize || null, dPcs, color_stone_carat || null, color_stone_pcs || null,
+        dSize || null, dPcs, csCarat || null, csPcs || null,
       ]
     );
+
+    // Stones (multiple per product)
+    if (Array.isArray(stones)) {
+      let so = 0;
+      for (const s of stones) {
+        if (!s || (!s.stone_name && !s.stone_quality && (s.carat == null || s.carat === ""))) continue;
+        await query(
+          `INSERT INTO product_stones (product_id, stone_name, quality, carat, pcs, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [rows[0].id, s.stone_name || null, s.stone_quality || null,
+           (s.carat === "" || s.carat == null) ? null : s.carat,
+           (s.pcs === "" || s.pcs == null) ? null : s.pcs, so++]
+        );
+      }
+    }
 
     // Diamonds (multiple per product)
     if (Array.isArray(diamonds)) {
@@ -311,9 +341,19 @@ router.put("/:id", async (req, res, next) => {
       price_modifiers, lead_time_days,
       min_order_qty, max_order_qty,
       color_stone_name, color_stone_quality, carat_options,
-      collection_ids, diamonds,
+      collection_ids, diamonds, stones,
       mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
     } = req.body;
+
+    // First stone row bridges to the product-level color_stone_* columns.
+    // When a stones array is sent, it wins (empty string clears the name so a
+    // product with no stones no longer prices a phantom stone).
+    const stonesProvided = Array.isArray(stones);
+    const s0 = stonesProvided && stones.length ? stones[0] : null;
+    const csName  = stonesProvided ? (s0?.stone_name ?? "") : (color_stone_name ?? null);
+    const csQual  = stonesProvided ? (s0?.stone_quality ?? "") : (color_stone_quality ?? null);
+    const csCarat = stonesProvided ? (s0 && s0.carat != null && s0.carat !== "" ? s0.carat : null) : (color_stone_carat ?? null);
+    const csPcs   = stonesProvided ? (s0 && s0.pcs != null && s0.pcs !== "" ? s0.pcs : null) : (color_stone_pcs ?? null);
 
     // First diamond row bridges to the product-level diamond_* columns.
     const d0 = (Array.isArray(diamonds) && diamonds.length) ? diamonds[0] : {};
@@ -379,10 +419,10 @@ router.put("/:id", async (req, res, next) => {
         carat_range_min, carat_range_max, finish_options,
         price_modifiers ? JSON.stringify(price_modifiers) : null,
         lead_time_days, min_order_qty, max_order_qty,
-        color_stone_name, color_stone_quality,
+        csName, csQual,
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         mfg_code ?? null, gross_weight ?? null, net_weight ?? null,
-        dSize ?? null, dPcs ?? null, color_stone_carat ?? null, color_stone_pcs ?? null,
+        dSize ?? null, dPcs ?? null, csCarat, csPcs,
         req.params.id,
       ]
     );
@@ -413,6 +453,22 @@ router.put("/:id", async (req, res, next) => {
            (d.carat === "" || d.carat == null) ? null : d.carat,
            d.diamond_size || null, (d.diamond_pcs === "" || d.diamond_pcs == null) ? null : d.diamond_pcs,
            d.stone_name || null, d.stone_quality || null, order++]
+        );
+      }
+    }
+
+    // Replace stones (multiple per product) when provided
+    if (Array.isArray(stones)) {
+      await query("DELETE FROM product_stones WHERE product_id = $1", [req.params.id]);
+      let so = 0;
+      for (const s of stones) {
+        if (!s || (!s.stone_name && !s.stone_quality && (s.carat == null || s.carat === ""))) continue;
+        await query(
+          `INSERT INTO product_stones (product_id, stone_name, quality, carat, pcs, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [req.params.id, s.stone_name || null, s.stone_quality || null,
+           (s.carat === "" || s.carat == null) ? null : s.carat,
+           (s.pcs === "" || s.pcs == null) ? null : s.pcs, so++]
         );
       }
     }
@@ -679,11 +735,13 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     let skipped = 0;
     let imagesImported = 0;
     let diamondsImported = 0;
+    let stonesImported = 0;
     const errors = [];
     // A product can span several rows: the SKU row starts a product, the
     // following no-SKU rows append extra diamonds to it.
     let currentProductId = null;
     let currentDiaOrder = 0;
+    let currentStoneOrder = 0;
 
     // Skip the hint/example row (row 2 of the template) if present
     const startRow = rows.length > 2 && rows[1].join(" ").toLowerCase().includes("e.g.") ? 2 : 1;
@@ -704,27 +762,48 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
         carat: getNum(cols, col("carat")),
         diamond_size: getVal(cols, diaSizeIdx),
         diamond_pcs: getNum(cols, diaPcsIdx),
-        stone_name: getVal(cols, col("color_stone_name")),
-        stone_quality: getVal(cols, col("color_stone_quality")),
       };
       const diaHas = !!(dia.diamond_type || dia.diamond_shape || dia.diamond_color || dia.diamond_clarity || dia.diamond_certification || dia.carat != null || dia.diamond_size || dia.diamond_pcs != null);
       // Default certification to GSI when a diamond is present but its cert is blank.
       if (diaHas && !dia.diamond_certification) dia.diamond_certification = "GSI";
 
-      // No SKU → continuation row: an extra diamond for the most-recent product.
+      // Stone fields on this row (a product can have several — extra rows carry no SKU).
+      const stone = {
+        stone_name: getVal(cols, col("color_stone_name")),
+        quality: getVal(cols, col("color_stone_quality")),
+        carat: getNum(cols, csCaratIdx),
+        pcs: getNum(cols, csPcsIdx),
+      };
+      const stoneHas = !!(stone.stone_name || stone.quality || stone.carat != null || stone.pcs != null);
+
+      // No SKU → continuation row: extra diamond and/or stone for the most-recent product.
       // (A genuinely blank row is skipped quietly.)
       if (!sku) {
-        if (currentProductId && diaHas) {
-          await client.query("SAVEPOINT dia_sp");
-          try {
-            await client.query(
-              `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-              [currentProductId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, dia.stone_name, dia.stone_quality, currentDiaOrder++]
-            );
-            await client.query("RELEASE SAVEPOINT dia_sp");
-            diamondsImported++;
-          } catch { await client.query("ROLLBACK TO SAVEPOINT dia_sp"); }
+        if (currentProductId && (diaHas || stoneHas)) {
+          if (diaHas) {
+            await client.query("SAVEPOINT dia_sp");
+            try {
+              await client.query(
+                `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, sort_order)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                [currentProductId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, currentDiaOrder++]
+              );
+              await client.query("RELEASE SAVEPOINT dia_sp");
+              diamondsImported++;
+            } catch { await client.query("ROLLBACK TO SAVEPOINT dia_sp"); }
+          }
+          if (stoneHas) {
+            await client.query("SAVEPOINT stn_sp");
+            try {
+              await client.query(
+                `INSERT INTO product_stones (product_id, stone_name, quality, carat, pcs, sort_order)
+                 VALUES ($1,$2,$3,$4,$5,$6)`,
+                [currentProductId, stone.stone_name, stone.quality, stone.carat, stone.pcs, currentStoneOrder++]
+              );
+              await client.query("RELEASE SAVEPOINT stn_sp");
+              stonesImported++;
+            } catch { await client.query("ROLLBACK TO SAVEPOINT stn_sp"); }
+          }
         } else {
           skipped++;
         }
@@ -824,15 +903,26 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
         const productId = inserted[0].id;
         currentProductId = productId;
         currentDiaOrder = 0;
+        currentStoneOrder = 0;
 
         // This row's diamond → product_diamonds (product-level columns already set above)
         if (diaHas) {
           await client.query(
-            `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, stone_name, stone_quality, sort_order)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-            [productId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, dia.stone_name, dia.stone_quality, currentDiaOrder++]
+            `INSERT INTO product_diamonds (product_id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat, diamond_size, diamond_pcs, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [productId, dia.diamond_type, dia.diamond_shape, dia.diamond_color, dia.diamond_clarity, dia.diamond_certification, dia.carat, dia.diamond_size, dia.diamond_pcs, currentDiaOrder++]
           );
           diamondsImported++;
+        }
+
+        // This row's stone → product_stones (product-level color_stone_* already set above)
+        if (stoneHas) {
+          await client.query(
+            `INSERT INTO product_stones (product_id, stone_name, quality, carat, pcs, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [productId, stone.stone_name, stone.quality, stone.carat, stone.pcs, currentStoneOrder++]
+          );
+          stonesImported++;
         }
 
         // Handle images from ZIP — CSV column "images" has comma-separated filenames
@@ -881,7 +971,7 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
       [req.admin.id, JSON.stringify({ imported, skipped, imagesImported })]
     );
 
-    res.json({ imported, skipped, imagesImported, diamondsImported, errors: errors.slice(0, 20), total: rows.length - startRow });
+    res.json({ imported, skipped, imagesImported, diamondsImported, stonesImported, errors: errors.slice(0, 20), total: rows.length - startRow });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);

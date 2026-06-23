@@ -45,13 +45,18 @@ type FieldErrors = Record<string, string>;
 type DiamondRow = {
   diamond_type: string; diamond_shape: string; diamond_size: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
-  carat: string; diamond_pcs: string; stone_name: string; stone_quality: string;
+  carat: string; diamond_pcs: string;
 };
 const EMPTY_DIAMOND: DiamondRow = {
   diamond_type: "", diamond_shape: "", diamond_size: "",
   diamond_color: "", diamond_clarity: "", diamond_certification: "",
-  carat: "", diamond_pcs: "", stone_name: "", stone_quality: "",
+  carat: "", diamond_pcs: "",
 };
+
+type StoneRow = {
+  stone_name: string; stone_quality: string; carat: string; pcs: string;
+};
+const EMPTY_STONE: StoneRow = { stone_name: "", stone_quality: "", carat: "", pcs: "" };
 
 type FormData = {
   name: string; sku: string; mfg_code: string; description: string; category_id: string;
@@ -60,6 +65,7 @@ type FormData = {
   gross_weight: string; net_weight: string;
   color_stone_carat: string; color_stone_pcs: string;
   diamonds: DiamondRow[];
+  stones: StoneRow[];
   finish_options: string; diamond_type: string; diamond_shape: string;
   diamond_color: string; diamond_clarity: string; diamond_certification: string;
   setting_type: string; hallmark: string; width_mm: string; height_mm: string;
@@ -110,6 +116,7 @@ const EMPTY: FormData = {
   occasion_tags: "", metal_type: "", gold_colour: "", metal_weight: "",
   gross_weight: "", net_weight: "", color_stone_carat: "", color_stone_pcs: "",
   diamonds: [],
+  stones: [],
   finish_options: "", diamond_type: "", diamond_shape: "", diamond_color: "",
   diamond_clarity: "", diamond_certification: "", setting_type: "", hallmark: "",
   width_mm: "", height_mm: "", gold_purity_options: "",
@@ -146,7 +153,6 @@ function detailToForm(d: ProductDetail): FormData {
           diamond_certification: r.diamond_certification || "",
           carat: r.carat != null ? String(r.carat) : "",
           diamond_pcs: r.diamond_pcs != null ? String(r.diamond_pcs) : "",
-          stone_name: r.stone_name || "", stone_quality: r.stone_quality || "",
         }));
       }
       // Legacy product with single diamond fields → seed one row
@@ -158,8 +164,27 @@ function detailToForm(d: ProductDetail): FormData {
           diamond_certification: d.diamond_certification || "",
           carat: d.carat != null ? String(d.carat) : "",
           diamond_pcs: (d as any).diamond_pcs != null ? String((d as any).diamond_pcs) : "",
-          stone_name: (d.color_stone_name || "").split(",")[0]?.trim() || "",
-          stone_quality: (d.color_stone_quality || "").split(",")[0]?.trim() || "",
+        }];
+      }
+      return [];
+    })(),
+    stones: (() => {
+      const arr = Array.isArray((d as any).stones) ? (d as any).stones : [];
+      if (arr.length) {
+        return arr.map((s: any) => ({
+          stone_name: s.stone_name || "", stone_quality: s.quality || "",
+          carat: s.carat != null ? String(s.carat) : "",
+          pcs: s.pcs != null ? String(s.pcs) : "",
+        }));
+      }
+      // Legacy product with single color-stone fields → seed one row
+      const nm = (d.color_stone_name || "").split(",")[0]?.trim();
+      const ql = (d.color_stone_quality || "").split(",")[0]?.trim();
+      if (nm || ql) {
+        return [{
+          stone_name: nm || "", stone_quality: ql || "",
+          carat: (d as any).color_stone_carat != null ? String((d as any).color_stone_carat) : "",
+          pcs: (d as any).color_stone_pcs != null ? String((d as any).color_stone_pcs) : "",
         }];
       }
       return [];
@@ -196,11 +221,12 @@ function formToPayload(f: FormData) {
     metal_weight: f.net_weight ? parseFloat(f.net_weight) : null,
     gross_weight: f.gross_weight ? parseFloat(f.gross_weight) : null,
     net_weight: f.net_weight ? parseFloat(f.net_weight) : null,
-    color_stone_carat: f.color_stone_carat ? parseFloat(f.color_stone_carat) : null,
-    color_stone_pcs: f.color_stone_pcs ? parseInt(f.color_stone_pcs, 10) : null,
+    // color_stone_* are bridged from the first stone on the backend.
+    color_stone_carat: f.stones[0]?.carat ? parseFloat(f.stones[0].carat) : null,
+    color_stone_pcs: f.stones[0]?.pcs ? parseInt(f.stones[0].pcs, 10) : null,
     finish_options: f.finish_options ? f.finish_options.split(",").map((t) => t.trim()).filter(Boolean) : [],
     diamonds: f.diamonds
-      .filter((d) => d.diamond_type || d.diamond_shape || d.diamond_size || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat || d.diamond_pcs || d.stone_name || d.stone_quality)
+      .filter((d) => d.diamond_type || d.diamond_shape || d.diamond_size || d.diamond_color || d.diamond_clarity || d.diamond_certification || d.carat || d.diamond_pcs)
       .map((d) => ({
         diamond_type: d.diamond_type.trim() || null,
         diamond_shape: d.diamond_shape || null,
@@ -210,8 +236,14 @@ function formToPayload(f: FormData) {
         diamond_certification: d.diamond_certification.trim() || null,
         carat: d.carat ? parseFloat(d.carat) : null,
         diamond_pcs: d.diamond_pcs ? parseInt(d.diamond_pcs, 10) : null,
-        stone_name: d.stone_name || null,
-        stone_quality: d.stone_quality || null,
+      })),
+    stones: f.stones
+      .filter((s) => s.stone_name || s.stone_quality || s.carat || s.pcs)
+      .map((s) => ({
+        stone_name: s.stone_name || null,
+        stone_quality: s.stone_quality || null,
+        carat: s.carat ? parseFloat(s.carat) : null,
+        pcs: s.pcs ? parseInt(s.pcs, 10) : null,
       })),
     diamond_type: f.diamond_type.trim() || null, diamond_shape: f.diamond_shape || null,
     diamond_color: f.diamond_color || null, diamond_clarity: f.diamond_clarity || null,
@@ -224,8 +256,9 @@ function formToPayload(f: FormData) {
     carat_range_min: f.carat_range_min ? parseFloat(f.carat_range_min) : null,
     carat_range_max: f.carat_range_max ? parseFloat(f.carat_range_max) : null,
     carat_options: f.carat_options.length ? f.carat_options : null,
-    color_stone_name: (() => { const s = f.diamonds.filter((d) => d.stone_name); return s.length ? s.map((d) => d.stone_name).join(",") : null; })(),
-    color_stone_quality: (() => { const s = f.diamonds.filter((d) => d.stone_name); return s.length ? s.map((d) => d.stone_quality).join(",") : null; })(),
+    // color stone name/quality come from the stones list (first row bridges on the backend).
+    color_stone_name: (() => { const s = f.stones.filter((x) => x.stone_name); return s.length ? s.map((x) => x.stone_name).join(",") : null; })(),
+    color_stone_quality: (() => { const s = f.stones.filter((x) => x.stone_name); return s.length ? s.map((x) => x.stone_quality).join(",") : null; })(),
     base_price: f.base_price ? parseFloat(f.base_price) : 0,
     price_modifiers: f.price_modifiers.trim() || null,
     availability: f.availability,
@@ -555,7 +588,7 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--sf-divider)" }}>
-                {["Type", "Shape", "Size", "Shade", "Quality", "Certification", "Carat", "Pcs", "Stone Name", "Stone Quality"].map((h) => (
+                {["Type", "Shape", "Size", "Shade", "Quality", "Certification", "Carat", "Pcs"].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold px-2 py-2 whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>{h}</th>
                 ))}
                 <th className="w-10" />
@@ -563,7 +596,7 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
             </thead>
             <tbody>
               {form.diamonds.length === 0 ? (
-                <tr><td colSpan={11} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No diamonds yet — click "Add diamond" below.</td></tr>
+                <tr><td colSpan={9} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No diamonds yet — click "Add diamond" below.</td></tr>
               ) : form.diamonds.map((d, i) => {
                 const upd = (key: keyof DiamondRow, v: string) =>
                   setForm((p) => ({ ...p, diamonds: p.diamonds.map((x, j) => (j === i ? { ...x, [key]: v } : x)) }));
@@ -588,14 +621,6 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
                     <td className="p-1" style={{ minWidth: 70 }}>
                       <input type="number" value={d.diamond_pcs} onChange={(e) => upd("diamond_pcs", e.target.value)} placeholder="1"
                         className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
-                    </td>
-                    <td className="p-1" style={{ minWidth: 150 }}>
-                      <DiaSelect value={d.stone_name}
-                        onChange={(v) => setForm((p) => ({ ...p, diamonds: p.diamonds.map((x, j) => (j === i ? { ...x, stone_name: v, stone_quality: "" } : x)) }))}
-                        placeholder="Stone" options={COLOR_STONE_NAMES} />
-                    </td>
-                    <td className="p-1" style={{ minWidth: 150 }}>
-                      <DiaSelect value={d.stone_quality} onChange={(v) => upd("stone_quality", v)} placeholder="Quality" options={COLOR_STONE_QUALITY_MAP[d.stone_name] || []} />
                     </td>
                     <td className="px-1 text-center">
                       <button onClick={() => setForm((p) => ({ ...p, diamonds: p.diamonds.filter((_, j) => j !== i) }))}
@@ -625,15 +650,60 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
       <div>
         <GroupLabel>Color Stones</GroupLabel>
         <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
-          Stone name &amp; quality are set per diamond in the Diamond grid above. These are the colour-stone totals for the piece.
+          Each stone has its own name, quality, carat &amp; pcs. Stone cost = rate/ct × carat × pcs, summed across all stones.
         </p>
-        <div className="grid grid-cols-2 gap-4">
-          <FSelect label="Color Stone Carat" placeholder="Select carat" value={form.color_stone_carat}
-            onValueChange={(v) => setForm((p) => ({ ...p, color_stone_carat: v }))}>
-            {Array.from(new Set([form.color_stone_carat, ...CS_CARAT_OPTIONS].filter(Boolean))).map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </FSelect>
-          <FInput label="Color Stone Pcs" type="number" placeholder="2" value={form.color_stone_pcs} onChange={f("color_stone_pcs")} hint="Stone cost = rate/ct × carat × pcs" />
+        <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--sf-divider)" }}>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--sf-divider)" }}>
+                {["Stone Name", "Stone Quality", "Carat", "Pcs"].map((h) => (
+                  <th key={h} className="text-left text-xs font-semibold px-2 py-2 whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>{h}</th>
+                ))}
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {form.stones.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No stones yet — click "Add stone" below.</td></tr>
+              ) : form.stones.map((s, i) => {
+                const upd = (key: keyof StoneRow, v: string) =>
+                  setForm((p) => ({ ...p, stones: p.stones.map((x, j) => (j === i ? { ...x, [key]: v } : x)) }));
+                return (
+                  <tr key={i} style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <td className="p-1" style={{ minWidth: 170 }}>
+                      <DiaSelect value={s.stone_name}
+                        onChange={(v) => setForm((p) => ({ ...p, stones: p.stones.map((x, j) => (j === i ? { ...x, stone_name: v, stone_quality: "" } : x)) }))}
+                        placeholder="Stone" options={COLOR_STONE_NAMES} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 170 }}>
+                      <DiaSelect value={s.stone_quality} onChange={(v) => upd("stone_quality", v)} placeholder="Quality" options={COLOR_STONE_QUALITY_MAP[s.stone_name] || []} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 90 }}>
+                      <input type="number" value={s.carat} onChange={(e) => upd("carat", e.target.value)} placeholder="1.0"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="p-1" style={{ minWidth: 70 }}>
+                      <input type="number" value={s.pcs} onChange={(e) => upd("pcs", e.target.value)} placeholder="2"
+                        className="h-8 w-full px-2 text-sm rounded-md outline-none" style={iBase} />
+                    </td>
+                    <td className="px-1 text-center">
+                      <button onClick={() => setForm((p) => ({ ...p, stones: p.stones.filter((_, j) => j !== i) }))}
+                        title="Delete stone" className="w-7 h-7 rounded-lg inline-flex items-center justify-center"
+                        style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+        <button onClick={() => setForm((p) => ({ ...p, stones: [...p.stones, { ...EMPTY_STONE }] }))}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
+          style={{ color: "var(--sf-teal)", backgroundColor: "var(--sf-bg-surface-2)", border: "none", cursor: "pointer" }}>
+          <Plus className="w-3.5 h-3.5" /> Add stone
+        </button>
       </div>
 
       <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
