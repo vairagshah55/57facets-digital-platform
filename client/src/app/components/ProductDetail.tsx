@@ -78,6 +78,12 @@ interface ProductData {
     certification: string;
     carat: number | null;
   }[];
+  stones: {
+    name: string;
+    quality: string;
+    carat: number | null;
+    pcs: number | null;
+  }[];
   specs: {
     metalType: string;
     metalWeight: string;
@@ -139,6 +145,14 @@ function mapApiProduct(raw: any): ProductData {
         clarity: d.diamond_clarity || "",
         certification: d.diamond_certification || "",
         carat: d.carat != null ? Number(d.carat) : null,
+      }))
+      : [],
+    stones: Array.isArray(raw.stones)
+      ? raw.stones.map((s: any) => ({
+        name: s.stone_name || "",
+        quality: s.quality || "",
+        carat: s.carat != null ? Number(s.carat) : null,
+        pcs: s.pcs != null ? Number(s.pcs) : null,
       }))
       : [],
     specs: {
@@ -1189,11 +1203,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 backdropFilter: "blur(10px)",
               }}
             >
-              {([
+              {[
                 { value: "specs", icon: <Ruler className="w-3.5 h-3.5" />, label: "Specs" },
                 { value: "diamond", icon: <Diamond className="w-3.5 h-3.5" />, label: "Diamond" },
+                ...(product.stones.length > 0 ? [{ value: "stones", icon: <Gem className="w-3.5 h-3.5" />, label: "Stones" }] : []),
                 { value: "pricing", icon: <Sparkles className="w-3.5 h-3.5" />, label: "Pricing" },
-              ] as const).map((tab) => (
+              ].map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
@@ -1363,6 +1378,82 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
               </motion.div>
             </TabsContent>
+
+            {/* ── Stones tab (only when the product has stones) ── */}
+            {product.stones.length > 0 && (
+            <TabsContent value="stones" className="mt-5">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-3"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.45 }}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: "var(--sf-glass-bg)",
+                    border: "1px solid var(--sf-glass-border)",
+                    backdropFilter: "blur(8px)",
+                  }}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3"
+                    style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                    <div className="flex items-center gap-2">
+                      <Gem className="w-3.5 h-3.5" style={{ color: "#A569BD" }} />
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+                        Stones
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(165,105,189,0.14)", color: "#A569BD" }}>
+                      {(() => {
+                        const total = product.stones.reduce((s, st) => s + (st.carat || 0) * (st.pcs || 1), 0);
+                        return total > 0 ? `${Number(total.toFixed(3))} ct total` : `${product.stones.length} pcs`;
+                      })()}
+                    </span>
+                  </div>
+
+                  {/* Column labels */}
+                  <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                    style={{
+                      gridTemplateColumns: "1.6fr 1fr 0.7fr 0.6fr",
+                      color: "var(--sf-text-muted)",
+                      borderBottom: "1px solid var(--sf-glass-border)",
+                    }}>
+                    <span>Stone</span>
+                    <span>Quality</span>
+                    <span className="text-right">Carat</span>
+                    <span className="text-right">Pcs</span>
+                  </div>
+
+                  {/* Rows */}
+                  {product.stones.map((st, i) => (
+                    <div key={i}
+                      className="grid items-center px-4 py-2.5 text-[12px]"
+                      style={{
+                        gridTemplateColumns: "1.6fr 1fr 0.7fr 0.6fr",
+                        borderBottom: i < product.stones.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
+                      }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Gem className="w-3 h-3 shrink-0" style={{ color: "#A569BD" }} />
+                        <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
+                          {st.name || "—"}
+                        </span>
+                      </div>
+                      <span className="truncate" style={{ color: "var(--sf-text-secondary)" }}>{st.quality || "—"}</span>
+                      <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
+                        {st.carat != null ? `${Number(st.carat)}` : "—"}
+                      </span>
+                      <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{st.pcs != null ? st.pcs : "—"}</span>
+                    </div>
+                  ))}
+                </motion.div>
+              </motion.div>
+            </TabsContent>
+            )}
 
             {/* ── Pricing tab ─────────────────────────── */}
             <TabsContent value="pricing" className="mt-5">

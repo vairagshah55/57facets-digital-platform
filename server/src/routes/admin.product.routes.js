@@ -37,6 +37,11 @@ router.get("/:id/preview", async (req, res, next) => {
        FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
       [req.params.id]
     );
+    const { rows: stones } = await query(
+      `SELECT id, stone_name, quality, carat, pcs
+       FROM product_stones WHERE product_id = $1 ORDER BY sort_order, created_at`,
+      [req.params.id]
+    );
     const priced = await pricing.priceForRetailer(rows[0], retailerId || null);
     res.json({
       ...rows[0],
@@ -45,6 +50,7 @@ router.get("/:id/preview", async (req, res, next) => {
       price_breakdown: priced.breakdown,
       images,
       diamonds,
+      stones,
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });
   } catch (err) {
