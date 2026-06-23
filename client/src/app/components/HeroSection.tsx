@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 // Bundled with the app (hashed + served by nginx). Previously pointed at a
 // GCS object that 404s in prod; importing the local asset is self-contained.
 import bannerVideo from "@/assets/Videos/banne video.mp4";
+import bannerPoster from "@/assets/Images/hero-poster.jpg";
 
 const BANNER_VIDEO_URL = bannerVideo;
 
@@ -103,10 +104,12 @@ export function HeroSection() {
         <video
           ref={videoRef}
           src={BANNER_VIDEO_URL}
+          poster={bannerPoster}
           autoPlay
           muted
           loop
           playsInline
+          preload="auto"
           aria-hidden="true"
           style={{
             position: "absolute",
