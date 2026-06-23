@@ -33,7 +33,7 @@ router.get("/:id/preview", async (req, res, next) => {
       "SELECT price_per_gram FROM gold_prices WHERE metal_type = $1", [rows[0].metal_type]
     );
     const { rows: diamonds } = await query(
-      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat
+      `SELECT id, diamond_type, diamond_shape, diamond_size, diamond_color, diamond_clarity, diamond_certification, carat, diamond_pcs
        FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
       [req.params.id]
     );

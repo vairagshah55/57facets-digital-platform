@@ -73,10 +73,12 @@ interface ProductData {
   diamonds: {
     type: string;
     shape: string;
+    size: string;
     color: string;
     clarity: string;
     certification: string;
     carat: number | null;
+    pcs: number | null;
   }[];
   stones: {
     name: string;
@@ -141,10 +143,12 @@ function mapApiProduct(raw: any): ProductData {
       ? raw.diamonds.map((d: any) => ({
         type: d.diamond_type || "",
         shape: d.diamond_shape || "",
+        size: d.diamond_size || "",
         color: d.diamond_color || "",
         clarity: d.diamond_clarity || "",
         certification: d.diamond_certification || "",
         carat: d.carat != null ? Number(d.carat) : null,
+        pcs: d.diamond_pcs != null ? Number(d.diamond_pcs) : null,
       }))
       : [],
     stones: Array.isArray(raw.stones)
@@ -1337,13 +1341,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     {/* Column labels */}
                     <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
                       style={{
-                        gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                        gridTemplateColumns: "1.3fr 0.6fr 0.6fr 0.5fr 0.7fr 0.8fr 0.7fr",
                         color: "var(--sf-text-muted)",
                         borderBottom: "1px solid var(--sf-glass-border)",
                       }}>
                       <span>Shape</span>
+                      <span className="text-center">Size</span>
                       <span className="text-right">Carat</span>
-                      <span className="text-center">Colour</span>
+                      <span className="text-right">Pcs</span>
+                      <span className="text-center">Shade</span>
                       <span className="text-center">Clarity</span>
                       <span className="text-right">Cert</span>
                     </div>
@@ -1351,12 +1357,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     {/* Rows */}
                     {product.diamonds.map((d, i) => (
                       <div key={i}
-                        className="grid items-center px-4 py-2.5 text-[12px]"
+                        className="grid items-center px-4 py-2.5 text-[11px]"
                         style={{
-                          gridTemplateColumns: "1.4fr 0.7fr 0.8fr 0.9fr 0.9fr",
+                          gridTemplateColumns: "1.3fr 0.6fr 0.6fr 0.5fr 0.7fr 0.8fr 0.7fr",
                           borderBottom: i < product.diamonds.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
                         }}>
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <Diamond className="w-3 h-3 shrink-0" style={{ color: "#5DADE2" }} />
                           <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
                             {d.shape || "—"}
@@ -1365,9 +1371,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             <span className="text-[9px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
                           )}
                         </div>
+                        <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.size || "—"}</span>
                         <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
                           {d.carat != null ? `${Number(d.carat)}` : "—"}
                         </span>
+                        <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{d.pcs != null ? d.pcs : "—"}</span>
                         <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.color || "—"}</span>
                         <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.clarity || "—"}</span>
                         <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{d.certification || "—"}</span>

@@ -197,7 +197,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
 
     // Diamonds (multiple per product)
     const { rows: diamonds } = await query(
-      `SELECT id, diamond_type, diamond_shape, diamond_color, diamond_clarity, diamond_certification, carat
+      `SELECT id, diamond_type, diamond_shape, diamond_size, diamond_color, diamond_clarity, diamond_certification, carat, diamond_pcs
        FROM product_diamonds WHERE product_id = $1 ORDER BY sort_order, created_at`,
       [req.params.id]
     );
