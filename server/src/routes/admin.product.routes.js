@@ -846,11 +846,19 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
           );
         }
 
-        // Resolve category name to id — create if not exists
+        // Resolve category name to id — create if not exists.
+        // Match case-insensitively AND singular/plural so "RING"/"Ring" map to the
+        // existing "Rings" instead of creating a duplicate category.
         let category_id = null;
         const catName = getVal(cols, col("category"));
         if (catName) {
-          const { rows: cats } = await client.query("SELECT id FROM categories WHERE name ILIKE $1 LIMIT 1", [catName]);
+          const { rows: cats } = await client.query(
+            `SELECT id FROM categories
+             WHERE lower(name) = lower($1)
+                OR lower(name) = lower($1) || 's'
+                OR lower(name) || 's' = lower($1)
+             ORDER BY (lower(name) = lower($1)) DESC LIMIT 1`,
+            [catName]);
           if (cats.length > 0) {
             category_id = cats[0].id;
           } else {
