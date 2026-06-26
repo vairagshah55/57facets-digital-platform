@@ -735,6 +735,21 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
       const n = parseFloat(v);
       return isNaN(n) ? null : n;
     };
+    // Normalise availability to the DB enum (in-stock/made-to-order/out-of-stock)
+    // so free-text variants ("In Stock", "MTO", "sold out") don't fail the CHECK
+    // constraint and silently drop the row.
+    const normAvailability = (cols) => {
+      const raw = (getVal(cols, col("availability")) || "").toLowerCase().replace(/[\s_]+/g, "-");
+      if (!raw) return "in-stock";
+      if (raw.includes("made") || raw === "mto" || raw.includes("order")) return "made-to-order";
+      if (raw.includes("out") || raw.includes("sold") || raw === "oos" || raw.includes("unavailable")) return "out-of-stock";
+      return "in-stock";
+    };
+    // Truthy parse for boolean-ish columns (yes/true/1/y).
+    const normBool = (cols, name) => {
+      const v = (getVal(cols, col(name)) || "").toLowerCase();
+      return v === "true" || v === "yes" || v === "y" || v === "1";
+    };
 
     await client.query("BEGIN");
     let imported = 0;
@@ -900,9 +915,9 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             getNum(cols, col("carat")),
             getVal(cols, col("color_stone_name")),
             getVal(cols, col("color_stone_quality")),
-            getVal(cols, col("availability")) || "in-stock",
+            normAvailability(cols),
             getNum(cols, col("max_order_qty")) || 100,
-            getVal(cols, col("is_new")) === "true",
+            normBool(cols, "is_new"),
             getVal(cols, col("occasion_tags")) ? `{${getVal(cols, col("occasion_tags")).split(",").map((t) => `"${t.trim()}"`).join(",")}}` : "{}",
             getVal(cols, mfgIdx),
             getNum(cols, grossWtIdx),
