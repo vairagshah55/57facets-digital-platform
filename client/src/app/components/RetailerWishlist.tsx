@@ -511,6 +511,10 @@ export function RetailerWishlist() {
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
                   {f.name}
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ background: activeFolder === f.id ? "rgba(0,0,0,0.18)" : "var(--sf-divider)", color: activeFolder === f.id ? "var(--sf-bg-base)" : "var(--sf-text-muted)" }}>
+                    {f.productIds.length}
+                  </span>
                 </button>
               ))}
               <button

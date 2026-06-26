@@ -109,6 +109,7 @@ router.get("/categories", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT c.id, c.name,
+        (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.is_active = true)::int AS product_count,
         COALESCE(
           c.image_url,
           (SELECT pi.image_url FROM product_images pi
