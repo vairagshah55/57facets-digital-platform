@@ -476,15 +476,14 @@ function DiamondTab() {
   const [shape, setShape] = useState("ROUND");
   const [cells, setCells] = useState<Record<string, string>>({});      // full matrix across all shapes
   const [sievesByShape, setSievesByShape] = useState<Record<string, string[]>>({});
-  const [sieves, setSieves] = useState<any[]>([]);                     // carat→sieve map table
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newSieve, setNewSieve] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([adminPricing.diamondRates(scope), adminPricing.sieveMap(scope)])
-      .then(([d, s]: any) => {
+    Promise.all([adminPricing.diamondRates(scope), adminPricing.sieveMap(scope), adminPricing.diamondSieves()])
+      .then(([d, s, ds]: any) => {
         const c: Record<string, string> = {};
         const bySh: Record<string, Set<string>> = {};
         for (const r of d) {
@@ -492,13 +491,15 @@ function DiamondTab() {
           (bySh[r.shape_group] = bySh[r.shape_group] || new Set()).add(r.sieve_size);
         }
         for (const sm of s) (bySh[sm.shape_group] = bySh[sm.shape_group] || new Set()).add(sm.sieve_size);
+        // Persisted sieve rows (survive even with no rates entered yet).
+        for (const ks of (ds || [])) (bySh[ks.shape_group] = bySh[ks.shape_group] || new Set()).add(ks.sieve_size);
         const sbs: Record<string, string[]> = {};
         for (const sg of SHAPE_GROUPS) {
           const set = bySh[sg] || new Set<string>();
           (DEFAULT_SIEVES[sg] || []).forEach((x) => set.add(x));
           sbs[sg] = Array.from(set).sort(sieveSort);
         }
-        setCells(c); setSievesByShape(sbs); setSieves(s);
+        setCells(c); setSievesByShape(sbs);
       }).catch(() => {}).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
@@ -508,11 +509,34 @@ function DiamondTab() {
   const setCell = (sv: string, col: { shade: string; clarity: string }, v: string) =>
     setCells((p) => ({ ...p, [cellKey(shape, sv, col.shade, col.clarity)]: v }));
 
-  const addSieve = () => {
+  const addSieve = async () => {
     const sv = newSieve.trim();
     if (!sv) return;
+    if ((sievesByShape[shape] || []).includes(sv)) { toast.error(`Sieve "${sv}" already exists for ${shape}`); return; }
+    // Optimistic UI, then persist so the row survives a reload (even with no rates).
     setSievesByShape((p) => ({ ...p, [shape]: Array.from(new Set([...(p[shape] || []), sv])).sort(sieveSort) }));
     setNewSieve("");
+    try {
+      await adminPricing.addDiamondSieve(shape, sv);
+      toast.success(`Added sieve "${sv}" to ${shape}`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not save sieve");
+      // Roll back the optimistic add on failure.
+      setSievesByShape((p) => ({ ...p, [shape]: (p[shape] || []).filter((x) => x !== sv) }));
+    }
+  };
+
+  const removeSieve = async (sv: string) => {
+    if (!confirm(`Delete sieve "${sv}" from ${shape}? This also removes its rates.`)) return;
+    const prev = sievesByShape[shape] || [];
+    setSievesByShape((p) => ({ ...p, [shape]: (p[shape] || []).filter((x) => x !== sv) }));
+    try {
+      await adminPricing.removeDiamondSieve(shape, sv);
+      toast.success(`Removed sieve "${sv}"`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not remove sieve");
+      setSievesByShape((p) => ({ ...p, [shape]: prev }));
+    }
   };
 
   const saveRates = async () => {
@@ -524,14 +548,6 @@ function DiamondTab() {
     try { await adminPricing.saveDiamondRates(rows, scope); toast.success(`Saved ${rows.length} diamond rates`); load(); }
     catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
-  const saveSieves = async () => {
-    setSaving(true);
-    try {
-      await adminPricing.saveSieveMap(sieves.filter((s) => s.shape_group && s.carat_min !== "" && s.sieve_size), scope);
-      toast.success("Sieve map saved"); load();
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
-  };
-
   // ── Download the matrix as a 3-sheet .xlsx (one sheet per shape group),
   //    every cell pre-filled — doubles as the import template.
   const downloadSample = async () => {
@@ -593,20 +609,6 @@ function DiamondTab() {
 
   return (
     <>
-      <Card title="Carat → sieve map" sub="Maps a product's carat to a sieve bucket — the rows of the matrix below"
-        action={<SaveBtn onClick={saveSieves} saving={saving} />}>
-        {loading ? <SkeletonRows cols={4} n={3} /> : (
-          <EditableTable rows={sieves} setRows={setSieves}
-            addTemplate={{ shape_group: "ROUND", carat_min: "", carat_max: "", sieve_size: "" }}
-            cols={[
-              { key: "shape_group", label: "Shape group", options: SHAPE_GROUPS, width: 160 },
-              { key: "carat_min", label: "Carat ≥", type: "number" },
-              { key: "carat_max", label: "Carat <", type: "number" },
-              { key: "sieve_size", label: "Sieve", placeholder: "-2 / +2 …" },
-            ]} />
-        )}
-      </Card>
-
       <Card title="Diamond rate matrix (₹ / carat)" sub="Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells."
         action={
           <div className="flex items-center gap-2">
@@ -640,7 +642,7 @@ function DiamondTab() {
             </div>
 
             {/* The grid */}
-            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--sf-divider)" }}>
+            <div className="sf-teal-scroll overflow-x-auto rounded-xl border" style={{ borderColor: "var(--sf-divider)" }}>
               <table className="border-collapse text-xs">
                 <thead>
                   <tr>
@@ -658,7 +660,16 @@ function DiamondTab() {
                   {rowSieves.map((sv) => (
                     <tr key={sv} style={{ borderTop: "1px solid var(--sf-divider)" }}>
                       <td className="sticky left-0 z-10 px-2 py-1 font-medium"
-                        style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>{sv}</td>
+                        style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
+                        <div className="flex items-center gap-1.5 group/sieve">
+                          <span>{sv}</span>
+                          <button onClick={() => removeSieve(sv)} title="Delete sieve row"
+                            className="opacity-0 group-hover/sieve:opacity-100 transition-opacity"
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", lineHeight: 0 }}>
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
                       {GRADE_COLUMNS.map((col) => (
                         <td key={col.label} className="p-0.5">
                           <input type="number"

@@ -157,6 +157,44 @@ router.delete("/sieve-map/:id", async (req, res, next) => {
 });
 
 /* ════════════════════════════════════════════════════════════════
+   DIAMOND SIEVES (the list of sieve sizes shown as matrix rows)
+   A plain per-shape list, independent of rates and the carat→sieve
+   map, so a sieve row persists even before any rate is entered.
+   ════════════════════════════════════════════════════════════════ */
+router.get("/diamond-sieves", async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      "SELECT shape_group, sieve_size FROM diamond_sieves ORDER BY shape_group, sieve_size");
+    res.json(rows);
+  } catch (e) { next(e); }
+});
+
+router.post("/diamond-sieves", async (req, res, next) => {
+  try {
+    const { shape_group, sieve_size } = req.body || {};
+    if (!shape_group || !sieve_size) throw new AppError("shape_group and sieve_size are required");
+    await tx((c) => c.query(
+      `INSERT INTO diamond_sieves (shape_group, sieve_size) VALUES ($1, $2)
+       ON CONFLICT (shape_group, sieve_size) DO NOTHING`,
+      [shape_group, String(sieve_size).trim()]));
+    res.status(201).json({ added: true });
+  } catch (e) { next(e); }
+});
+
+router.delete("/diamond-sieves", async (req, res, next) => {
+  try {
+    const { shapeGroup, sieve } = req.query;
+    if (!shapeGroup || !sieve) throw new AppError("shapeGroup and sieve are required");
+    await tx(async (c) => {
+      // Drop the sieve row and any rates entered for it (keeps the matrix consistent).
+      await c.query("DELETE FROM diamond_sieves WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]);
+      await c.query("DELETE FROM diamond_rates WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]);
+    });
+    res.json({ deleted: true });
+  } catch (e) { next(e); }
+});
+
+/* ════════════════════════════════════════════════════════════════
    STONE RATES
    ════════════════════════════════════════════════════════════════ */
 router.get("/stone-rates", async (req, res, next) => {

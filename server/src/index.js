@@ -25,6 +25,7 @@ const adminOrderRoutes = require("./routes/admin.order.routes");
 const adminAuditRoutes = require("./routes/admin.audit.routes");
 const adminReportsRoutes = require("./routes/admin.reports.routes");
 const adminPricingRoutes = require("./routes/admin.pricing.routes");
+const tirichLeadRoutes = require("./routes/tirich.lead.routes");
 
 const app = express();
 app.set("trust proxy", 1); // Required for Cloud Run / load balancers
@@ -37,6 +38,18 @@ if (process.env.NODE_ENV === "local") {
 
 // ── Middleware ──────────────────────────────────────
 app.use(helmet());
+
+// ── Tirich lead capture (open to Tirich origins only) ──
+// Mounted before the global cors() so this router fully owns its
+// requests — including the CORS preflight (OPTIONS), which the global
+// static-origin cors() would otherwise answer with the wrong origin.
+const tirichOrigins = (process.env.TIRICH_ORIGIN || "http://localhost:3001")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const tirichCors = cors({ origin: tirichOrigins });
+app.use("/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
+
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
 app.use(morgan("dev"));

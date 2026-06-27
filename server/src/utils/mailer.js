@@ -37,7 +37,7 @@ function getTransporter() {
  * @param {boolean} [opts.throwOnError]  re-throw send errors instead of swallowing
  *                                       (use for OTP/transactional mail the user is waiting on)
  */
-async function sendMail({ to, subject, text, html, throwOnError = false }) {
+async function sendMail({ to, subject, text, html, from, throwOnError = false }) {
   const tx = getTransporter();
   if (!tx) {
     if (throwOnError) throw new Error("Email service is not configured");
@@ -50,7 +50,8 @@ async function sendMail({ to, subject, text, html, throwOnError = false }) {
 
   try {
     await tx.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      // Caller may override the From; otherwise fall back to the global default.
+      from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
       to: Array.isArray(to) ? to.join(", ") : to,
       subject,
       text,

@@ -237,6 +237,13 @@ export const adminPricing = {
     request(`/pricing/sieve-map${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteSieve: (id: string) => request(`/pricing/sieve-map/${id}`, { method: "DELETE" }),
 
+  // Diamond sieves — the plain list of sieve rows shown in the matrix.
+  diamondSieves: () => request(`/pricing/diamond-sieves`),
+  addDiamondSieve: (shapeGroup: string, sieve: string) =>
+    request(`/pricing/diamond-sieves`, { method: "POST", body: JSON.stringify({ shape_group: shapeGroup, sieve_size: sieve }) }),
+  removeDiamondSieve: (shapeGroup: string, sieve: string) =>
+    request(`/pricing/diamond-sieves?shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}`, { method: "DELETE" }),
+
   // Stone rates
   stoneRates: (retailerId?: string) =>
     request(`/pricing/stone-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
