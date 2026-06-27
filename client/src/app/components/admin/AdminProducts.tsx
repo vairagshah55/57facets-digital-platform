@@ -959,11 +959,20 @@ export function AdminProducts() {
                       border: img.is_primary ? "2px solid var(--sf-teal)" : "2px solid var(--sf-divider)",
                       backgroundColor: "var(--sf-bg-surface-2)",
                     }}>
-                    <img
-                      src={imageUrl(img.image_url)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    {(img.media_type === "video" || /\.(mp4|mov|webm)$/i.test(img.image_url || "")) ? (
+                      <video
+                        src={imageUrl(img.image_url)}
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={imageUrl(img.image_url)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     {/* Primary badge */}
                     {img.is_primary && (
                       <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
@@ -1035,17 +1044,17 @@ export function AdminProducts() {
                 <>
                   <ImagePlus className="w-5 h-5 mx-auto mb-2" style={{ color: imgDragOver ? "#3b82f6" : "var(--sf-text-muted)" }} />
                   <p className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>
-                    {imgDragOver ? "Drop to upload" : "Drag & drop or click to upload"}
+                    {imgDragOver ? "Drop files here" : "Drag & drop images or video here"}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-                    JPG, PNG, WEBP · up to 10 images
+                    or click to browse · JPG, PNG, WEBP, AVIF, video (MP4/MOV) · up to 10 files
                   </p>
                 </>
               )}
               <input
                 ref={imgUploadRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/quicktime"
                 multiple
                 className="hidden"
                 onChange={(e) => { if (e.target.files?.length) handleImgUpload(e.target.files); e.target.value = ""; }}
