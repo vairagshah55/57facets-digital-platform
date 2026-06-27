@@ -72,6 +72,7 @@ type WishlistProduct = {
   name: string;
   sku: string;
   base_price: number;
+  price?: number; // per-retailer computed price from the rate chart
   category: string;
   carat: number;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
@@ -320,7 +321,7 @@ export function RetailerWishlist() {
       productSku: p.sku ?? "",
       productImage: p.image ?? "",
       quantity: 1,
-      unitPrice: p.base_price,
+      unitPrice: p.price ?? p.base_price,
       carat: p.carat ?? 0,
       metalType: null, goldColour: null, diamondShape: null,
       diamondShade: null, diamondQuality: null,
@@ -847,7 +848,7 @@ function WishlistCard({
       productSku: product.sku ?? "",
       productImage: product.image ?? "",
       quantity: 1,
-      unitPrice: product.base_price,
+      unitPrice: product.price ?? product.base_price,
       carat: product.carat ?? 0,
       metalType: null, goldColour: null, diamondShape: null,
       diamondShade: null, diamondQuality: null,
@@ -965,7 +966,7 @@ function WishlistCard({
         </p>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-            {formatPrice(product.base_price)}
+            {formatPrice(product.price ?? product.base_price)}
           </p>
           {!selectionMode && (
             <Button
