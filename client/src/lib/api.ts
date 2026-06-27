@@ -83,6 +83,7 @@ export const products = {
   counts: () => request("/products/counts"),
   newArrivals: () => request("/products/new-arrivals"),
   recentlyViewed: () => request("/products/recently-viewed"),
+  unseen: () => request("/products/unseen"),
   goldPrices: () => request("/products/meta/gold-prices"),
 };
 

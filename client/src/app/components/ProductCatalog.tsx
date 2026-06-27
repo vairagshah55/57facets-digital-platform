@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Sparkles,
   Eye,
+  EyeOff,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -35,7 +36,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
-import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, uploads as uploadsApi, imageUrl } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 
 /* ═══════════════════════════════════════════════════════
@@ -90,7 +91,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") || "All");
-  const [activeTab, setActiveTab] = useState<"all" | "new" | "viewed">(
+  const [activeTab, setActiveTab] = useState<"all" | "new" | "viewed" | "unseen">(
     (searchParams.get("tab") as any) || "all"
   );
 
@@ -105,6 +106,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [totalProducts, setTotalProducts] = useState(0);
   const [newCount, setNewCount] = useState(0);
   const [viewedCount, setViewedCount] = useState(0);
+  const [unseenCount, setUnseenCount] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -145,7 +147,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [allCount, setAllCount] = useState(0);
   useEffect(() => {
     productsApi.counts()
-      .then((c: any) => { setAllCount(c.total ?? 0); setNewCount(c.newArrivals ?? 0); setViewedCount(c.recentlyViewed ?? 0); })
+      .then((c: any) => { setAllCount(c.total ?? 0); setNewCount(c.newArrivals ?? 0); setViewedCount(c.recentlyViewed ?? 0); setUnseenCount(c.unseen ?? 0); })
       .catch(() => {});
   }, []);
 
@@ -154,10 +156,11 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     setLoading(true);
     async function fetchProducts() {
       try {
-        if (activeTab === "viewed") {
-          const data: ApiProduct[] = await productsApi.recentlyViewed();
+        if (activeTab === "viewed" || activeTab === "unseen") {
+          const data: ApiProduct[] =
+            activeTab === "unseen" ? await productsApi.unseen() : await productsApi.recentlyViewed();
           let result = (data || []).map(mapProduct);
-          // Recently-viewed is fetched unfiltered, so apply the active filters client-side.
+          // These lists are fetched unfiltered, so apply the active filters client-side.
           if (activeCategory !== "All") result = result.filter((p) => p.category === activeCategory);
           const s = debouncedSearch.trim().toLowerCase();
           if (s) result = result.filter((p) => `${p.sku} ${p.name}`.toLowerCase().includes(s));
@@ -306,6 +309,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               { key: "all", label: "All Products", icon: <LayoutGrid className="w-3.5 h-3.5" />, count: allCount },
               { key: "new", label: "New Arrivals", icon: <Sparkles className="w-3.5 h-3.5" />, count: newCount },
               { key: "viewed", label: "Recently Viewed", icon: <Eye className="w-3.5 h-3.5" />, count: viewedCount },
+              { key: "unseen", label: "Unseen Products", icon: <EyeOff className="w-3.5 h-3.5" />, count: unseenCount },
             ] as const).map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -638,8 +642,10 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
     if (fetched) return;
     setFetched(true);
     try {
-      const detail = await productsApi.detail(String(product.id));
-      const imgs: string[] = ((detail as any).images || []).map((img: any) =>
+      // Use the images-only endpoint (NOT products.detail) — detail() records a
+      // "recently viewed" entry, and merely hovering a card must not do that.
+      const rows = await uploadsApi.listProductImages(String(product.id));
+      const imgs: string[] = ((rows as any[]) || []).map((img: any) =>
         typeof img === "string" ? imageUrl(img) : imageUrl(img.url || img.image_url)
       );
       if (imgs.length > 0) setImages(imgs);

@@ -131,17 +131,27 @@ router.get("/counts", authenticate, async (req, res, next) => {
   try {
     const rid = req.retailer?.id;
     const zero = Promise.resolve({ rows: [{ c: 0 }] });
-    const [tot, nw, rv, wl] = await Promise.all([
+    const [tot, nw, rv, wl, un] = await Promise.all([
       query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true"),
       query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true AND is_new = true"),
       rid ? query("SELECT COUNT(*)::int AS c FROM recently_viewed WHERE retailer_id = $1", [rid]) : zero,
       rid ? query("SELECT COUNT(*)::int AS c FROM wishlists WHERE retailer_id = $1", [rid]) : zero,
+      // Unseen = active products the retailer has never viewed. Pure COUNT(*), no row fetch.
+      rid
+        ? query(
+            `SELECT COUNT(*)::int AS c FROM products p
+             WHERE p.is_active = true
+               AND NOT EXISTS (SELECT 1 FROM recently_viewed rv WHERE rv.product_id = p.id AND rv.retailer_id = $1)`,
+            [rid]
+          )
+        : query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true"),
     ]);
     res.json({
       total: tot.rows[0].c,
       newArrivals: nw.rows[0].c,
       recentlyViewed: Math.min(rv.rows[0].c, 20), // the recently-viewed list is capped at 20
       wishlist: wl.rows[0].c,
+      unseen: un.rows[0].c,
     });
   } catch (err) {
     next(err);
@@ -182,6 +192,33 @@ router.get("/recently-viewed", authenticate, async (req, res, next) => {
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE rv.retailer_id = $1
        ORDER BY rv.viewed_at DESC LIMIT 20`,
+      [req.retailer.id]
+    );
+    // Attach the per-retailer dynamic price (same as the catalog list).
+    const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
+    res.json(priced);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/products/unseen ───────────────────────
+// Active products the retailer has NOT recently viewed (inverse of recently-viewed).
+router.get("/unseen", authenticate, async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
+              p.gross_weight, p.net_weight, p.availability, p.is_new,
+              p.diamond_shape, p.diamond_size, p.diamond_pcs, p.diamond_color, p.diamond_clarity,
+              p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
+              c.name AS category,
+              (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.is_active = true
+         AND NOT EXISTS (SELECT 1 FROM recently_viewed rv WHERE rv.product_id = p.id AND rv.retailer_id = $1)
+       ORDER BY p.created_at DESC, p.id DESC
+       LIMIT 200`,
       [req.retailer.id]
     );
     // Attach the per-retailer dynamic price (same as the catalog list).
