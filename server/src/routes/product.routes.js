@@ -125,6 +125,29 @@ router.get("/categories", authenticate, async (req, res, next) => {
   }
 });
 
+// ── GET /api/products/counts ───────────────────────
+// Lightweight badge counts — pure COUNT(*) (no row fetching / pricing).
+router.get("/counts", authenticate, async (req, res, next) => {
+  try {
+    const rid = req.retailer?.id;
+    const zero = Promise.resolve({ rows: [{ c: 0 }] });
+    const [tot, nw, rv, wl] = await Promise.all([
+      query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true"),
+      query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true AND is_new = true"),
+      rid ? query("SELECT COUNT(*)::int AS c FROM recently_viewed WHERE retailer_id = $1", [rid]) : zero,
+      rid ? query("SELECT COUNT(*)::int AS c FROM wishlists WHERE retailer_id = $1", [rid]) : zero,
+    ]);
+    res.json({
+      total: tot.rows[0].c,
+      newArrivals: nw.rows[0].c,
+      recentlyViewed: Math.min(rv.rows[0].c, 20), // the recently-viewed list is capped at 20
+      wishlist: wl.rows[0].c,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/products/new-arrivals ─────────────────
 router.get("/new-arrivals", authenticate, async (req, res, next) => {
   try {

@@ -103,6 +103,8 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [newCount, setNewCount] = useState(0);
+  const [viewedCount, setViewedCount] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -137,6 +139,14 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
       const items = Array.isArray(data) ? data : data.items ?? [];
       setWishlistedIds(new Set(items.map((w: any) => String(w.id))));
     }).catch(() => {});
+  }, []);
+
+  // Tab badge counts — one lightweight call (pure COUNTs, no row fetching).
+  const [allCount, setAllCount] = useState(0);
+  useEffect(() => {
+    productsApi.counts()
+      .then((c: any) => { setAllCount(c.total ?? 0); setNewCount(c.newArrivals ?? 0); setViewedCount(c.recentlyViewed ?? 0); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -254,17 +264,18 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 <ChevronLeft className="w-3.5 h-3.5" /> Collections
               </button>
             )}
-            <h1
-              className="text-xl font-semibold leading-tight"
-              style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
-            >
-              {collectionId ? (collectionName || "Collection") : "Product Catalog"}
-            </h1>
-            <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-              {collectionId
-                ? `${totalProducts} ${totalProducts === 1 ? "piece" : "pieces"} in this collection`
-                : `${totalProducts} products available`}
-            </p>
+            <div className="flex items-center gap-2">
+              <h1
+                className="text-xl font-semibold leading-tight"
+                style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
+              >
+                {collectionId ? (collectionName || "Collection") : "Product Catalog"}
+              </h1>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                style={{ background: "var(--sf-teal-glass)", color: "var(--sf-teal)", border: "1px solid var(--sf-teal-border)" }}>
+                {totalProducts}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -292,9 +303,9 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
         <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
           <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             {([
-              { key: "all", label: "All Products", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-              { key: "new", label: "New Arrivals", icon: <Sparkles className="w-3.5 h-3.5" /> },
-              { key: "viewed", label: "Recently Viewed", icon: <Eye className="w-3.5 h-3.5" /> },
+              { key: "all", label: "All Products", icon: <LayoutGrid className="w-3.5 h-3.5" />, count: allCount },
+              { key: "new", label: "New Arrivals", icon: <Sparkles className="w-3.5 h-3.5" />, count: newCount },
+              { key: "viewed", label: "Recently Viewed", icon: <Eye className="w-3.5 h-3.5" />, count: viewedCount },
             ] as const).map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -309,6 +320,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                   }}
                 >
                   {tab.icon} {tab.label}
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
+                    {tab.count}
+                  </span>
                 </button>
               );
             })}

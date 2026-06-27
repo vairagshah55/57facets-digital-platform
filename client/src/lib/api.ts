@@ -80,6 +80,7 @@ export const products = {
   },
   detail: (id: string) => request(`/products/${id}`),
   categories: () => request("/products/categories"),
+  counts: () => request("/products/counts"),
   newArrivals: () => request("/products/new-arrivals"),
   recentlyViewed: () => request("/products/recently-viewed"),
   goldPrices: () => request("/products/meta/gold-prices"),
@@ -95,20 +96,26 @@ export const collections = {
 };
 
 // ── Wishlist ──────────────────────────────────────
+// Fire a global event whenever the wishlist set changes, so any listener
+// (e.g. the header count badge) can refresh — regardless of where it changed.
+const notifyWishlistChanged = () => {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("wishlist:changed"));
+};
+
 export const wishlist = {
   list: () => request("/wishlist"),
   add: (productId: string) =>
     request("/wishlist", {
       method: "POST",
       body: JSON.stringify({ productId }),
-    }),
+    }).then((r) => { notifyWishlistChanged(); return r; }),
   remove: (productId: string) =>
-    request(`/wishlist/${productId}`, { method: "DELETE" }),
+    request(`/wishlist/${productId}`, { method: "DELETE" }).then((r) => { notifyWishlistChanged(); return r; }),
   bulkAdd: (productIds: string[]) =>
     request("/wishlist/bulk", {
       method: "POST",
       body: JSON.stringify({ productIds }),
-    }),
+    }).then((r) => { notifyWishlistChanged(); return r; }),
   folders: () => request("/wishlist/folders"),
   createFolder: (name: string, color: string) =>
     request("/wishlist/folders", {

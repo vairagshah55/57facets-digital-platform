@@ -30,7 +30,7 @@ import {
   PopoverContent,
 } from "./ui/popover";
 
-import { notifications as notificationsApi } from "../../lib/api";
+import { notifications as notificationsApi, products as productsApi } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -192,6 +192,21 @@ function RetailerHeader() {
   const { retailer, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Nav count badges (Catalog = total products, Wishlist = saved items).
+  const [catalogCount, setCatalogCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  useEffect(() => {
+    // One lightweight COUNT call for the nav badges; refetched when the wishlist
+    // changes anywhere (cheap COUNTs, no row fetching).
+    const refresh = () => productsApi.counts()
+      .then((c: any) => { setCatalogCount(c.total ?? 0); setWishlistCount(c.wishlist ?? 0); })
+      .catch(() => {});
+    refresh();
+    window.addEventListener("wishlist:changed", refresh);
+    return () => window.removeEventListener("wishlist:changed", refresh);
+  }, []);
+  const navCountFor = (path: string): number | null =>
+    path === "/retailer/catalog" ? catalogCount : path === "/retailer/wishlist" ? wishlistCount : null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -325,11 +340,12 @@ function RetailerHeader() {
           <div className="hidden md:flex items-center gap-0.5 flex-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname.startsWith(item.path);
+              const count = navCountFor(item.path);
               return (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className="px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all cursor-pointer"
                   style={{
                     background: isActive ? "var(--sf-teal-glass)" : "none",
                     border: isActive ? "1px solid var(--sf-teal-border)" : "1px solid transparent",
@@ -338,6 +354,12 @@ function RetailerHeader() {
                   }}
                 >
                   {item.label}
+                  {count != null && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                      style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
