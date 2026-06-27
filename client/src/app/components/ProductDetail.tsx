@@ -1525,9 +1525,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 const metalVal = bd ? Math.round(bd.metalCost || 0) : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
                 // Making charges hidden from the product-detail breakdown.
                 // const makingVal = bd ? Math.round(bd.makingCost || 0) : Math.round(product.basePrice * 0.12);
-                const subtotal = (diamondVal + metalVal) || 1;
+                // Total diamond carat across all diamonds (falls back to the listed carat).
+                const totalDiaCarat = product.diamonds.reduce((s, d) => s + (Number(d.carat) || 0), 0) || Number(product.specs.diamondCarat) || 0;
+                const subtotal = (diamondVal + metalVal) || 1; // used by the Total composition bar
                 const rows = [
-                  { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${product.specs.diamondCarat} ct · ${product.specs.diamondShape}`, val: diamondVal },
+                  { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${Number(totalDiaCarat.toFixed(3))} ct total`, val: diamondVal },
                   { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
                   // { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
                 ];
@@ -1540,7 +1542,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   >
                     {/* Breakdown cards with staggered entrance */}
                     {rows.map((row, i) => {
-                      const pct = Math.round((row.val / subtotal) * 100);
                       return (
                         <motion.div
                           key={row.label}
@@ -1594,21 +1595,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                                 style={{ color: "var(--sf-text-primary)" }}>
                                 {formatPrice(row.val)}
                               </motion.p>
-                              <p className="text-[10px] font-semibold" style={{ color: `${row.accent}88` }}>{pct}%</p>
                             </div>
-                          </div>
-                          {/* Animated progress bar */}
-                          <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: "var(--sf-glass-bg-hover)" }}>
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ delay: 0.2 + i * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                              className="h-full rounded-full"
-                              style={{
-                                background: `linear-gradient(90deg, ${row.accent}, ${row.accent}88)`,
-                                boxShadow: `0 0 8px ${row.accent}40`,
-                              }}
-                            />
                           </div>
                         </motion.div>
                       );
