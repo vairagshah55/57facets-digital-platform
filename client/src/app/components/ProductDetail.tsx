@@ -43,6 +43,7 @@ import img1 from "../../assets/Images/1.jpg";
 import img3 from "../../assets/Images/3.jpg";
 import img5 from "../../assets/Images/5.jpg";
 import img7 from "../../assets/Images/7.jpg";
+import gsiEmblem from "../../assets/Images/gsi-emblem.svg";
 
 /* ═══════════════════════════════════════════════════════
    CONSTANTS & TYPES
@@ -613,6 +614,44 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </button>
             )}
           </div>
+
+          {/* GSI certification — trust strip below the gallery (clickable to verify) */}
+          {product.sku ? (
+            <a
+              href={`https://wg.gemscience.net/vr/veri.aspx?${encodeURIComponent(product.sku)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Verify this product's GSI certificate"
+              className="flex items-center gap-3 mt-4 px-4 py-3 rounded-xl transition-all hover:opacity-90"
+              style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}
+            >
+              <img src={gsiEmblem} alt="GSI" className="w-9 h-auto shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                  GSI Certified
+                </span>
+                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>
+                  Gemological Science International
+                </span>
+              </div>
+              <ExternalLink className="w-4 h-4 ml-auto shrink-0" style={{ color: "var(--sf-text-muted)" }} />
+            </a>
+          ) : (
+            <div
+              className="flex items-center gap-3 mt-4 px-4 py-3 rounded-xl"
+              style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}
+            >
+              <img src={gsiEmblem} alt="GSI" className="w-9 h-auto shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
+                  GSI Certified
+                </span>
+                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>
+                  Gemological Science International
+                </span>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* ═══ RIGHT: Product Info ═══════════════════ */}
