@@ -28,6 +28,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { ImageViewer } from "./ImageViewer";
+import { SizeSelector } from "./SizeGuide";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
@@ -243,6 +244,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [selectedColorStone, setSelectedColorStone] = useState("");
   const [selectedColorStoneQuality, setSelectedColorStoneQuality] = useState("");
   const [selectedDiamondType, setSelectedDiamondType] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedSizeSummary, setSelectedSizeSummary] = useState("");
   const [selectedDiamondIdx, setSelectedDiamondIdx] = useState(0);
   const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -355,11 +358,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       diamondQuality: selectedDiamondQuality || null,
       colorStoneName: selectedColorStone || null,
       colorStoneQuality: selectedColorStoneQuality || null,
-      note: note || null,
+      // Prepend the chosen size so it travels with the order alongside any note.
+      note: [selectedSizeSummary ? `Size: ${selectedSizeSummary}` : null, note || null]
+        .filter(Boolean).join("\n") || null,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
-  }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, note]);
+  }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, selectedSizeSummary, note]);
 
   const formatPrice = (p: number) =>
     "₹" + p.toLocaleString("en-IN");
@@ -1153,6 +1158,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   </div>
                 );
               })()}
+
+              {/* ─── Size (ring / bracelet / bangle) ──────── */}
+              <SizeSelector
+                category={product.category}
+                value={selectedSize}
+                onChange={(v, summary) => { setSelectedSize(v); setSelectedSizeSummary(summary); }}
+              />
 
               {/* ─── Quantity ─────────────────────────────── */}
               <div className="px-5 py-3.5 flex items-center justify-between">
