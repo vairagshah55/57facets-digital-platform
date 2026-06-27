@@ -474,7 +474,7 @@ function RetailerHeader() {
               </PopoverContent>
             </Popover>
 
-            {/* Theme toggle */}
+            {/* Theme toggle — hidden for now (may re-enable dark mode later).
             <Button
               variant="ghost"
               size="icon"
@@ -485,6 +485,7 @@ function RetailerHeader() {
             >
               {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             </Button>
+            */}
 
             {/* Divider */}
             <div className="hidden sm:block h-7" style={{ width: "1px", backgroundColor: "var(--sf-divider)" }} />

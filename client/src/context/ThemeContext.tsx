@@ -12,10 +12,9 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 const STORAGE_KEY = "sf_retailer_theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved === "light" ? "light" : "dark";
-  });
+  // Dark mode toggle is hidden for now — force the retailer UI to light so no one
+  // is stuck in dark. (Restore the saved-preference logic when re-enabling dark.)
+  const [theme, setTheme] = useState<Theme>("light");
 
   // Apply/remove class on <html> so portals (dialogs, popovers) also inherit
   useEffect(() => {
