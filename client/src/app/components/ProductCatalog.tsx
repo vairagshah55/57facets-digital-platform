@@ -432,7 +432,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 style={{ opacity: loading ? 0.45 : 1, pointerEvents: loading ? "none" : "auto" }}
               >
                 {products.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} existingOrder={activeOrders[String(product.id)] ?? null} />
+                  <ProductCard key={product.id} product={product} index={i} allIds={products.map((p) => String(p.id))} compact={viewMode === "compact"} wishlisted={wishlistedIds.has(String(product.id))} onToggleWishlist={() => toggleWishlist(String(product.id))} existingOrder={activeOrders[String(product.id)] ?? null} />
                 ))}
               </motion.div>
             )}
@@ -575,7 +575,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
    PRODUCT CARD
    ═══════════════════════════════════════════════════════ */
 
-function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, existingOrder }: { product: Product; index: number; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void; existingOrder: { order_number: string; status: string } | null }) {
+function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWishlist, existingOrder }: { product: Product; index: number; allIds: string[]; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void; existingOrder: { order_number: string; status: string } | null }) {
   const navigate = useNavigate();
   const { addItem, items: cartItems } = useCart();
   const [images, setImages] = useState<string[]>([product.image]);
@@ -649,7 +649,7 @@ function ProductCard({ product, index, compact, wishlisted, onToggleWishlist, ex
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.3 }}
       whileHover={{ y: -3 }}
-      onClick={() => navigate(`/retailer/product/${product.id}`)}
+      onClick={() => navigate(`/retailer/product/${product.id}`, { state: { productIds: allIds, index } })}
       onMouseEnter={loadImages}
       className="card-shimmer-wrap group rounded-xl border overflow-hidden cursor-pointer"
       style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}

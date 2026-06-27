@@ -148,6 +148,11 @@ function BackPill() {
   const { pathname } = useLocation();
   // No "previous page" from the dashboard home.
   if (pathname === "/retailer/dashboard") return null;
+  // Back from a product detail always returns to the catalog list.
+  const onBack = () => {
+    if (pathname.startsWith("/retailer/product/")) navigate("/retailer/catalog");
+    else navigate(-1);
+  };
   return (
     // Sticky strip that reserves its own height (content sits below, never behind).
     // Background matches the page so content scrolls cleanly underneath when pinned.
@@ -157,7 +162,7 @@ function BackPill() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 pb-1">
         <button
-          onClick={() => navigate(-1)}
+          onClick={onBack}
           aria-label="Go back to previous page"
           className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full text-[13px] font-medium transition-all cursor-pointer"
           style={{

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -193,6 +193,31 @@ function mapApiProduct(raw: any): ProductData {
 export function ProductDetail({ adminPreview = false, previewRetailerId }: { adminPreview?: boolean; previewRetailerId?: string } = {}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Prev/next product navigation — the ordered id list of the catalog the user
+  // was browsing (passed via nav state), falling back to all products.
+  const [neighborIds, setNeighborIds] = useState<string[]>(() => {
+    const s = location.state as { productIds?: string[] } | null;
+    return Array.isArray(s?.productIds) ? s!.productIds! : [];
+  });
+  useEffect(() => {
+    if (adminPreview) return; // admin preview has its own Back control
+    const s = location.state as { productIds?: string[] } | null;
+    if (Array.isArray(s?.productIds) && s!.productIds!.length) { setNeighborIds(s!.productIds!); return; }
+    if (neighborIds.length) return; // already loaded (don't refetch)
+    let cancelled = false;
+    productsApi.list({ limit: "200" })
+      .then((d: any) => { if (!cancelled) setNeighborIds((d.products || []).map((p: any) => String(p.id))); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.state, adminPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  const navIdx = neighborIds.indexOf(id || "");
+  const prevId = navIdx > 0 ? neighborIds[navIdx - 1] : null;
+  const nextId = navIdx >= 0 && navIdx < neighborIds.length - 1 ? neighborIds[navIdx + 1] : null;
+  const goToProduct = useCallback((pid: string, newIdx: number) => {
+    navigate(`/retailer/product/${pid}`, { state: { productIds: neighborIds, index: newIdx } });
+  }, [navigate, neighborIds]);
 
   // Data fetching state
   const [product, setProduct] = useState<ProductData | null>(null);
@@ -416,6 +441,33 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Prev / next product — floating side arrows (retailer view only) */}
+      {!adminPreview && prevId && (
+        <button
+          onClick={() => goToProduct(prevId, navIdx - 1)}
+          title="Previous product"
+          aria-label="Previous product"
+          className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+      {!adminPreview && nextId && (
+        <button
+          onClick={() => goToProduct(nextId, navIdx + 1)}
+          title="Next product"
+          aria-label="Next product"
+          className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* ═══ LEFT: Image Gallery ═══════════════════ */}
         <motion.div
