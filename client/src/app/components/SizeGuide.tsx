@@ -30,35 +30,38 @@ export function sizeKindForCategory(category: string | undefined | null): SizeKi
   return null;
 }
 
-// Each row is [col0, col1, col2, col3]; col0 is the primary "size" value.
-const RING_ROWS: Array<[string, string, string, string]> = [
-  // India, US, Diameter (mm), Circumference (mm)
-  ["4", "3", "14.5", "45.5"],
-  ["6", "4", "15.3", "48.0"],
-  ["8", "5", "16.1", "50.6"],
-  ["9", "5.5", "16.5", "51.8"],
-  ["10", "6", "16.9", "53.1"],
-  ["11", "6.5", "17.3", "54.4"],
-  ["12", "7", "17.7", "55.6"],
-  ["13", "7.5", "18.1", "56.9"],
-  ["14", "8", "18.5", "58.1"],
-  ["15", "8.5", "19.0", "59.5"],
-  ["16", "9", "19.4", "60.8"],
-  ["17", "9.5", "19.8", "62.1"],
-  ["18", "10", "20.2", "63.3"],
-  ["19", "10.5", "20.6", "64.6"],
-  ["20", "11", "21.0", "65.9"],
-  ["21", "11.5", "21.4", "67.2"],
-  ["22", "12", "21.8", "68.5"],
-  ["23", "12.5", "22.2", "69.7"],
-  ["24", "13", "22.6", "71.0"],
-  ["25", "13.5", "23.0", "72.3"],
-  ["26", "14", "23.4", "73.5"],
+// A chart row — variable column count (ring has 3, bracelet/bangle have 4).
+type Row = string[];
+
+// Official India ↔ US ring chart (per Legal Metrology Act, 2009).
+// Each row: [Indian Ring Size, US Ring Size, Inside Circumference Range (mm)].
+const RING_ROWS: Row[] = [
+  ["5.0", "3.0", "44.3 - 45.1"],
+  ["6.0", "3.5", "45.2 - 46.3"],
+  ["7.0", "4.0", "46.4 - 47.7"],
+  ["9.0", "4.5", "47.8 - 49.3"],
+  ["10.0", "5.0", "49.4 - 50.3"],
+  ["11.0", "5.5", "50.4 - 51.2"],
+  ["12.0", "6.0", "51.3 - 52.1"],
+  ["13.0", "6.5", "52.2 - 53.5"],
+  ["15.0", "7.0", "53.6 - 55.3"],
+  ["16.0", "7.5", "55.4 - 56.2"],
+  ["17.0", "8.0", "56.3 - 57.2"],
+  ["18.0", "8.5", "57.3 - 58.5"],
+  ["20.0", "9.0", "58.6 - 60.3"],
+  ["21.0", "9.5", "60.4 - 61.2"],
+  ["22.0", "10.0", "61.3 - 62.2"],
+  ["23.0", "10.5", "62.3 - 63.4"],
+  ["25.0", "11.0", "63.5 - 65.1"],
+  ["26.0", "11.5", "65.2 - 66.3"],
+  ["27.0", "12.0", "66.4 - 67.2"],
+  ["28.0", "12.5", "67.3 - 68.6"],
+  ["30.0", "13.0", "68.7 - 70.1"],
 ];
 
 // US → India conversion (shared by bracelet & bangle) — matches the master
 // "US to India Bracelet/Bangle Conversion Chart" exactly.
-const CONVERSION_ROWS: Array<[string, string, string, string]> = [
+const CONVERSION_ROWS: Row[] = [
   // US Length (Inches), US Length (cm), Indian Size, Inner Diameter (Inches)
   ["6.5 inches", "16.5 cm", "Small (S)", "2.2"],
   ["7.0 inches", "17.8 cm", "Medium (M)", "2.4"],
@@ -66,21 +69,21 @@ const CONVERSION_ROWS: Array<[string, string, string, string]> = [
   ["8.0 inches", "20.3 cm", "Extra Large (XL)", "2.8"],
 ];
 
-type Row4 = [string, string, string, string];
-
 type ChartDef = {
   title: string;
   subtitle: string;
   sizeLabel: string; // e.g. "Ring Size (India)"
   noun: string; // e.g. "Ring"
   headers: string[];
-  rows: Row4[];
+  rows: Row[];
   tip: string;
+  footnote?: string; // optional fine print shown under the table
   // Canonical size value used for selection (independent of column order).
-  valueOf: (row: Row4) => string;
+  valueOf: (row: Row) => string;
   // From a row → the short chip text and the helper summary line.
-  chip: (row: Row4) => string;
-  summary: (row: Row4) => string;
+  chip: (row: Row) => string;
+  chipSub?: (row: Row) => string; // optional small 2nd line inside each chip
+  summary: (row: Row) => string;
 };
 
 const CHARTS: Record<SizeKind, ChartDef> = {
@@ -89,12 +92,13 @@ const CHARTS: Record<SizeKind, ChartDef> = {
     subtitle: "India ↔ US conversion",
     sizeLabel: "Ring Size (India)",
     noun: "Ring",
-    headers: ["India", "US", "Diameter (mm)", "Circumference (mm)"],
+    headers: ["Indian Ring Size", "US Ring Size", "Inside Circumference Range (mm)"],
     rows: RING_ROWS,
-    tip: "Wrap a thin strip of paper around your finger, mark where it overlaps, then measure that length in mm — that's the circumference. Match it to the closest row.",
+    tip: "Wrap a thin strip of paper around your finger, mark where it overlaps, then measure that length in mm — that's the inside circumference. Match it to the range, then read across for your Indian & US size.",
+    footnote: "The measurement of length is in millimeter as per the Legal Metrology Act, 2009. For convenience, its conversion to length value is also reflected.",
     valueOf: (r) => r[0],
-    chip: (r) => r[0],
-    summary: (r) => `US ${r[1]} · ${r[2]} mm dia`,
+    chip: (r) => `${r[2]} mm`, // show the Inside Circumference Range only
+    summary: (r) => `India ${r[0].replace(/\.0$/, "")} · US ${r[1].replace(/\.0$/, "")} · ${r[2]} mm`,
   },
   bracelet: {
     title: "Bracelet Size Chart",
@@ -186,6 +190,12 @@ function SizeChartDialog({ chart, trigger }: { chart: ChartDef; trigger: React.R
               ))}
             </tbody>
           </table>
+
+          {chart.footnote && (
+            <p className="text-[10px] leading-relaxed mt-3" style={{ color: "var(--sf-text-muted)" }}>
+              <span style={{ color: "var(--sf-teal)" }}>*</span> {chart.footnote}
+            </p>
+          )}
         </div>
 
         <div
@@ -247,7 +257,7 @@ export function SizeSelector({
 
       {/* Chips — horizontally scrollable (ring has many sizes).
           pt/px give the floating check badge room so it isn't clipped. */}
-      <div className="flex gap-2.5 overflow-x-auto pt-2 pb-1.5 px-1 -mx-1" style={{ scrollbarWidth: "thin" }}>
+      <div className="sf-teal-scroll flex gap-2.5 overflow-x-auto pt-2 pb-1.5 px-1 -mx-1">
         {chart.rows.map((row) => {
           const v = chart.valueOf(row);
           const active = v === value;
@@ -256,7 +266,7 @@ export function SizeSelector({
               key={v}
               type="button"
               onClick={() => onChange(v, `${chart.noun} size ${v} — ${chart.summary(row)}`)}
-              className="relative shrink-0 min-w-[44px] px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
+              className="relative shrink-0 min-w-[44px] px-3 py-2 rounded-lg transition-all duration-200 flex flex-col items-center gap-0.5"
               style={{
                 background: active ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
                 border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
@@ -265,7 +275,15 @@ export function SizeSelector({
                 transform: active ? "translateY(-1px)" : "none",
               }}
             >
-              {chart.chip(row)}
+              <span className="text-[11px] font-bold leading-none">{chart.chip(row)}</span>
+              {chart.chipSub && (
+                <span
+                  className="text-[9px] font-medium leading-none whitespace-nowrap"
+                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)", opacity: active ? 0.85 : 0.7 }}
+                >
+                  {chart.chipSub(row)}
+                </span>
+              )}
               {active && (
                 <span
                   className="absolute flex items-center justify-center rounded-full"

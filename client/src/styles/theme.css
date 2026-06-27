@@ -368,3 +368,16 @@
   border-radius: 9999px;
 }
 .sf-thin-scroll::-webkit-scrollbar-thumb:hover { background: var(--sf-teal-border); }
+
+/* Teal scrollbar — thumb uses the theme accent. Apply `.sf-teal-scroll`. */
+.sf-teal-scroll {
+  scrollbar-width: thin;                                  /* Firefox */
+  scrollbar-color: var(--sf-teal) transparent;
+}
+.sf-teal-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.sf-teal-scroll::-webkit-scrollbar-track { background: transparent; }
+.sf-teal-scroll::-webkit-scrollbar-thumb {
+  background: var(--sf-teal);
+  border-radius: 9999px;
+}
+.sf-teal-scroll::-webkit-scrollbar-thumb:hover { background: var(--sf-teal-border); }
