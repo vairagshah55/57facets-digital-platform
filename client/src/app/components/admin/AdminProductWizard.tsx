@@ -37,7 +37,8 @@ type ProductDetail = {
   [key: string]: any;
 };
 
-type ProductImage = { id: string; url: string; is_primary: boolean; sort_order: number };
+type ProductImage = { id: string; url: string; is_primary: boolean; sort_order: number; media_type?: string };
+const isVideoFile = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u || "");
 type Category    = { id: string; name: string };
 type Collection  = { id: string; name: string };
 type FieldErrors = Record<string, string>;
@@ -438,8 +439,8 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
    STEP CONTENT — MEDIA
    ═══════════════════════════════════════════════════════ */
 
-function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInputRef, handleFiles, removeNew, deleteExisting, setPrimary }: {
-  existingImages: ProductImage[]; newPreviews: string[]; dragOver: boolean;
+function StepMedia({ existingImages, newPreviews, newFiles, dragOver, setDragOver, fileInputRef, handleFiles, removeNew, deleteExisting, setPrimary }: {
+  existingImages: ProductImage[]; newPreviews: string[]; newFiles: File[]; dragOver: boolean;
   setDragOver: (v: boolean) => void; fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (f: FileList | File[]) => void; removeNew: (i: number) => void;
   deleteExisting: (id: string) => void; setPrimary: (id: string) => void;
@@ -463,10 +464,10 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
           <ImagePlus className="w-6 h-6" style={{ color: dragOver ? "#3b82f6" : "var(--sf-text-muted)" }} />
         </div>
         <p className="text-sm font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>
-          {dragOver ? "Drop to upload" : "Drag & drop images here"}
+          {dragOver ? "Drop to upload" : "Drag & drop images or video here"}
         </p>
         <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-          or click to browse · JPG, PNG, WEBP · up to {MAX_IMAGES} images
+          or click to browse · JPG, PNG, WEBP, AVIF, video (MP4/MOV) · up to {MAX_IMAGES} files
         </p>
         {total > 0 && (
           <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs"
@@ -474,7 +475,7 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
             {total} / {MAX_IMAGES} uploaded
           </div>
         )}
-        <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden"
+        <input ref={fileInputRef} type="file" multiple accept="image/*,image/webp,image/avif,video/mp4,video/quicktime" className="hidden"
           onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = ""; }} />
       </div>
 
@@ -483,7 +484,11 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
           {existingImages.map((img) => (
             <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border-2 transition-colors"
               style={{ borderColor: img.is_primary ? "var(--sf-teal)" : "transparent", backgroundColor: "var(--sf-bg-surface-2)" }}>
-              <img src={imageUrl(img.url)} alt="" className="w-full h-full object-cover" />
+              {img.media_type === "video" || isVideoFile(img.url) ? (
+                <video src={imageUrl(img.url)} muted loop playsInline className="w-full h-full object-cover" />
+              ) : (
+                <img src={imageUrl(img.url)} alt="" className="w-full h-full object-cover" />
+              )}
               {img.is_primary && (
                 <div className="absolute top-1.5 left-1.5">
                   <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold"
@@ -509,7 +514,11 @@ function StepMedia({ existingImages, newPreviews, dragOver, setDragOver, fileInp
           {newPreviews.map((src, idx) => (
             <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square border-2"
               style={{ borderColor: "rgba(59,130,246,0.4)", backgroundColor: "var(--sf-bg-surface-2)" }}>
-              <img src={src} alt="" className="w-full h-full object-cover" />
+              {newFiles[idx]?.type.startsWith("video/") ? (
+                <video src={src} muted loop playsInline className="w-full h-full object-cover" />
+              ) : (
+                <img src={src} alt="" className="w-full h-full object-cover" />
+              )}
               <div className="absolute top-1.5 left-1.5">
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
                   style={{ backgroundColor: "#3b82f6", color: "#fff" }}>NEW</span>
@@ -1038,10 +1047,10 @@ export function AdminProductWizard() {
   }, [id, isEdit]);
 
   function handleFiles(files: FileList | File[]) {
-    const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const arr = Array.from(files).filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
     if (!arr.length) return;
     if (existingImages.length + newFiles.length + arr.length > MAX_IMAGES) {
-      setGlobalError(`Maximum ${MAX_IMAGES} images allowed.`); return;
+      setGlobalError(`Maximum ${MAX_IMAGES} files allowed.`); return;
     }
     setNewFiles((p) => [...p, ...arr]);
     setNewPreviews((p) => [...p, ...arr.map((f) => URL.createObjectURL(f))]);
@@ -1348,7 +1357,7 @@ export function AdminProductWizard() {
                   collections={collections} errors={fieldErrors} clearError={clearError} />
               )}
               {step === 2 && (
-                <StepMedia existingImages={existingImages} newPreviews={newPreviews}
+                <StepMedia existingImages={existingImages} newPreviews={newPreviews} newFiles={newFiles}
                   dragOver={dragOver} setDragOver={setDragOver}
                   fileInputRef={fileInputRef} handleFiles={handleFiles}
                   removeNew={removeNew} deleteExisting={deleteExisting} setPrimary={setPrimary} />
