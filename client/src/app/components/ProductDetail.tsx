@@ -25,6 +25,7 @@ import {
   Sparkles,
   Search,
   Expand,
+  ExternalLink,
 } from "lucide-react";
 import { ImageViewer } from "./ImageViewer";
 import { Button } from "./ui/button";
@@ -644,6 +645,26 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 SKU: {product.sku}
               </span>
             </div>
+
+            {/* Certificate verification — opens the gem-science verification page in a new tab */}
+            {product.sku && (
+              <a
+                href={`https://wg.gemscience.net/vr/veri.aspx?${encodeURIComponent(product.sku)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-3 px-3.5 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+                style={{
+                  background: "var(--sf-teal-glass)",
+                  border: "1px solid var(--sf-teal-border)",
+                  color: "var(--sf-teal)",
+                }}
+                title="Verify this product's certificate"
+              >
+                <Award className="w-4 h-4" />
+                View Certificate
+                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+              </a>
+            )}
           </div>
 
           <Separator className="mb-5" style={{ backgroundColor: "var(--sf-divider)" }} />
