@@ -1202,7 +1202,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   className="overflow-hidden"
                 >
                   <Textarea
-                    placeholder="E.g., engraving text, size preferences, special requests..."
+                    placeholder="Eg. Engraving text, size preferences, special requests like use 2 round setting instead of pear/marquis"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="border-[var(--sf-divider)] min-h-[80px]"
