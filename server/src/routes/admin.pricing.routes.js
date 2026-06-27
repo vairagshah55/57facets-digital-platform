@@ -58,9 +58,11 @@ router.put("/diamond-rates", async (req, res, next) => {
       // Per-retailer: full replace of this retailer's rows (cleared rows drop back to Global).
       if (retailerId) await c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
-        const { shape_group, sieve_size, shade, clarity, rate_per_carat } = it;
-        if (!shape_group || !sieve_size || !shade || !clarity) {
-          throw new AppError("Each rate needs shape_group, sieve_size, shade, clarity");
+        const { shape_group, shade, clarity, rate_per_carat } = it;
+        // Sieve may be blank (a new/unnamed sieve row); only the rest are required.
+        const sieve_size = it.sieve_size == null ? "" : String(it.sieve_size);
+        if (!shape_group || !shade || !clarity) {
+          throw new AppError("Each rate needs shape_group, shade, clarity");
         }
         if (retailerId) {
           await c.query(

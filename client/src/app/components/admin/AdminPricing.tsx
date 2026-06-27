@@ -581,14 +581,24 @@ function DiamondTab() {
     try {
       const sheets = await readWorkbook(file);
       const rows: any[] = [];
+      // Every sieve label found per shape — so new/blank/rate-less sieves still import as rows.
+      const sievesFound = new Map<string, Set<string>>();
       for (const [name, grid] of sheets) {
         const shape_group = groupForSheetName(name);
         if (!shape_group || !grid || grid.length < 2) continue;
         const header = grid[0].map((h) => String(h).replace(/\s+/g, "").toUpperCase());
         const gradeIdx = GRADE_COLUMNS.map((g) => header.indexOf(g.label.replace(/\s+/g, "").toUpperCase()));
         for (let r = 1; r < grid.length; r++) {
-          const sieve_size = String(grid[r][0] || "").trim();
-          if (!sieve_size) continue;
+          const sieve_size = String(grid[r][0] ?? "").trim();
+          // Does this row carry any rate cell at all?
+          const hasCell = GRADE_COLUMNS.some((_, gi) => {
+            const ci = gradeIdx[gi];
+            return ci !== -1 && String(grid[r][ci] ?? "").trim() !== "";
+          });
+          // Skip only a truly empty row (no sieve label AND no cells).
+          if (sieve_size === "" && !hasCell) continue;
+          if (!sievesFound.has(shape_group)) sievesFound.set(shape_group, new Set());
+          sievesFound.get(shape_group)!.add(sieve_size);
           GRADE_COLUMNS.forEach((g, gi) => {
             const ci = gradeIdx[gi];
             if (ci === -1) return;
@@ -600,10 +610,15 @@ function DiamondTab() {
           });
         }
       }
-      if (!rows.length) { toast.error("No valid rates found — check the sheet names match the shape groups"); return; }
+      const totalSieves = Array.from(sievesFound.values()).reduce((n, s) => n + s.size, 0);
+      if (!rows.length && !totalSieves) { toast.error("Nothing to import — check the sheet names match the shape groups"); return; }
       setSaving(true);
-      await adminPricing.saveDiamondRates(rows, scope);
-      toast.success(`Imported ${rows.length} diamond rates`);
+      if (rows.length) await adminPricing.saveDiamondRates(rows, scope);
+      // Register every sieve found (new, blank, or rate-less) so it appears as a row.
+      const sieveCalls: Promise<any>[] = [];
+      for (const [sg, set] of sievesFound) for (const sv of set) sieveCalls.push(adminPricing.addDiamondSieve(sg, sv));
+      if (sieveCalls.length) await Promise.allSettled(sieveCalls);
+      toast.success(`Imported ${rows.length} rates · ${totalSieves} sieve${totalSieves === 1 ? "" : "s"}`);
       load();
     } catch (e: any) {
       toast.error(e.message || "Import failed");
