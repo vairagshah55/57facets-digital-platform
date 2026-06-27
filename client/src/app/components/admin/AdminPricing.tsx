@@ -27,8 +27,9 @@ const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
    Unset cells in a retailer's chart fall back to Global. */
 const ScopeContext = createContext<string>("");
 const useScope = () => useContext(ScopeContext);
-// Tabs that edit the rate chart (and therefore respect the scope selector).
-const CHART_TABS: TabKey[] = ["gold", "diamond", "stones", "making"];
+// Tabs that respect the per-retailer scope selector.
+// NOTE: "gold" is excluded — gold rates are identical for every retailer (always Global).
+const CHART_TABS: TabKey[] = ["diamond", "stones", "making"];
 
 /* ═══════════════════════════════════════════════════════
    ROOT
@@ -47,6 +48,15 @@ export function AdminPricing() {
   useEffect(() => {
     adminPricing.retailers().then((d: any) => setRetailers(d || [])).catch(() => { });
   }, []);
+
+  // Only the Stones tab offers a "Global default" price; the others are
+  // retailer-only. When on a retailer-only tab with no retailer chosen,
+  // default to the first retailer so the dropdown isn't left blank.
+  useEffect(() => {
+    if (CHART_TABS.includes(tab) && tab !== "stones" && !scope) {
+      setScope(retailers[0]?.id ?? "");
+    }
+  }, [tab, scope, retailers]);
 
   const onImport = useCallback(async (file: File) => {
     setImporting(true);
@@ -114,7 +124,7 @@ export function AdminPricing() {
             onChange={(e) => setScope(e.target.value)}
             className="h-9 text-sm rounded-lg px-2"
             style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 220 }}>
-            <option value="">🌐 Global default (everyone)</option>
+            {tab === "stones" && <option value="">🌐 Global default (everyone)</option>}
             {retailers.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
@@ -214,7 +224,8 @@ function useImportRefresh(reload: () => void) {
    GOLD RATES
    ═══════════════════════════════════════════════════════ */
 function GoldTab() {
-  const scope = useScope();
+  // Gold rates are the same for every retailer — always edit the Global chart.
+  const scope = "";
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
