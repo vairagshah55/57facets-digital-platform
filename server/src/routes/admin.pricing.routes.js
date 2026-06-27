@@ -172,11 +172,12 @@ router.get("/diamond-sieves", async (req, res, next) => {
 router.post("/diamond-sieves", async (req, res, next) => {
   try {
     const { shape_group, sieve_size } = req.body || {};
-    if (!shape_group || !sieve_size) throw new AppError("shape_group and sieve_size are required");
+    // Allow any sieve label, including blank — only shape_group is required.
+    if (!shape_group) throw new AppError("shape_group is required");
     await tx((c) => c.query(
       `INSERT INTO diamond_sieves (shape_group, sieve_size) VALUES ($1, $2)
        ON CONFLICT (shape_group, sieve_size) DO NOTHING`,
-      [shape_group, String(sieve_size).trim()]));
+      [shape_group, sieve_size == null ? "" : String(sieve_size).trim()]));
     res.status(201).json({ added: true });
   } catch (e) { next(e); }
 });

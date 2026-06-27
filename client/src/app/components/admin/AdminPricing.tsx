@@ -14,11 +14,11 @@ import { adminPricing, adminProducts } from "../../../lib/adminApi";
    ═══════════════════════════════════════════════════════ */
 type TabKey = "gold" | "diamond" | "stones" | "making" | "retailers" | "preview";
 const TABS: { key: TabKey; label: string; icon: React.ElementType; color: string }[] = [
-  { key: "gold",      label: "Gold Rates",   icon: Coins,      color: "#f59e0b" },
-  { key: "diamond",   label: "Diamond Rates",icon: Gem,        color: "#a855f7" },
-  { key: "stones",    label: "Stone Rates",  icon: Sparkles,   color: "#22c55e" },
-  { key: "making",    label: "Making",       icon: Hammer,     color: "#3b82f6" },
-  { key: "preview",   label: "SKU Price",    icon: Calculator, color: "#ec4899" },
+  { key: "gold", label: "Gold Rates", icon: Coins, color: "#f59e0b" },
+  { key: "diamond", label: "Diamond Rates", icon: Gem, color: "#a855f7" },
+  { key: "stones", label: "Stone Rates", icon: Sparkles, color: "#22c55e" },
+  { key: "making", label: "Making", icon: Hammer, color: "#3b82f6" },
+  { key: "preview", label: "SKU Price", icon: Calculator, color: "#ec4899" },
 ];
 
 const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
@@ -45,7 +45,7 @@ export function AdminPricing() {
   const [retailers, setRetailers] = useState<any[]>([]);
 
   useEffect(() => {
-    adminPricing.retailers().then((d: any) => setRetailers(d || [])).catch(() => {});
+    adminPricing.retailers().then((d: any) => setRetailers(d || [])).catch(() => { });
   }, []);
 
   const onImport = useCallback(async (file: File) => {
@@ -226,7 +226,7 @@ function GoldTab() {
       // Always show the 4 karat rows; pre-fill from fetched values (blank = inherits Global for a retailer).
       const byType = new Map((d || []).map((r: any) => [r.gold_type, r.rate_per_gram]));
       setRows(["14KT", "18KT", "22KT", "24KT"].map((g) => ({ gold_type: g, rate_per_gram: byType.has(g) ? byType.get(g) : "" })));
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
@@ -482,7 +482,12 @@ function DiamondTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([adminPricing.diamondRates(scope), adminPricing.sieveMap(scope), adminPricing.diamondSieves()])
+    Promise.all([
+      adminPricing.diamondRates(scope),
+      adminPricing.sieveMap(scope),
+      // Sieve list is supplementary — never let its failure blank the matrix.
+      adminPricing.diamondSieves().catch(() => []),
+    ])
       .then(([d, s, ds]: any) => {
         const c: Record<string, string> = {};
         const bySh: Record<string, Set<string>> = {};
@@ -500,7 +505,7 @@ function DiamondTab() {
           sbs[sg] = Array.from(set).sort(sieveSort);
         }
         setCells(c); setSievesByShape(sbs);
-      }).catch(() => {}).finally(() => setLoading(false));
+      }).catch(() => { }).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
@@ -511,7 +516,7 @@ function DiamondTab() {
 
   const addSieve = async () => {
     const sv = newSieve.trim();
-    if (!sv) return;
+    // Any text (and blank) is allowed; only block an exact duplicate row.
     if ((sievesByShape[shape] || []).includes(sv)) { toast.error(`Sieve "${sv}" already exists for ${shape}`); return; }
     // Optimistic UI, then persist so the row survives a reload (even with no rates).
     setSievesByShape((p) => ({ ...p, [shape]: Array.from(new Set([...(p[shape] || []), sv])).sort(sieveSort) }));
@@ -687,8 +692,10 @@ function DiamondTab() {
 
             {/* Add a sieve row */}
             <div className="flex items-center gap-2">
-              <input value={newSieve} onChange={(e) => setNewSieve(e.target.value)} placeholder="add sieve (e.g. -5)"
-                className="w-36 h-8 px-2 rounded-md text-xs border outline-none"
+              <input value={newSieve} onChange={(e) => setNewSieve(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSieve(); } }}
+                placeholder="add sieve row"
+                className="w-44 h-8 px-2 rounded-md text-xs border outline-none"
                 style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }} />
               <button onClick={addSieve}
                 className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
@@ -716,7 +723,7 @@ function StonesTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.stoneRates(scope).then((d: any) => setRows(d)).catch(() => {}).finally(() => setLoading(false));
+    adminPricing.stoneRates(scope).then((d: any) => setRows(d)).catch(() => { }).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
@@ -741,7 +748,8 @@ function StonesTab() {
             { key: "stone_name", label: "Stone name", width: 150 },
             { key: "pcs", label: "Number of Pieces", type: "number", width: 130 },
             { key: "rate", label: "Rate (/ct)", type: "number", width: 90 },
-            { key: "_price", label: "Price", width: 100,
+            {
+              key: "_price", label: "Price", width: 100,
               compute: (r: any) => {
                 const isCarat = (r.unit || "carat") === "carat";
                 const ct = Number(r.carat) || 1;   // default 1 when not picked
@@ -749,7 +757,8 @@ function StonesTab() {
                 // carat unit → rate × carat × pcs ; piece unit → rate × pcs
                 const v = (Number(r.rate) || 0) * (isCarat ? ct : 1) * pcs;
                 return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
-              } },
+              }
+            },
             { key: "unit", label: "Unit", options: ["carat", "piece"], width: 90 },
           ]} />
       )}
@@ -782,7 +791,7 @@ function MakingTab() {
         .filter((r: any) => !MAKING_SCOPES.includes(r.scope))
         .map((r: any) => ({ scope: r.scope, mode: r.mode || "gross", value: r.value != null ? r.value : "" }));
       setRows([...seeded, ...extra]);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
@@ -825,7 +834,7 @@ function RetailersTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.retailers().then((d: any) => setRows(d)).catch(() => {}).finally(() => setLoading(false));
+    adminPricing.retailers().then((d: any) => setRows(d)).catch(() => { }).finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -900,10 +909,10 @@ function OverrideDrawer({ retailer, onClose }: { retailer: any; onClose: () => v
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    adminPricing.overrides(retailer.id).then((d: any) => setOverrides(d)).catch(() => {});
+    adminPricing.overrides(retailer.id).then((d: any) => setOverrides(d)).catch(() => { });
   }, [retailer.id]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => {}); }, []);
+  useEffect(() => { adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => { }); }, []);
 
   const add = async () => {
     if (!pid || price === "") return;
@@ -979,8 +988,8 @@ function PreviewTab() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => {});
-    adminPricing.retailers().then((d: any) => setRetailers(d)).catch(() => {});
+    adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => { });
+    adminPricing.retailers().then((d: any) => setRetailers(d)).catch(() => { });
   }, []);
 
   const filtered = useMemo(() => {
@@ -998,8 +1007,8 @@ function PreviewTab() {
   const d = result?.breakdown?.detail;
   const makingInfo = (m: any) =>
     m.mode === "percent" ? `${m.value}% of metal`
-    : (m.mode === "gross" || m.mode === "net") ? `${fmt(m.value)}/g × ${Number(result?.product?.net_weight) || 0} g (net wt)`
-    : `flat ${fmt(m.value)}`;
+      : (m.mode === "gross" || m.mode === "net") ? `${fmt(m.value)}/g × ${Number(result?.product?.net_weight) || 0} g (net wt)`
+        : `flat ${fmt(m.value)}`;
   const diaL: any[] = d?.diamond?.lines || [];
   const stnL: any[] = d?.stone?.lines || [];
   const stoneInfo = (l: any) => `${l.name} · ${fmt(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat}ct` : ""}${l.pcs > 1 ? ` × ${l.pcs}pcs` : ""}`;
@@ -1062,29 +1071,31 @@ function PreviewTab() {
   const diaLines: any[] = d?.diamond?.lines || [];
   const diamondSteps = !d ? [] : diaLines.length > 1
     ? diaLines.map((l, i) => ({
-        k: `Diamond #${i + 1}`,
-        eq: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${fmt(l.rate_per_carat)} × ${l.carat || 1} ct` : "no rate matched",
-        res: l.cost,
-      }))
+      k: `Diamond #${i + 1}`,
+      eq: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${fmt(l.rate_per_carat)} × ${l.carat || 1} ct` : "no rate matched",
+      res: l.cost,
+    }))
     : [{ k: "Diamond", eq: d.diamond.matched ? `${fmt(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1} ct` : "no rate matched", res: d.diamond.cost }];
   // Stone steps: one row per stone (with carat × pcs) when several, else a single line.
   const stoneEq = (l: any) => `${fmt(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat} ct` : ""}${l.pcs > 1 ? ` × ${l.pcs} pcs` : ""}`;
   const stnLines: any[] = d?.stone?.lines || [];
   const stoneSteps = !d ? [] : stnLines.length > 1
     ? stnLines.map((l, i) => ({
-        k: `Stone #${i + 1}`,
-        eq: l.matched ? `${l.name} · ${stoneEq(l)}` : "no rate matched",
-        res: l.cost,
-      }))
+      k: `Stone #${i + 1}`,
+      eq: l.matched ? `${l.name} · ${stoneEq(l)}` : "no rate matched",
+      res: l.cost,
+    }))
     : [{ k: "Stone", eq: d.stone.matched ? stoneEq(d.stone) : "no rate matched", res: d.stone.cost }];
   const calcSteps = d && !isOverride ? [
     { k: "Gold", eq: `${fmt(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0} g`, res: d.gold.cost },
     ...diamondSteps,
     ...stoneSteps,
-    { k: "Making", eq:
+    {
+      k: "Making", eq:
         d.making.mode === "percent" ? `${d.making.value}% × ${fmt(d.gold.cost)} (metal)`
-        : (d.making.mode === "gross" || d.making.mode === "net") ? `${fmt(d.making.value)}/g × ${p?.net_weight || 0} g (net)`
-        : `flat`, res: d.making.cost },
+          : (d.making.mode === "gross" || d.making.mode === "net") ? `${fmt(d.making.value)}/g × ${p?.net_weight || 0} g (net)`
+            : `flat`, res: d.making.cost
+    },
   ] : [];
   const subtotalEq = d ? `${fmt(d.gold.cost)} + ${fmt(d.diamond.cost)} + ${fmt(d.stone.cost)} + ${fmt(d.making.cost)}` : "";
 
@@ -1121,165 +1132,165 @@ function PreviewTab() {
           <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--sf-teal)" }} /></div>
         ) : result ? (
           <>
-          {ri && result.source === "override" && (
-            <div className="rounded-xl px-4 py-2.5 text-xs" style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>
-              This retailer has a fixed price override for this SKU — the section breakdown below is the base computation and is not used for the final price.
-            </div>
-          )}
+            {ri && result.source === "override" && (
+              <div className="rounded-xl px-4 py-2.5 text-xs" style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>
+                This retailer has a fixed price override for this SKU — the section breakdown below is the base computation and is not used for the final price.
+              </div>
+            )}
 
-          {/* ── Price hero ─────────────────────────────── */}
-          <div className="rounded-2xl p-5"
-            style={{ background: "linear-gradient(135deg, var(--sf-teal-glass), var(--sf-bg-surface-2))", border: "1px solid var(--sf-teal-border)" }}>
-            <div className="flex items-end justify-between gap-4 flex-wrap">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--sf-text-muted)" }}>Final price</p>
-                <p className="text-3xl font-bold leading-tight mt-1" style={{ color: "var(--sf-teal)" }}>{fmt(shownPrice)}</p>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="text-[12px] font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>{p?.sku || "—"}{p?.name ? ` · ${p.name}` : ""}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide"
-                    style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>{shownSource}</span>
+            {/* ── Price hero ─────────────────────────────── */}
+            <div className="rounded-2xl p-5"
+              style={{ background: "linear-gradient(135deg, var(--sf-teal-glass), var(--sf-bg-surface-2))", border: "1px solid var(--sf-teal-border)" }}>
+              <div className="flex items-end justify-between gap-4 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--sf-text-muted)" }}>Final price</p>
+                  <p className="text-3xl font-bold leading-tight mt-1" style={{ color: "var(--sf-teal)" }}>{fmt(shownPrice)}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-[12px] font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>{p?.sku || "—"}{p?.name ? ` · ${p.name}` : ""}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide"
+                      style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>{shownSource}</span>
+                  </div>
+                </div>
+                {ri && (
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--sf-text-muted)" }}>Retailer</p>
+                    <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--sf-text-primary)" }}>{ri.name}</p>
+                    {ri.company_name && <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{ri.company_name}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Cost breakdown ─────────────────────────── */}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+              <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
+                Cost breakdown
+              </div>
+              {lines.map((ln) => {
+                const dot = ln.label.startsWith("Diamond") ? "#5DADE2" : ln.label.startsWith("Stone") ? "#A569BD" : ln.label.startsWith("Making") ? "#3b82f6" : "#f59e0b";
+                return (
+                  <div key={ln.label} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dot }} />
+                      <div className="min-w-0">
+                        <p className="text-[13px] leading-tight" style={{ color: "var(--sf-text-primary)" }}>{ln.label}</p>
+                        <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{ln.info}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold whitespace-nowrap" style={{ color: ln.cost > 0 ? "var(--sf-text-primary)" : "var(--sf-text-muted)" }}>{fmt(ln.cost)}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!isOverride && d && (
+              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
+                  Step-by-step calculation
+                </div>
+                {calcSteps.map((s) => (
+                  <div key={s.k} className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                    <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{s.k}</span>
+                    <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{s.eq} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(s.res)}</b></span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                  <span className="text-[11px] font-semibold" style={{ color: "var(--sf-text-primary)" }}>Total</span>
+                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{subtotalEq} = <b style={{ color: "var(--sf-teal)" }}>{fmt(dynamicTotal)}</b></span>
                 </div>
               </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ri && (
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--sf-text-muted)" }}>Retailer</p>
-                  <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--sf-text-primary)" }}>{ri.name}</p>
-                  {ri.company_name && <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{ri.company_name}</p>}
+                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+                  <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
+                    Retailer
+                  </div>
+                  {retailerRows.map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                      <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
+                      <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {p && (
+                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
+                  <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
+                    Product details
+                  </div>
+                  {productRows.map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                      <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
+                      <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
 
-          {/* ── Cost breakdown ─────────────────────────── */}
-          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
-            <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-              Cost breakdown
-            </div>
-            {lines.map((ln) => {
-              const dot = ln.label.startsWith("Diamond") ? "#5DADE2" : ln.label.startsWith("Stone") ? "#A569BD" : ln.label.startsWith("Making") ? "#3b82f6" : "#f59e0b";
-              return (
-                <div key={ln.label} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dot }} />
-                    <div className="min-w-0">
-                      <p className="text-[13px] leading-tight" style={{ color: "var(--sf-text-primary)" }}>{ln.label}</p>
-                      <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{ln.info}</p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-semibold whitespace-nowrap" style={{ color: ln.cost > 0 ? "var(--sf-text-primary)" : "var(--sf-text-muted)" }}>{fmt(ln.cost)}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {!isOverride && d && (
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-              <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-                Step-by-step calculation
-              </div>
-              {calcSteps.map((s) => (
-                <div key={s.k} className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{s.k}</span>
-                  <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{s.eq} = <b style={{ color: "var(--sf-text-primary)" }}>{fmt(s.res)}</b></span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between gap-3 px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                <span className="text-[11px] font-semibold" style={{ color: "var(--sf-text-primary)" }}>Total</span>
-                <span className="text-[11px] text-right" style={{ color: "var(--sf-text-secondary)" }}>{subtotalEq} = <b style={{ color: "var(--sf-teal)" }}>{fmt(dynamicTotal)}</b></span>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ri && (
+            {diamonds.length > 0 && (
               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
                 <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-                  Retailer
+                  Diamonds ({diamonds.length})
                 </div>
-                {retailerRows.map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                    <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
-                    <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
-                  </div>
-                ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px]" style={{ color: "var(--sf-text-primary)" }}>
+                    <thead>
+                      <tr style={{ color: "var(--sf-text-muted)" }}>
+                        {["Type", "Shape", "Size", "Shade", "Clarity", "Cert", "Carat", "Pcs"].map((h) => (
+                          <th key={h} className="px-3 py-1.5 text-left font-medium whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diamonds.map((dm, i) => (
+                        <tr key={i}>
+                          {[dm.diamond_type, dm.diamond_shape, dm.diamond_size, dm.diamond_color, dm.diamond_clarity, dm.diamond_certification, dm.carat, dm.diamond_pcs].map((v, j) => (
+                            <td key={j} className="px-3 py-1.5 whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{dash(v)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-            {p && (
+
+            {stones.length > 0 && (
               <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
                 <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-                  Product details
+                  Stones ({stones.length})
                 </div>
-                {productRows.map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
-                    <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
-                    <span className="text-xs font-medium" style={{ color: "var(--sf-text-primary)" }}>{v}</span>
-                  </div>
-                ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px]" style={{ color: "var(--sf-text-primary)" }}>
+                    <thead>
+                      <tr style={{ color: "var(--sf-text-muted)" }}>
+                        {["Stone name", "Quality", "Carat", "Pcs"].map((h) => (
+                          <th key={h} className="px-3 py-1.5 text-left font-medium whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stones.map((st, i) => (
+                        <tr key={i}>
+                          {[st.stone_name, st.quality, st.carat, st.pcs].map((v, j) => (
+                            <td key={j} className="px-3 py-1.5 whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{dash(v)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
-
-          {diamonds.length > 0 && (
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
-              <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-                Diamonds ({diamonds.length})
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px]" style={{ color: "var(--sf-text-primary)" }}>
-                  <thead>
-                    <tr style={{ color: "var(--sf-text-muted)" }}>
-                      {["Type", "Shape", "Size", "Shade", "Clarity", "Cert", "Carat", "Pcs"].map((h) => (
-                        <th key={h} className="px-3 py-1.5 text-left font-medium whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {diamonds.map((dm, i) => (
-                      <tr key={i}>
-                        {[dm.diamond_type, dm.diamond_shape, dm.diamond_size, dm.diamond_color, dm.diamond_clarity, dm.diamond_certification, dm.carat, dm.diamond_pcs].map((v, j) => (
-                          <td key={j} className="px-3 py-1.5 whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{dash(v)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {stones.length > 0 && (
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--sf-divider)" }}>
-              <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
-                Stones ({stones.length})
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px]" style={{ color: "var(--sf-text-primary)" }}>
-                  <thead>
-                    <tr style={{ color: "var(--sf-text-muted)" }}>
-                      {["Stone name", "Quality", "Carat", "Pcs"].map((h) => (
-                        <th key={h} className="px-3 py-1.5 text-left font-medium whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stones.map((st, i) => (
-                      <tr key={i}>
-                        {[st.stone_name, st.quality, st.carat, st.pcs].map((v, j) => (
-                          <td key={j} className="px-3 py-1.5 whitespace-nowrap" style={{ borderTop: "1px solid var(--sf-divider)" }}>{dash(v)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
           </>
         ) : (
           <p className="text-xs text-center py-10" style={{ color: "var(--sf-text-muted)" }}>
             {!pid ? "Select a product SKU and a retailer to view pricing."
               : !rid ? "Select a retailer to view pricing for this SKU."
-              : "Select a product SKU and a retailer to view pricing."}
+                : "Select a product SKU and a retailer to view pricing."}
           </p>
         )}
       </div>
