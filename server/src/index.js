@@ -48,7 +48,10 @@ const tirichOrigins = (process.env.TIRICH_ORIGIN || "http://localhost:3001")
   .map((s) => s.trim())
   .filter(Boolean);
 const tirichCors = cors({ origin: tirichOrigins });
-app.use("/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
+// Mounted under /api so the existing nginx proxy (which only forwards /api/*
+// to this Node app) routes it. Still registered before the global cors()/
+// rate-limiter so this router fully owns its requests + CORS preflight.
+app.use("/api/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
