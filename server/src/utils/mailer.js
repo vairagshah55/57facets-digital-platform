@@ -37,7 +37,7 @@ function getTransporter() {
  * @param {boolean} [opts.throwOnError]  re-throw send errors instead of swallowing
  *                                       (use for OTP/transactional mail the user is waiting on)
  */
-async function sendMail({ to, subject, text, html, from, throwOnError = false }) {
+async function sendMail({ to, subject, text, html, from, attachments, throwOnError = false }) {
   const tx = getTransporter();
   if (!tx) {
     if (throwOnError) throw new Error("Email service is not configured");
@@ -56,6 +56,7 @@ async function sendMail({ to, subject, text, html, from, throwOnError = false })
       subject,
       text,
       html,
+      ...(attachments && attachments.length ? { attachments } : {}),
     });
   } catch (err) {
     console.error("[mailer] sendMail failed:", err.message);

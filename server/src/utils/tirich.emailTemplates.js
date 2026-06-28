@@ -32,13 +32,28 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-// Hosted Tirich LED logo for the email header. Override with TIRICH_LOGO_URL.
-// (TIRICH_ORIGIN is a comma-separated CORS list, so it can't be used here.)
+const path = require("path");
+const fs = require("fs");
+
+// The site logo is a .webp, which many email clients (esp. Outlook) won't
+// render. So we bundle a PNG and embed it INLINE via a CID attachment — the
+// most reliable way to show a logo across Gmail / Outlook / Apple Mail.
+// A remote URL can still be forced with TIRICH_LOGO_URL.
+const LOGO_CID = "tirich-logo";
+const LOGO_PATH = path.join(__dirname, "..", "assets", "tirich-logo.png");
+const hasLogoAsset = () => { try { return fs.existsSync(LOGO_PATH); } catch { return false; } };
+
 function logoUrl() {
-  return (
-    process.env.TIRICH_LOGO_URL ||
-    "https://tirichled.com/static/media/new-log.65854486a9cce2439cdd.webp"
-  ).trim();
+  if (process.env.TIRICH_LOGO_URL) return process.env.TIRICH_LOGO_URL.trim();
+  if (hasLogoAsset()) return `cid:${LOGO_CID}`; // inline attachment
+  return ""; // falls back to the text wordmark
+}
+
+// The inline-logo attachment for nodemailer (null when a remote URL is used
+// or the bundled asset is missing — the template then shows the text wordmark).
+function leadLogoAttachment() {
+  if (process.env.TIRICH_LOGO_URL || !hasLogoAsset()) return null;
+  return { filename: "tirich-logo.png", path: LOGO_PATH, cid: LOGO_CID };
 }
 
 /**
@@ -192,4 +207,4 @@ function leadNotificationEmail({ name, phone, city, businessLabel, designationLa
   };
 }
 
-module.exports = { leadNotificationEmail };
+module.exports = { leadNotificationEmail, leadLogoAttachment };

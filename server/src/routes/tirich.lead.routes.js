@@ -3,7 +3,7 @@ const { query } = require("../config/db");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
 const { sendMail, getAdminRecipients } = require("../utils/mailer");
-const { leadNotificationEmail } = require("../utils/tirich.emailTemplates");
+const { leadNotificationEmail, leadLogoAttachment } = require("../utils/tirich.emailTemplates");
 
 // ── Enums (mirror the Tirich lead model) ────────────
 const VALID_BUSINESS = ["led-showroom", "electrical-shop", "distributor", "other"];
@@ -49,6 +49,7 @@ async function notifyNewLead(lead) {
       designationLabel,
     });
 
+    const logoAttachment = leadLogoAttachment();
     await sendMail({
       to: recipients,
       // Separate sender identity for Tirich (falls back to the global SMTP_FROM).
@@ -56,6 +57,8 @@ async function notifyNewLead(lead) {
       subject,
       text,
       html,
+      // Inline logo (CID) so it renders in Outlook/Gmail/Apple Mail.
+      attachments: logoAttachment ? [logoAttachment] : undefined,
     });
   } catch (err) {
     // Never let notification failure break the request.
