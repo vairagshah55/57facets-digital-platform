@@ -47,7 +47,15 @@ const tirichOrigins = (process.env.TIRICH_ORIGIN || "http://localhost:3001")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-const tirichCors = cors({ origin: tirichOrigins });
+const tirichCors = cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // curl / server-to-server (no Origin)
+    if (tirichOrigins.includes(origin)) return cb(null, true);
+    // Allow any localhost / 127.0.0.1 origin (any port) during local dev.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+});
 // Mounted under /api so the existing nginx proxy (which only forwards /api/*
 // to this Node app) routes it. Still registered before the global cors()/
 // rate-limiter so this router fully owns its requests + CORS preflight.
