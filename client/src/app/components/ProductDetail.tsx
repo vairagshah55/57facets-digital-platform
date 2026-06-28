@@ -26,6 +26,7 @@ import {
   Search,
   Expand,
   ExternalLink,
+  Layers,
 } from "lucide-react";
 import { ImageViewer } from "./ImageViewer";
 import { SizeSelector } from "./SizeGuide";
@@ -58,6 +59,16 @@ const DIAMOND_SHADES = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
 const DIAMOND_TYPES = ["Natural", "Lab-grown"];
 
+// Approx swatch colour for a gold-colour name — used on the variant chips.
+function goldSwatch(colour: string): string | null {
+  const k = (colour || "").toLowerCase();
+  if (!k) return null;
+  if (k.includes("rose") || k.includes("pink")) return "#E0A899";
+  if (k.includes("white") || k.includes("plat")) return "#D9DCE1";
+  if (k.includes("yellow") || k.includes("gold")) return "#E8C766";
+  return null;
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -88,6 +99,15 @@ interface ProductData {
     quality: string;
     carat: number | null;
     pcs: number | null;
+  }[];
+  variants: {
+    id: string;
+    sku: string;
+    name: string;
+    category: string;
+    metalType: string;
+    goldColour: string;
+    image: string;
   }[];
   specs: {
     metalType: string;
@@ -160,6 +180,17 @@ function mapApiProduct(raw: any): ProductData {
         quality: s.quality || "",
         carat: s.carat != null ? Number(s.carat) : null,
         pcs: s.pcs != null ? Number(s.pcs) : null,
+      }))
+      : [],
+    variants: Array.isArray(raw.variants)
+      ? raw.variants.map((v: any) => ({
+        id: String(v.id),
+        sku: v.sku || "",
+        name: (v.name && String(v.name).trim()) ? v.name : (v.sku || ""),
+        category: v.category || "",
+        metalType: v.metal_type || "",
+        goldColour: v.gold_colour || "",
+        image: v.image ? imageUrl(v.image) : "",
       }))
       : [],
     specs: {
@@ -667,7 +698,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           className="flex flex-col"
         >
           {/* Header */}
-          <div className="mb-4">
+          <div className="mb-4 flex items-start justify-between gap-5">
+            <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
               {product.category}
             </p>
@@ -708,6 +740,56 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 View Certificate
                 <ExternalLink className="w-3.5 h-3.5 opacity-70" />
               </a>
+            )}
+            </div>
+
+            {/* Matching variants — fills the empty space on the right */}
+            {!adminPreview && product.variants.length > 0 && (
+              <div className="shrink-0 max-w-[55%]">
+                <div className="flex items-center justify-end gap-1.5 mb-2">
+                  <Layers className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>
+                    Other variants
+                  </span>
+                  <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>
+                    {product.variants.length}
+                  </span>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  {product.variants.map((v) => {
+                    const dot = goldSwatch(v.goldColour);
+                    const tip = [v.sku, v.category, [v.goldColour, v.metalType].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => navigate(`/retailer/product/${v.id}`)}
+                        title={tip}
+                        className="group/var w-[88px] rounded-xl overflow-hidden text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5
+                                   border border-[var(--sf-glass-border)] hover:border-[var(--sf-teal-border)] hover:shadow-[0_6px_16px_var(--sf-shadow-teal)]"
+                        style={{ background: "var(--sf-bg-surface-2)" }}
+                      >
+                        <div className="relative aspect-square overflow-hidden" style={{ background: "var(--sf-bg-surface-1)" }}>
+                          {v.image ? (
+                            <img src={v.image} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Gem className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
+                            </div>
+                          )}
+                          {dot && (
+                            <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full"
+                              style={{ background: dot, border: "1.5px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.4)" }} />
+                          )}
+                        </div>
+                        <div className="px-1.5 py-1">
+                          <div className="text-[11px] font-bold leading-tight truncate" style={{ color: "var(--sf-text-primary)" }}>{v.sku}</div>
+                          {v.category && <div className="text-[9px] leading-tight truncate" style={{ color: "var(--sf-text-muted)" }}>{v.category}</div>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
 

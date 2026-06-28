@@ -270,6 +270,25 @@ router.get("/:id", authenticate, async (req, res, next) => {
       [req.params.id]
     );
 
+    // Matching variants — same design (last 5 chars of SKU) in a different
+    // variant code (the first chars differ). e.g. 11260006 ↔ 12260006.
+    let variants = [];
+    const sku = rows[0].sku;
+    if (sku && sku.length >= 5) {
+      const { rows: vRows } = await query(
+        `SELECT p.id, p.sku, p.name, p.metal_type, p.gold_colour, c.name AS category,
+                (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.is_active = true
+           AND p.id <> $1
+           AND RIGHT(p.sku, 5) = RIGHT($2, 5)
+         ORDER BY p.sku`,
+        [req.params.id, sku]
+      );
+      variants = vRows;
+    }
+
     // Track recently viewed (one row per retailer/product, last viewed)
     await query(
       `INSERT INTO recently_viewed (retailer_id, product_id) VALUES ($1, $2)
@@ -297,6 +316,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
       images,
       diamonds,
       stones,
+      variants,
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });
   } catch (err) {

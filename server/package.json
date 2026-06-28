@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "predev": "node scripts/free-port.js",
     "dev": "nodemon src/index.js",
+    "free-port": "node scripts/free-port.js",
     "db:migrate": "node src/db/migrate.js && node src/db/migrate-admin.js && node src/db/migrate-search-trigram.js && node src/db/migrate-collection-festive-tag.js && node src/db/migrate-pricing.js && node src/db/migrate-diamond-sieves.js && node src/db/migrate-tirich-lead.js",
     "db:migrate:tirich-lead": "node src/db/migrate-tirich-lead.js",
     "db:migrate:diamond-sieves": "node src/db/migrate-diamond-sieves.js",

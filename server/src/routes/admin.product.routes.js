@@ -337,7 +337,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const {
-      name, description, category_id,
+      name, sku, description, category_id,
       base_price, carat, metal_type, gold_colour, metal_weight,
       diamond_type, diamond_shape, diamond_color, diamond_clarity,
       diamond_certification, setting_type, hallmark,
@@ -360,6 +360,16 @@ router.put("/:id", async (req, res, next) => {
     const csQual  = stonesProvided ? (s0?.stone_quality ?? "") : (color_stone_quality ?? null);
     const csCarat = stonesProvided ? (s0 && s0.carat != null && s0.carat !== "" ? s0.carat : null) : (color_stone_carat ?? null);
     const csPcs   = stonesProvided ? (s0 && s0.pcs != null && s0.pcs !== "" ? s0.pcs : null) : (color_stone_pcs ?? null);
+
+    // SKU is editable: normalise (blank = keep existing) and ensure it stays
+    // unique among other active products before saving.
+    const newSku = (sku != null && String(sku).trim() !== "") ? String(sku).trim() : null;
+    if (newSku) {
+      const { rows: dup } = await query(
+        "SELECT id FROM products WHERE sku = $1 AND is_active = true AND id <> $2",
+        [newSku, req.params.id]);
+      if (dup.length > 0) throw new AppError("SKU already exists");
+    }
 
     // First diamond row bridges to the product-level diamond_* columns.
     const d0 = (Array.isArray(diamonds) && diamonds.length) ? diamonds[0] : {};
@@ -413,8 +423,9 @@ router.put("/:id", async (req, res, next) => {
         diamond_pcs = COALESCE($37, diamond_pcs),
         color_stone_carat = COALESCE($38, color_stone_carat),
         color_stone_pcs = COALESCE($39, color_stone_pcs),
+        sku = COALESCE($40, sku),
         updated_at = NOW()
-       WHERE id = $40 RETURNING *`,
+       WHERE id = $41 RETURNING *`,
       [
         name, description, category_id,
         base_price, dCarat, metal_type, gold_colour, metal_weight,
@@ -429,6 +440,7 @@ router.put("/:id", async (req, res, next) => {
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         mfg_code ?? null, gross_weight ?? null, net_weight ?? null,
         dSize ?? null, dPcs ?? null, csCarat, csPcs,
+        newSku,
         req.params.id,
       ]
     );
