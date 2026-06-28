@@ -32,10 +32,13 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-// Hosted logo (Tirich frontend serves /logo.png at its origin).
+// Hosted Tirich LED logo for the email header. Override with TIRICH_LOGO_URL.
+// (TIRICH_ORIGIN is a comma-separated CORS list, so it can't be used here.)
 function logoUrl() {
-  const origin = (process.env.TIRICH_ORIGIN || "").trim().replace(/\/+$/, "");
-  return origin ? `${origin}/logo.png` : "";
+  return (
+    process.env.TIRICH_LOGO_URL ||
+    "https://tirichled.com/static/media/new-log.65854486a9cce2439cdd.webp"
+  ).trim();
 }
 
 /**
