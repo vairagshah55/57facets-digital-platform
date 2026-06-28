@@ -26,6 +26,7 @@ const adminAuditRoutes = require("./routes/admin.audit.routes");
 const adminReportsRoutes = require("./routes/admin.reports.routes");
 const adminPricingRoutes = require("./routes/admin.pricing.routes");
 const tirichLeadRoutes = require("./routes/tirich.lead.routes");
+const tirichLeadListRoutes = require("./routes/tirich.leadList.routes");
 
 const app = express();
 app.set("trust proxy", 1); // Required for Cloud Run / load balancers
@@ -60,6 +61,7 @@ const tirichCors = cors({
 // to this Node app) routes it. Still registered before the global cors()/
 // rate-limiter so this router fully owns its requests + CORS preflight.
 app.use("/api/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
+app.use("/api/sub-domain/lead-list", tirichCors, express.json(), tirichLeadListRoutes);
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
