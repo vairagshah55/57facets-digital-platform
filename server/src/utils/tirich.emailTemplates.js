@@ -53,7 +53,15 @@ function logoUrl() {
 // or the bundled asset is missing — the template then shows the text wordmark).
 function leadLogoAttachment() {
   if (process.env.TIRICH_LOGO_URL || !hasLogoAsset()) return null;
-  return { filename: "tirich-logo.png", path: LOGO_PATH, cid: LOGO_CID };
+  // contentDisposition "inline" → embedded in the body, NOT listed as a
+  // downloadable attachment.
+  return {
+    filename: "tirich-logo.png",
+    path: LOGO_PATH,
+    cid: LOGO_CID,
+    contentDisposition: "inline",
+    contentType: "image/png",
+  };
 }
 
 /**
