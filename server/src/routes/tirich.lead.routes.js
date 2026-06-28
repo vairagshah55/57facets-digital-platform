@@ -3,6 +3,7 @@ const { query } = require("../config/db");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
 const { sendMail, getAdminRecipients } = require("../utils/mailer");
+const { leadNotificationEmail } = require("../utils/tirich.emailTemplates");
 
 // ── Enums (mirror the Tirich lead model) ────────────
 const VALID_BUSINESS = ["led-showroom", "electrical-shop", "distributor", "other"];
@@ -40,23 +41,21 @@ async function notifyNewLead(lead) {
         : BUSINESS_LABELS[lead.business_type] || lead.business_type;
     const designationLabel = DESIGNATION_LABELS[lead.designation] || lead.designation;
 
-    const lines = [
-      `Name: ${lead.name}`,
-      `Phone: ${lead.phone}`,
-      `City: ${lead.city}`,
-      `Business: ${businessLabel}`,
-      `Designation: ${designationLabel}`,
-    ];
+    const { subject, html, text } = leadNotificationEmail({
+      name: lead.name,
+      phone: lead.phone,
+      city: lead.city,
+      businessLabel,
+      designationLabel,
+    });
 
     await sendMail({
       to: recipients,
       // Separate sender identity for Tirich (falls back to the global SMTP_FROM).
       from: process.env.TIRICH_SMTP_FROM || undefined,
-      subject: `New Tirich Lead: ${lead.name}`,
-      text: lines.join("\n"),
-      html: `<h2>New Tirich Lead</h2><ul>${lines
-        .map((l) => `<li>${l}</li>`)
-        .join("")}</ul>`,
+      subject,
+      text,
+      html,
     });
   } catch (err) {
     // Never let notification failure break the request.
