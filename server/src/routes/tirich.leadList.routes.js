@@ -1,5 +1,14 @@
 const router = require("express").Router();
 const { query } = require("../config/db");
+const { buildXlsx } = require("../utils/xlsx");
+
+const BUSINESS_LABELS = {
+  "led-showroom": "LED Showroom",
+  "electrical-shop": "Electrical Shop",
+  distributor: "Distributor",
+  other: "Other",
+};
+const DESIGNATION_LABELS = { owner: "Owner", interior: "Interior Designer", architect: "Architect" };
 
 /* ════════════════════════════════════════════════════════════════
    Tirich lead LIST — read the captured leads (for the Tirich admin).
@@ -47,6 +56,47 @@ router.get("/data", requireKey, async (req, res, next) => {
     );
 
     res.json({ data: { leads: rows, total: totalRes.rows[0].c, limit, offset } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/sub-domain/lead-list/export ────────────
+// Download all (or ?search=) leads as an .xlsx file.
+router.get("/export", requireKey, async (req, res, next) => {
+  try {
+    const search = (req.query.search || "").trim();
+    const params = [];
+    let where = "";
+    if (search) {
+      params.push(`%${search}%`);
+      where = "WHERE name ILIKE $1 OR phone ILIKE $1 OR city ILIKE $1";
+    }
+    const { rows } = await query(
+      `SELECT name, phone, city, business_type, business_other, designation, created_at
+       FROM tirich_leads ${where} ORDER BY created_at DESC`,
+      params
+    );
+
+    const header = ["Name", "Phone", "City", "Business Type", "Business (Other)", "Designation", "Captured At"];
+    const data = [
+      header,
+      ...rows.map((r) => [
+        r.name || "",
+        r.phone || "",
+        r.city || "",
+        BUSINESS_LABELS[r.business_type] || r.business_type || "",
+        r.business_other || "",
+        DESIGNATION_LABELS[r.designation] || r.designation || "",
+        r.created_at ? new Date(r.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "",
+      ]),
+    ];
+
+    const buf = buildXlsx(data, "Tirich Leads");
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="tirich-leads-${stamp}.xlsx"`);
+    res.send(buf);
   } catch (err) {
     next(err);
   }
