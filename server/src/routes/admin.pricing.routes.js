@@ -204,8 +204,8 @@ router.get("/stone-rates", async (req, res, next) => {
   try {
     const { retailerId } = req.query;
     const { rows } = retailerId
-      ? await query("SELECT category, stone_name, quality, rate, unit, carat, pcs, updated_at FROM retailer_stone_rates WHERE retailer_id = $1 ORDER BY category, stone_name", [retailerId])
-      : await query("SELECT id, category, stone_name, quality, rate, unit, carat, pcs, updated_at FROM stone_rates ORDER BY category, stone_name");
+      ? await query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_at FROM retailer_stone_rates WHERE retailer_id = $1 ORDER BY category, stone_name", [retailerId])
+      : await query("SELECT id, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_at FROM stone_rates ORDER BY category, stone_name");
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -219,22 +219,23 @@ router.put("/stone-rates", async (req, res, next) => {
       let n = 0;
       if (retailerId) await c.query("DELETE FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
-        const { category, stone_name, quality, rate, unit, carat, pcs } = it;
+        const { category, stone_name, quality, rate, rate_pc, unit, carat, pcs } = it;
         if (!category || !stone_name) throw new AppError("Each stone needs category and stone_name");
         const caratVal = (carat === "" || carat == null) ? null : Number(carat);
         const pcsVal = (pcs === "" || pcs == null) ? null : parseInt(pcs, 10);
+        const ratePcVal = (rate_pc === "" || rate_pc == null) ? null : Number(rate_pc);
         if (retailerId) {
           await c.query(
-            `INSERT INTO retailer_stone_rates (retailer_id, category, stone_name, quality, rate, unit, carat, pcs, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [retailerId, category, stone_name, quality || null, Number(rate) || 0, unit || "carat", caratVal, pcsVal, req.admin.id]);
+            `INSERT INTO retailer_stone_rates (retailer_id, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [retailerId, category, stone_name, quality || null, Number(rate) || 0, ratePcVal, unit || "carat", caratVal, pcsVal, req.admin.id]);
         } else {
           await c.query(
-            `INSERT INTO stone_rates (category, stone_name, quality, rate, unit, carat, pcs, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            `INSERT INTO stone_rates (category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
              ON CONFLICT (category, stone_name, COALESCE(quality, ''))
-             DO UPDATE SET rate = EXCLUDED.rate, unit = EXCLUDED.unit, carat = EXCLUDED.carat, pcs = EXCLUDED.pcs, updated_by = EXCLUDED.updated_by`,
-            [category, stone_name, quality || null, Number(rate) || 0, unit || "carat", caratVal, pcsVal, req.admin.id]);
+             DO UPDATE SET rate = EXCLUDED.rate, rate_pc = EXCLUDED.rate_pc, unit = EXCLUDED.unit, carat = EXCLUDED.carat, pcs = EXCLUDED.pcs, updated_by = EXCLUDED.updated_by`,
+            [category, stone_name, quality || null, Number(rate) || 0, ratePcVal, unit || "carat", caratVal, pcsVal, req.admin.id]);
         }
         n++;
       }

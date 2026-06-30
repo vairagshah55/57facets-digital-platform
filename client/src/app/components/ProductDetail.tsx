@@ -1624,7 +1624,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: "rgba(165,105,189,0.14)", color: "#A569BD" }}>
                       {(() => {
-                        const total = product.stones.reduce((s, st) => s + (st.carat || 0) * (st.pcs || 1), 0);
+                        const total = product.stones.reduce((s, st) => s + (st.carat || 0), 0);
                         return total > 0 ? `${Number(total.toFixed(3))} ct total` : `${product.stones.length} pcs`;
                       })()}
                     </span>

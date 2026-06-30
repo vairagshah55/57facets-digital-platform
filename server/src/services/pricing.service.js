@@ -86,7 +86,7 @@ async function loadGlobalRows() {
     query("SELECT gold_type, rate_per_gram FROM metal_rates"),
     query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM diamond_sieve_map"),
-    query("SELECT category, stone_name, quality, rate, unit, carat, pcs FROM stone_rates"),
+    query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM stone_rates"),
     query("SELECT scope, mode, value FROM making_charges"),
   ]);
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
@@ -97,7 +97,7 @@ async function loadRetailerRows(retailerId) {
     query("SELECT gold_type, rate_per_gram FROM retailer_metal_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM retailer_sieve_map WHERE retailer_id = $1", [retailerId]),
-    query("SELECT category, stone_name, quality, rate, unit, carat, pcs FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
+    query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT scope, mode, value FROM retailer_making_charges WHERE retailer_id = $1", [retailerId]),
   ]);
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
@@ -105,9 +105,10 @@ async function loadRetailerRows(retailerId) {
 
 /* Build a chart from global rows (g) with retailer rows (r) overlaid on top. */
 function buildChart(g, r) {
+  // Gold rates are GLOBAL for every retailer — no per-retailer overlay.
+  // (Any legacy retailer_metal_rates rows are intentionally ignored.)
   const metalMap = new Map();
   for (const row of g.metals) metalMap.set(up(row.gold_type), num(row.rate_per_gram));
-  for (const row of r.metals) metalMap.set(up(row.gold_type), num(row.rate_per_gram));
 
   const diamondMap = new Map();
   for (const row of g.diamonds) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
@@ -127,20 +128,25 @@ function buildChart(g, r) {
   for (const [grp, arr] of retSieve) sieveByGroup.set(grp, arr);
   for (const arr of sieveByGroup.values()) arr.sort((a, b) => a.min - b.min);
 
-  // Stone: name+quality key, plus a name-only fallback (retailer rows override).
+  // Stone rates are GLOBAL for every retailer — no per-retailer overlay.
+  // (Any legacy retailer_stone_rates rows are intentionally ignored, so the
+  // price is always rate × carat × pcs from the Global stone chart.)
   const stoneMap = new Map();
   const addStone = (row, override) => {
     const rec = {
-      rate: num(row.rate), unit: row.unit || "carat",
+      rate: num(row.rate), ratePc: row.rate_pc == null ? null : num(row.rate_pc),
+      unit: row.unit || "carat",
       carat: row.carat == null ? null : num(row.carat),
       pcs: row.pcs == null ? null : num(row.pcs),
     };
     stoneMap.set(skey(row.stone_name, row.quality), rec);
     const nameOnly = skey(row.stone_name, null);
     if (override || !stoneMap.has(nameOnly)) stoneMap.set(nameOnly, rec);
+    // Category-aware key — disambiguates the same stone name across categories
+    // (e.g. "RED COLOUR STONE" in Semi Precious vs Synthetic).
+    if (row.category) stoneMap.set(skey(row.category, row.stone_name), rec);
   };
   for (const row of g.stones) addStone(row, false);
-  for (const row of r.stones) addStone(row, true);
 
   const makingMap = new Map();
   for (const row of g.makings) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
@@ -156,6 +162,8 @@ function buildChart(g, r) {
       return hit ? hit.sieve : null;
     },
     stoneRate: (name) => stoneMap.get(skey(name, null)) || null,
+    // Match by (category, name) — falls back to name-only via stoneRate.
+    stoneByCat: (cat, name) => stoneMap.get(skey(cat, name)) || null,
     makingFor: (product) => (
       (product.metal_type && makingMap.get(up(product.metal_type))) ||
       (product.category && makingMap.get(up(product.category))) ||
@@ -257,19 +265,32 @@ function computeBreakdown(product, chart) {
   let stoneCost = 0, stoneMatched = false;
   const stoneLines = [];
   for (const row of stoneRows) {
-    let matched = false, rate = 0, unit = null, name = null, sCarat = row.carat, sPcs = row.pcs;
-    for (const cand of row.cands) {
-      if (!cand) continue;
-      const sr = chart.stoneRate(cand);
-      if (sr) {
-        rate = sr.rate; unit = sr.unit; name = cand; matched = true;
-        if (sr.carat != null && sr.carat > 0) sCarat = sr.carat;
-        if (sr.pcs != null && sr.pcs > 0) sPcs = sr.pcs;
-        break;
+    // Quantities always come from the PRODUCT (carat / pcs). The rate chart
+    // only supplies the rate + unit.
+    let matched = false, rateCt = 0, ratePc = 0, unit = null, name = null;
+    const sCarat = row.carat, sPcs = row.pcs;
+    // The product carries (category, name) in its two stone fields. Match by
+    // (category, name) first so a stone name shared across categories resolves
+    // to the right rate; fall back to a name-only match.
+    const [a, b] = row.cands;
+    let sr = null;
+    if (chart.stoneByCat(a, b)) { sr = chart.stoneByCat(a, b); name = b; }
+    else if (chart.stoneByCat(b, a)) { sr = chart.stoneByCat(b, a); name = a; }
+    else {
+      for (const cand of row.cands) {
+        if (!cand) continue;
+        const r = chart.stoneRate(cand);
+        if (r) { sr = r; name = cand; break; }
       }
     }
-    const caratMul = (unit || "carat") === "carat" ? (sCarat > 0 ? sCarat : 1) : 1;
-    const lineCost = matched ? rate * caratMul * (sPcs > 0 ? sPcs : 1) : 0;
+    if (sr) { rateCt = sr.rate; ratePc = sr.ratePc || 0; unit = sr.unit; matched = true; }
+    // Per-carat: cost = rate(/ct) × product carat (pcs informational, like diamonds).
+    // Per-piece:  cost = rate(/pc) × product pcs.
+    const isCarat = (unit || "carat") === "carat";
+    const rate = isCarat ? rateCt : ratePc; // the applicable rate for the unit
+    const lineCost = matched
+      ? (isCarat ? rate * (sCarat > 0 ? sCarat : 1) : rate * (sPcs > 0 ? sPcs : 1))
+      : 0;
     stoneCost += lineCost;
     if (matched) stoneMatched = true;
     stoneLines.push({ name, rate, unit, carat: sCarat, pcs: sPcs > 0 ? sPcs : 1, cost: lineCost, matched });

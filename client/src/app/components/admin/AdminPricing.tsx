@@ -28,8 +28,9 @@ const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
 const ScopeContext = createContext<string>("");
 const useScope = () => useContext(ScopeContext);
 // Tabs that respect the per-retailer scope selector.
-// NOTE: "gold" is excluded — gold rates are identical for every retailer (always Global).
-const CHART_TABS: TabKey[] = ["diamond", "stones", "making"];
+// NOTE: "gold" and "stones" are excluded — those rates are identical for
+// every retailer (always Global), so they show no scope dropdown.
+const CHART_TABS: TabKey[] = ["diamond", "making"];
 
 /* ═══════════════════════════════════════════════════════
    ROOT
@@ -49,11 +50,11 @@ export function AdminPricing() {
     adminPricing.retailers().then((d: any) => setRetailers(d || [])).catch(() => { });
   }, []);
 
-  // Only the Stones tab offers a "Global default" price; the others are
-  // retailer-only. When on a retailer-only tab with no retailer chosen,
-  // default to the first retailer so the dropdown isn't left blank.
+  // The scope-aware tabs (diamond, making) are retailer-only. When one is
+  // active with no retailer chosen, default to the first retailer so the
+  // dropdown isn't left blank.
   useEffect(() => {
-    if (CHART_TABS.includes(tab) && tab !== "stones" && !scope) {
+    if (CHART_TABS.includes(tab) && !scope) {
       setScope(retailers[0]?.id ?? "");
     }
   }, [tab, scope, retailers]);
@@ -124,7 +125,6 @@ export function AdminPricing() {
             onChange={(e) => setScope(e.target.value)}
             className="h-9 text-sm rounded-lg px-2"
             style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 220 }}>
-            {tab === "stones" && <option value="">🌐 Global default (everyone)</option>}
             {retailers.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
@@ -318,6 +318,12 @@ function EditableTable({ cols, rows, setRows, addTemplate }: any) {
                 <td key={c.key} className="px-3 py-1.5" style={{ minWidth: c.width || 90 }}>
                   {c.compute ? (
                     <span className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>{c.compute(r)}</span>
+                  ) : c.suffix ? (
+                    <div className="flex items-center gap-1.5">
+                      <Cell value={r[c.key]} type={c.type} options={c.options} placeholder={c.placeholder}
+                        onChange={(v: any) => update(i, c.key, v)} />
+                      <span className="text-xs font-medium whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>{c.suffix(r)}</span>
+                    </div>
                   ) : (
                     <Cell value={r[c.key]} type={c.type} options={c.options} placeholder={c.placeholder}
                       onChange={(v: any) => update(i, c.key, v)} />
@@ -742,7 +748,8 @@ function DiamondTab() {
 /* ── STONES ──────────────────────────────────────────── */
 const STONE_CATS = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Kundan", "Beads"];
 function StonesTab() {
-  const scope = useScope();
+  // Stone rates are the same for every retailer — always edit the Global chart.
+  const scope = "";
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -764,28 +771,18 @@ function StonesTab() {
   };
 
   return (
-    <Card title="Stone rates" sub="Price = rate × carat × pcs (unit: carat) · rate × pcs (unit: piece)"
+    <Card title="Stone rates" sub="Store both rates; Unit picks which applies. carat → Rate(/ct) × carat · piece → Rate(/pc) × pcs"
       action={<SaveBtn onClick={save} saving={saving} />}>
       {loading ? <SkeletonRows cols={6} n={6} /> : (
         <EditableTable rows={rows} setRows={setRows}
-          addTemplate={{ category: "Precious Stones", stone_name: "", rate: "", unit: "carat", pcs: "" }}
+          addTemplate={{ category: "Precious Stones", stone_name: "", rate: "", rate_pc: "", unit: "carat" }}
           cols={[
             { key: "category", label: "Category", options: STONE_CATS, width: 170 },
             { key: "stone_name", label: "Stone name", width: 150 },
-            { key: "pcs", label: "Number of Pieces", type: "number", width: 130 },
-            { key: "rate", label: "Rate (/ct)", type: "number", width: 90 },
-            {
-              key: "_price", label: "Price", width: 100,
-              compute: (r: any) => {
-                const isCarat = (r.unit || "carat") === "carat";
-                const ct = Number(r.carat) || 1;   // default 1 when not picked
-                const pcs = Number(r.pcs) || 1;    // default 1 when blank
-                // carat unit → rate × carat × pcs ; piece unit → rate × pcs
-                const v = (Number(r.rate) || 0) * (isCarat ? ct : 1) * pcs;
-                return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
-              }
-            },
-            { key: "unit", label: "Unit", options: ["carat", "piece"], width: 90 },
+            // Both rates are stored independently; Unit selects which one prices.
+            { key: "rate", label: "Rate (/ct)", type: "number", width: 110 },
+            { key: "rate_pc", label: "Rate (/pc)", type: "number", width: 110 },
+            { key: "unit", label: "Unit", options: ["carat", "piece"], width: 100 },
           ]} />
       )}
     </Card>
@@ -1037,7 +1034,9 @@ function PreviewTab() {
         : `flat ${fmt(m.value)}`;
   const diaL: any[] = d?.diamond?.lines || [];
   const stnL: any[] = d?.stone?.lines || [];
-  const stoneInfo = (l: any) => `${l.name} · ${fmt(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat}ct` : ""}${l.pcs > 1 ? ` × ${l.pcs}pcs` : ""}`;
+  const stoneInfo = (l: any) => l.unit === "carat"
+    ? `${l.name} · ${fmt(l.rate)} × ${l.carat || 1}ct`
+    : `${l.name} · ${fmt(l.rate)} × ${l.pcs || 1}pcs`;
   // One row per diamond / stone when there are several, else a single summary row.
   const diamondLineRows = !d ? [] : diaL.length > 1
     ? diaL.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${fmt(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
@@ -1102,8 +1101,10 @@ function PreviewTab() {
       res: l.cost,
     }))
     : [{ k: "Diamond", eq: d.diamond.matched ? `${fmt(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1} ct` : "no rate matched", res: d.diamond.cost }];
-  // Stone steps: one row per stone (with carat × pcs) when several, else a single line.
-  const stoneEq = (l: any) => `${fmt(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat} ct` : ""}${l.pcs > 1 ? ` × ${l.pcs} pcs` : ""}`;
+  // Per-carat: rate × carat. Per-piece: rate × pcs. (Only the unit's quantity.)
+  const stoneEq = (l: any) => l.unit === "carat"
+    ? `${fmt(l.rate)} × ${l.carat || 1} ct`
+    : `${fmt(l.rate)} × ${l.pcs || 1} pcs`;
   const stnLines: any[] = d?.stone?.lines || [];
   const stoneSteps = !d ? [] : stnLines.length > 1
     ? stnLines.map((l, i) => ({

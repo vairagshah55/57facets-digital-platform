@@ -659,7 +659,7 @@ function StepSpecs({ form, setForm, pendingCarat, setPendingCarat }: {
       <div>
         <GroupLabel>Color Stones</GroupLabel>
         <p className="text-[11px] mb-3" style={{ color: "var(--sf-text-muted)" }}>
-          Each stone has its own name, quality, carat &amp; pcs. Stone cost = rate/ct × carat × pcs, summed across all stones.
+          Each stone has its own name, quality, carat &amp; pcs. Stone cost = rate/ct × total carat (per-carat) or rate × pcs (per-piece), summed across all stones.
         </p>
         <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--sf-divider)" }}>
           <table className="w-full text-sm border-collapse">
@@ -814,9 +814,12 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
   const diamondRows = !d ? [] : diaLines.length > 1
     ? diaLines.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${inr(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
     : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shade}-${d.diamond.clarity} · ${d.diamond.sieve} · ${inr(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
+  const stoneLineInfo = (l: any) => l.unit === "carat"
+    ? `${l.name} · ${inr(l.rate)} × ${l.carat || 1}ct`
+    : `${l.name} · ${inr(l.rate)} × ${l.pcs || 1}pcs`;
   const stoneRows = !d ? [] : stnLines.length > 1
-    ? stnLines.map((l, i) => ({ label: `Stone #${i + 1}`, cost: l.cost, info: l.matched ? `${l.name} · ${inr(l.rate)}${l.unit === "carat" && l.carat ? ` × ${l.carat}ct` : ""}${l.pcs > 1 ? ` × ${l.pcs}pcs` : ""}` : "no rate matched" }))
-    : [{ label: "Stone", cost: d.stone.cost, info: d.stone.matched ? `${d.stone.name} · ${inr(d.stone.rate)}${d.stone.unit === "carat" && d.stone.carat ? ` × ${d.stone.carat}ct` : ""}${d.stone.pcs > 1 ? ` × ${d.stone.pcs}pcs` : ""}` : "no stone / no rate" }];
+    ? stnLines.map((l, i) => ({ label: `Stone #${i + 1}`, cost: l.cost, info: l.matched ? stoneLineInfo(l) : "no rate matched" }))
+    : [{ label: "Stone", cost: d.stone.cost, info: d.stone.matched ? stoneLineInfo(d.stone) : "no stone / no rate" }];
   const lines = d ? [
     { label: "Metal", cost: d.gold.cost, info: `${d.gold.gold_type || "—"} · ${inr(d.gold.rate_per_gram)}/g × ${d.gold.weight || 0}g` },
     ...diamondRows,
