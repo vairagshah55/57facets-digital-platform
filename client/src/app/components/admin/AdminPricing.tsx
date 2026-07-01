@@ -1123,10 +1123,13 @@ function PreviewTab() {
   const stoneInfo = (l: any) => l.unit === "carat"
     ? `${l.name} · ${fmt(l.rate)} × ${l.carat || 1}ct`
     : `${l.name} · ${fmt(l.rate)} × ${l.pcs || 1}pcs`;
+  // Grade/sieve can be missing (ungraded diamond) — never render "null".
+  const diaGrade = (sh: any, cl: any) => (sh && cl) ? `${sh}-${cl}` : (sh || cl || "ungraded");
+  const diaSieve = (sv: any) => (sv && sv !== "~") ? `${sv} · ` : "";
   // One row per diamond / stone when there are several, else a single summary row.
   const diamondLineRows = !d ? [] : diaL.length > 1
-    ? diaL.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${fmt(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
-    : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${d.diamond.sieve} · ${d.diamond.shade}-${d.diamond.clarity} · ${fmt(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
+    ? diaL.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${diaSieve(l.sieve)}${diaGrade(l.shade, l.clarity)} · ${fmt(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
+    : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shape_group} · ${diaSieve(d.diamond.sieve)}${diaGrade(d.diamond.shade, d.diamond.clarity)} · ${fmt(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
   const stoneLineRows = !d ? [] : stnL.length > 1
     ? stnL.map((l, i) => ({ label: `Stone #${i + 1}`, cost: l.cost, info: l.matched ? stoneInfo(l) : "no rate matched" }))
     : [{ label: "Stone", cost: d.stone.cost, info: d.stone.matched ? stoneInfo(d.stone) : "no stone / no rate" }];
@@ -1183,7 +1186,7 @@ function PreviewTab() {
   const diamondSteps = !d ? [] : diaLines.length > 1
     ? diaLines.map((l, i) => ({
       k: `Diamond #${i + 1}`,
-      eq: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${fmt(l.rate_per_carat)} × ${l.carat || 1} ct` : "no rate matched",
+      eq: l.matched ? `${diaSieve(l.sieve)}${diaGrade(l.shade, l.clarity)} · ${fmt(l.rate_per_carat)} × ${l.carat || 1} ct` : "no rate matched",
       res: l.cost,
     }))
     : [{ k: "Diamond", eq: d.diamond.matched ? `${fmt(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1} ct` : "no rate matched", res: d.diamond.cost }];

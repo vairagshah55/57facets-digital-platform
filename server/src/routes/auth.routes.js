@@ -185,7 +185,7 @@ const { authenticate } = require("../middleware/auth");
 router.get("/me", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      "SELECT id, name, phone, email, company_name, address, first_login, created_at FROM retailers WHERE id = $1",
+      "SELECT id, name, phone, email, company_name, address, country, first_login, created_at FROM retailers WHERE id = $1",
       [req.retailer.id]
     );
     if (rows.length === 0) {
@@ -199,6 +199,7 @@ router.get("/me", authenticate, async (req, res, next) => {
       email: r.email,
       companyName: r.company_name,
       address: r.address,
+      country: r.country || "India",
       firstLogin: r.first_login,
       createdAt: r.created_at,
     });

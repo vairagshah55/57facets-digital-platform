@@ -812,10 +812,13 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
     : `flat ${inr(m.value)}`;
   const diaLines: any[] = d?.diamond?.lines || [];
   const stnLines: any[] = d?.stone?.lines || [];
+  // Grade/sieve can be missing (ungraded diamond) — never render "null".
+  const diaGrade = (sh: any, cl: any) => (sh && cl) ? `${sh}-${cl}` : (sh || cl || "ungraded");
+  const diaSieve = (sv: any) => (sv && sv !== "~") ? `${sv} · ` : "";
   // One row per diamond / stone when there are several, else a single summary row.
   const diamondRows = !d ? [] : diaLines.length > 1
-    ? diaLines.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${l.sieve} · ${l.shade}-${l.clarity} · ${inr(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
-    : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${d.diamond.shade}-${d.diamond.clarity} · ${d.diamond.sieve} · ${inr(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
+    ? diaLines.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${diaSieve(l.sieve)}${diaGrade(l.shade, l.clarity)} · ${inr(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
+    : [{ label: "Diamond", cost: d.diamond.cost, info: d.diamond.matched ? `${diaGrade(d.diamond.shade, d.diamond.clarity)} · ${diaSieve(d.diamond.sieve)}${inr(d.diamond.rate_per_carat)} × ${d.diamond.carat || 1}ct` : "no rate matched" }];
   const stoneLineInfo = (l: any) => l.unit === "carat"
     ? `${l.name} · ${inr(l.rate)} × ${l.carat || 1}ct`
     : `${l.name} · ${inr(l.rate)} × ${l.pcs || 1}pcs`;

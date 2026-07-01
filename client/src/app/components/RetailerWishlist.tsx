@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
@@ -102,8 +103,8 @@ const FOLDER_COLORS = [
   "#22c55e",
 ];
 
-function formatPrice(price: number): string {
-  return "₹" + price.toLocaleString("en-IN");
+function formatPrice(price: number, isINR = true): string {
+  return (isINR ? "₹" : "$") + price.toLocaleString(isINR ? "en-IN" : "en-US");
 }
 
 function formatDate(dateStr: string): string {
@@ -834,6 +835,8 @@ function WishlistCard({
   onOrder: () => void;
 }) {
   const { addItem, items: cartItems } = useCart();
+  const { retailer } = useAuth();
+  const isINR = (retailer?.country || "India") === "India";
   const alreadyInCart = cartItems.some((c) => c.productId === product.id);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -966,7 +969,7 @@ function WishlistCard({
         </p>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-            {formatPrice(product.price ?? product.base_price)}
+            {formatPrice(product.price ?? product.base_price, isINR)}
           </p>
           {!selectionMode && (
             <Button

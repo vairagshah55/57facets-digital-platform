@@ -32,7 +32,7 @@ const num = (v, d = 0) => {
 function toShapeGroup(shape) {
   if (!shape) return null;
   const s = String(shape).trim().toUpperCase();
-  if (s.includes("ROUND")) return "ROUND";
+  if (s.includes("ROUND") || s.includes("SOLITAIRE")) return "ROUND";
   if (s.includes("MARQUISE") || s.includes("BAGUETTE")) return "MARQUISE/BAGUETTE";
   if (s.includes("PEAR") || s.includes("PRINCESS")) return "PEAR/PRINCESS";
   return s.replace(/\s+/g, " ").trim();
@@ -118,10 +118,29 @@ function buildChart(g, r, country) {
 
   // Diamond base rates are per-COUNTRY (fallback India); retailer overrides on top.
   const diamondMap = new Map();
+  // Cascading fallbacks (largest sieve wins) for diamonds whose exact
+  // sieve/shade/clarity isn't in the matrix: group+shade+clarity → group+shade
+  // → group. Ensures a diamond with a carat still prices from the shape's rates.
+  const diaGSC = new Map(), diaGS = new Map(), diaG = new Map();
+  const upsertBig = (m, k, mag, rate) => {
+    const cur = m.get(k);
+    if (!cur || mag > cur.mag || (mag === cur.mag && rate > cur.rate)) m.set(k, { mag, rate });
+  };
+  const setRate = (row) => diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
+  // Fallbacks are built from BASE (country) rates only — never per-retailer
+  // overrides, so an outlier override can't pollute a fallback price.
+  const addFallback = (row) => {
+    const rate = num(row.rate_per_carat);
+    const sgU = up(row.shape_group), shU = up(row.shade), clU = up(row.clarity);
+    const mag = Math.abs(parseInt(row.sieve_size, 10)) || 0;
+    upsertBig(diaGSC, `${sgU}|${shU}|${clU}`, mag, rate);
+    upsertBig(diaGS, `${sgU}|${shU}`, mag, rate);
+    upsertBig(diaG, sgU, mag, rate);
+  };
   const baseDia = g.diamonds.filter((d) => up(d.country) === wantC);
   const diaRows = baseDia.length ? baseDia : g.diamonds.filter((d) => up(d.country) === "INDIA");
-  for (const row of diaRows) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
-  for (const row of r.diamonds) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
+  for (const row of diaRows) { setRate(row); addFallback(row); }
+  for (const row of r.diamonds) setRate(row); // retailer overrides → exact match only
 
   // Sieve ranges grouped by shape_group. A retailer that defines any range for
   // a group REPLACES the global ranges for that group (avoids overlap clashes).
@@ -170,6 +189,13 @@ function buildChart(g, r, country) {
   return {
     metalRate: (goldType) => metalMap.get(up(goldType)) ?? 0,
     diamondRate: (group, sieve, shade, clarity) => diamondMap.get(dkey(group, sieve, shade, clarity)) ?? null,
+    // Cascading fallback when the exact sieve/grade isn't found: group+shade+
+    // clarity → group+shade → group (each at its largest sieve).
+    diamondRateFallback: (group, shade, clarity) => {
+      const gU = up(group), sU = up(shade), cU = up(clarity);
+      const hit = diaGSC.get(`${gU}|${sU}|${cU}`) || diaGS.get(`${gU}|${sU}`) || diaG.get(gU);
+      return hit ? hit.rate : null;
+    },
     sieveFor: (group, carat) => {
       const arr = sieveByGroup.get(up(group));
       if (!arr) return null;
@@ -259,16 +285,23 @@ function computeBreakdown(product, chart) {
     const sh = normalizeShade(dr.diamond_color);
     const cl = normalizeClarity(dr.diamond_clarity);
     const pcs = num(dr.diamond_pcs, 0);
-    let rate = 0, matched = false;
+    let rate = 0, matched = false, usedSieve = sv;
     if (sv) {
       const r = chart.diamondRate(grp, sv, sh, cl);
       if (r != null) { rate = r; matched = true; }
+    }
+    // Fallback: no sieve resolved (or that sieve has no row) → use the rate for
+    // this shape+shade+clarity at the largest available sieve, so a diamond with
+    // a carat but no sieve still prices.
+    if (!matched) {
+      const r = chart.diamondRateFallback(grp, sh, cl);
+      if (r != null) { rate = r; matched = true; usedSieve = sv || "~"; }
     }
     // Diamond cost = rate × carat (carat is the total weight; pcs is informational).
     const lineCost = matched ? rate * (dCarat > 0 ? dCarat : 1) : 0;
     diamondCost += lineCost;
     if (matched) diamondMatched = true;
-    diamondLines.push({ shape_group: grp, sieve: sv, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
+    diamondLines.push({ shape_group: grp, sieve: usedSieve, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
   }
   const firstDia = diamondLines.find((l) => l.matched) || diamondLines[0] || {};
 

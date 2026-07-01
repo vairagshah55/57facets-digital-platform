@@ -7,6 +7,7 @@ type Retailer = {
   phone: string;
   email: string;
   companyName: string;
+  country?: string;
   firstLogin: boolean;
 };
 

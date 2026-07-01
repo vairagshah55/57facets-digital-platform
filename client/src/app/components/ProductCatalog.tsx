@@ -38,6 +38,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router";
 import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, uploads as uploadsApi, imageUrl } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES & HELPERS
@@ -66,13 +67,15 @@ const PRICE_MIN = 0, PRICE_MAX = 500000, CARAT_MIN = 0, CARAT_MAX = 5;
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
 
-function formatPrice(n: number): string { return "₹" + n.toLocaleString("en-IN"); }
+function formatPrice(n: number, isINR = true): string {
+  return (isINR ? "₹" : "$") + n.toLocaleString(isINR ? "en-IN" : "en-US");
+}
 
-function mapProduct(p: ApiProduct): Product {
+function mapProduct(p: ApiProduct, isINR = true): Product {
   // Prefer the per-retailer price computed by the server; fall back to base_price.
   const price = p.price != null ? Number(p.price) : (Number(p.base_price) || 0);
   return {
-    id: p.id, name: p.name, sku: p.sku || "", price, priceLabel: formatPrice(price),
+    id: p.id, name: p.name, sku: p.sku || "", price, priceLabel: formatPrice(price, isINR),
     category: p.category, carat: p.carat ?? 0, availability: p.availability,
     image: p.image ? imageUrl(p.image) : PLACEHOLDER_IMAGE, isNew: p.is_new,
   };
@@ -84,6 +87,8 @@ function mapProduct(p: ApiProduct): Product {
 
 export function ProductCatalog({ collectionId: collectionIdProp }: { collectionId?: string } = {}) {
   const navigate = useNavigate();
+  const { retailer } = useAuth();
+  const isINR = (retailer?.country || "India") === "India"; // currency for this retailer
   const [searchParams] = useSearchParams();
   // Collection can come from a dedicated route param (prop) or a ?collection= query.
   const collectionId = collectionIdProp ?? searchParams.get("collection");
@@ -159,7 +164,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
         if (activeTab === "viewed" || activeTab === "unseen") {
           const data: ApiProduct[] =
             activeTab === "unseen" ? await productsApi.unseen() : await productsApi.recentlyViewed();
-          let result = (data || []).map(mapProduct);
+          let result = (data || []).map((p: ApiProduct) => mapProduct(p, isINR));
           // These lists are fetched unfiltered, so apply the active filters client-side.
           if (activeCategory !== "All") result = result.filter((p) => p.category === activeCategory);
           const s = debouncedSearch.trim().toLowerCase();
@@ -185,7 +190,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           params.limit = "24";
           const data = await productsApi.list(params);
           if (!cancelled) {
-            const mapped = ((data.products || []) as ApiProduct[]).map(mapProduct);
+            const mapped = ((data.products || []) as ApiProduct[]).map((p) => mapProduct(p, isINR));
             setProducts(mapped); setTotalProducts(data.total ?? mapped.length); setTotalPages(data.totalPages ?? 1);
             if (mapped.length > 0) {
               try {
@@ -202,7 +207,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }
     fetchProducts();
     return () => { cancelled = true; };
-  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page, collectionId]);
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page, collectionId, isINR]);
 
   const toggleWishlist = useCallback(async (productId: string) => {
     const isWishlisted = wishlistedIds.has(productId);
@@ -546,8 +551,8 @@ function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, ava
       <FilterSection title="Price Range">
         <Slider min={PRICE_MIN} max={PRICE_MAX} step={5000} value={priceRange} onValueChange={setPriceRange} className="mt-2" />
         <div className="flex justify-between mt-2">
-          <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>₹{(priceRange[0] / 1000).toFixed(0)}K</span>
-          <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>₹{(priceRange[1] / 1000).toFixed(0)}K</span>
+          <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{isINR ? "₹" : "$"}{(priceRange[0] / 1000).toFixed(0)}K</span>
+          <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{isINR ? "₹" : "$"}{(priceRange[1] / 1000).toFixed(0)}K</span>
         </div>
       </FilterSection>
 
