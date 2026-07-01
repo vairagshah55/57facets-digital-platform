@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -255,6 +255,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     navigate(`/retailer/product/${pid}`, { state: { productIds: neighborIds, index: newIdx } });
   }, [navigate, neighborIds]);
 
+  // Vertically align the floating prev/next product arrows with the SKU/name row.
+  const mainRef = useRef<HTMLElement>(null);
+  const skuRef = useRef<HTMLDivElement>(null);
+  const [arrowTop, setArrowTop] = useState<number | null>(null);
+
   // Data fetching state
   const [product, setProduct] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -347,6 +352,21 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     fetchProduct();
     return () => { cancelled = true; };
   }, [id, adminPreview, previewRetailerId]);
+
+  // Measure the SKU/name row so the floating side arrows line up with it.
+  useEffect(() => {
+    if (adminPreview) return;
+    const measure = () => {
+      if (!skuRef.current || !mainRef.current) return;
+      const skuRect = skuRef.current.getBoundingClientRect();
+      const mainRect = mainRef.current.getBoundingClientRect();
+      // Center on the SKU row, then nudge up a little.
+      setArrowTop(skuRect.top - mainRect.top + skuRect.height / 2 - 28);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [product, adminPreview]);
 
   // ── Wishlist toggle ────────────────────────────────
   const handleWishlistToggle = useCallback(async () => {
@@ -506,28 +526,28 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Prev / next product — floating side arrows (retailer view only) */}
-      {!adminPreview && prevId && (
+    <main ref={mainRef} className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Prev / next product — floating side arrows, aligned with the SKU/name row (retailer view only) */}
+      {!adminPreview && prevId && arrowTop != null && (
         <button
           onClick={() => goToProduct(prevId, navIdx - 1)}
           title="Previous product"
           aria-label="Previous product"
-          className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          className="absolute left-2 sm:left-3 lg:-left-5 xl:-left-10 -translate-y-1/2 lg:-translate-x-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ top: arrowTop, backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       )}
-      {!adminPreview && nextId && (
+      {!adminPreview && nextId && arrowTop != null && (
         <button
           onClick={() => goToProduct(nextId, navIdx + 1)}
           title="Next product"
           aria-label="Next product"
-          className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          className="absolute right-2 sm:right-3 lg:-right-5 xl:-right-10 -translate-y-1/2 lg:translate-x-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ top: arrowTop, backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
         >
@@ -745,7 +765,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
             <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
               {product.description}
             </p>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
               <AvailabilityBadge status={product.availability} />
               <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
                 SKU: {product.sku}
