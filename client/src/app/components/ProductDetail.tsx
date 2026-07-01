@@ -701,43 +701,20 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
             )}
           </div>
 
-          {/* GSI certification — trust strip below the gallery (clickable to verify) */}
-          {product.sku ? (
-            <a
-              href={`https://wg.gemscience.net/vr/veri.aspx?${encodeURIComponent(product.sku)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Verify this product's GSI certificate"
-              className="flex items-center gap-3 mt-4 px-4 py-3 rounded-xl transition-all hover:opacity-90"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}
-            >
-              <img src={gsiEmblem} alt="GSI" className="w-9 h-auto shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                  GSI Certified
-                </span>
-                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>
-                  Gemological Science International
-                </span>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto shrink-0" style={{ color: "var(--sf-text-muted)" }} />
-            </a>
-          ) : (
-            <div
-              className="flex items-center gap-3 mt-4 px-4 py-3 rounded-xl"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)" }}
-            >
-              <img src={gsiEmblem} alt="GSI" className="w-9 h-auto shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>
-                  GSI Certified
-                </span>
-                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>
-                  Gemological Science International
-                </span>
-              </div>
-            </div>
-          )}
+          {/* GSI certification logo — display only, not clickable */}
+          <div
+            className="flex items-center justify-center mt-4 px-6 py-5 rounded-2xl"
+            style={{
+              backgroundColor: "var(--sf-bg-surface-2)",
+              border: "1px solid var(--sf-divider)",
+            }}
+          >
+            <img
+              src={gsiEmblem}
+              alt="GSI Certified"
+              className="w-40 sm:w-48 h-auto object-contain"
+            />
+          </div>
         </motion.div>
 
         {/* ═══ RIGHT: Product Info ═══════════════════ */}
