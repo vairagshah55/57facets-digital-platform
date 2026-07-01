@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Country, State, City } from "country-state-city";
 import {
   Search,
   Plus,
@@ -22,6 +23,8 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -55,6 +58,8 @@ import {
 import { ScrollArea } from "../ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { Checkbox } from "../ui/checkbox";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "../ui/command";
 import { adminRetailers } from "../../../lib/adminApi";
 
 /* ═══════════════════════════════════════════════════════
@@ -68,6 +73,7 @@ type Retailer = {
   email: string;
   business_name: string;
   company_name: string;
+  country: string;
   city: string;
   state: string;
   tier: "standard" | "silver" | "gold" | "platinum";
@@ -899,6 +905,7 @@ function EditRetailerDialog({
     email: "",
     business_name: "",
     company_name: "",
+    country: "",
     city: "",
     state: "",
     tier: "standard",
@@ -914,6 +921,7 @@ function EditRetailerDialog({
         email: retailer.email || "",
         business_name: retailer.business_name || "",
         company_name: retailer.company_name || "",
+        country: retailer.country || "",
         city: retailer.city || "",
         state: retailer.state || "",
         tier: retailer.tier || "standard",
@@ -995,20 +1003,12 @@ function EditRetailerDialog({
               placeholder="Company name"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FieldInput
-              label="City"
-              value={form.city}
-              onChange={(v) => setForm({ ...form, city: v })}
-              placeholder="City"
-            />
-            <FieldInput
-              label="State"
-              value={form.state}
-              onChange={(v) => setForm({ ...form, state: v })}
-              placeholder="State"
-            />
-          </div>
+          <LocationSelect
+            country={form.country}
+            state={form.state}
+            city={form.city}
+            onChange={(loc) => setForm({ ...form, ...loc })}
+          />
           <div>
             <label
               className="text-xs font-medium block mb-1"
@@ -1100,6 +1100,7 @@ function CreateRetailerDialog({
     email: "",
     business_name: "",
     company_name: "",
+    country: "",
     city: "",
     state: "",
     tier: "standard",
@@ -1114,6 +1115,7 @@ function CreateRetailerDialog({
       email: "",
       business_name: "",
       company_name: "",
+      country: "",
       city: "",
       state: "",
       tier: "standard",
@@ -1200,20 +1202,12 @@ function CreateRetailerDialog({
               placeholder="Company name"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FieldInput
-              label="City"
-              value={form.city}
-              onChange={(v) => setForm({ ...form, city: v })}
-              placeholder="City"
-            />
-            <FieldInput
-              label="State"
-              value={form.state}
-              onChange={(v) => setForm({ ...form, state: v })}
-              placeholder="State"
-            />
-          </div>
+          <LocationSelect
+            country={form.country}
+            state={form.state}
+            city={form.city}
+            onChange={(loc) => setForm({ ...form, ...loc })}
+          />
           <div>
             <label
               className="text-xs font-medium block mb-1"
@@ -2322,6 +2316,119 @@ function FieldInput({
           color: "var(--sf-text-primary)",
         }}
       />
+    </div>
+  );
+}
+
+/* Searchable single-select combobox (Popover + Command). */
+function SearchSelect({
+  value, options, placeholder, disabled, onChange,
+}: {
+  value: string;
+  options: string[];
+  placeholder: string;
+  disabled?: boolean;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="h-9 w-full text-sm rounded-md border px-2 flex items-center justify-between gap-1 disabled:opacity-50"
+          style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
+        >
+          <span className="truncate" style={{ opacity: value ? 1 : 0.55 }}>{value || placeholder}</span>
+          <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0"
+        style={{ width: "var(--radix-popover-trigger-width)", backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
+      >
+        <Command>
+          <CommandInput placeholder={`Search ${placeholder.toLowerCase()}…`} />
+          <CommandList className="sf-teal-scroll">
+            <CommandEmpty>No results.</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem key={opt} value={opt} onSelect={() => { onChange(opt); setOpen(false); }}>
+                  <Check className="mr-2 w-3.5 h-3.5" style={{ opacity: value === opt ? 1 : 0 }} />
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* Cascading Country → State → City search-dropdowns. Values are the
+   human-readable names. Falls back to a text input when the dataset has no
+   states/cities for the selection (small countries). */
+function LocationSelect({
+  country, state, city, onChange,
+}: {
+  country: string; state: string; city: string;
+  onChange: (v: { country: string; state: string; city: string }) => void;
+}) {
+  // Restricted to the countries we currently operate in.
+  const ALLOWED_COUNTRIES = ["IN", "US"];
+  const countries = useMemo(
+    () => Country.getAllCountries().filter((c) => ALLOWED_COUNTRIES.includes(c.isoCode)),
+    []
+  );
+  const countryObj = useMemo(() => countries.find((c) => c.name === country), [countries, country]);
+  const states = useMemo(() => (countryObj ? State.getStatesOfCountry(countryObj.isoCode) : []), [countryObj]);
+  const stateObj = useMemo(() => states.find((s) => s.name === state), [states, state]);
+  const cities = useMemo(
+    () => (countryObj && stateObj ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode) : []),
+    [countryObj, stateObj]
+  );
+
+  const inputStyle = {
+    backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)",
+  } as const;
+  const Label = ({ children }: { children: React.ReactNode }) => (
+    <label className="text-xs font-medium block mb-1" style={{ color: "var(--sf-text-secondary)" }}>{children}</label>
+  );
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div>
+        <Label>Country</Label>
+        <SearchSelect value={country} placeholder="Select country"
+          options={countries.map((c) => c.name)}
+          onChange={(v) => onChange({ country: v, state: "", city: "" })} />
+      </div>
+
+      <div>
+        <Label>State</Label>
+        {countryObj && states.length === 0 ? (
+          <input className="h-9 w-full text-sm rounded-md border px-2 outline-none" style={inputStyle} value={state} placeholder="State"
+            onChange={(e) => onChange({ country, state: e.target.value, city: "" })} />
+        ) : (
+          <SearchSelect value={state} placeholder="Select state" disabled={!countryObj}
+            options={states.map((s) => s.name)}
+            onChange={(v) => onChange({ country, state: v, city: "" })} />
+        )}
+      </div>
+
+      <div>
+        <Label>City</Label>
+        {stateObj && cities.length === 0 ? (
+          <input className="h-9 w-full text-sm rounded-md border px-2 outline-none" style={inputStyle} value={city} placeholder="City"
+            onChange={(e) => onChange({ country, state, city: e.target.value })} />
+        ) : (
+          <SearchSelect value={city} placeholder="Select city" disabled={!stateObj}
+            options={cities.map((ci) => ci.name)}
+            onChange={(v) => onChange({ country, state, city: v })} />
+        )}
+      </div>
     </div>
   );
 }

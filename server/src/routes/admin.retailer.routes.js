@@ -35,7 +35,7 @@ router.get("/", async (req, res, next) => {
 
     const { rows } = await query(
       `SELECT r.id, r.name, r.phone, r.email, r.company_name, r.business_name,
-              r.city, r.state, r.tier, r.is_active, r.first_login, r.last_active_at, r.created_at,
+              r.country, r.city, r.state, r.tier, r.is_active, r.first_login, r.last_active_at, r.created_at,
               (SELECT COUNT(*) FROM orders WHERE retailer_id = r.id) AS order_count,
               (SELECT COALESCE(SUM(total), 0) FROM orders WHERE retailer_id = r.id) AS total_spent,
               (SELECT COUNT(*) FROM wishlists WHERE retailer_id = r.id) AS wishlist_count
@@ -65,17 +65,17 @@ router.get("/", async (req, res, next) => {
 // Create new retailer
 router.post("/", async (req, res, next) => {
   try {
-    const { name, phone, email, business_name, company_name, city, state, tier, address } = req.body;
+    const { name, phone, email, business_name, company_name, country, city, state, tier, address } = req.body;
     if (!name || !phone) throw new AppError("Name and phone are required");
 
     const { rows: existing } = await query("SELECT id FROM retailers WHERE phone = $1", [phone]);
     if (existing.length > 0) throw new AppError("Phone number already registered");
 
     const { rows } = await query(
-      `INSERT INTO retailers (name, phone, email, business_name, company_name, city, state, tier, address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      `INSERT INTO retailers (name, phone, email, business_name, company_name, country, city, state, tier, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [name, phone, email || null, business_name || null, company_name || null,
-       city || null, state || null, tier || "standard", address || null]
+       country || null, city || null, state || null, tier || "standard", address || null]
     );
 
     // Log activity
@@ -164,7 +164,7 @@ router.get("/:id", async (req, res, next) => {
 // Update retailer
 router.put("/:id", async (req, res, next) => {
   try {
-    const { name, email, business_name, company_name, city, state, tier, address } = req.body;
+    const { name, email, business_name, company_name, country, city, state, tier, address } = req.body;
     const { rows } = await query(
       `UPDATE retailers SET
         name = COALESCE($1, name),
@@ -175,9 +175,10 @@ router.put("/:id", async (req, res, next) => {
         state = COALESCE($6, state),
         tier = COALESCE($7, tier),
         address = COALESCE($8, address),
+        country = COALESCE($10, country),
         updated_at = NOW()
        WHERE id = $9 RETURNING *`,
-      [name, email, business_name, company_name, city, state, tier, address, req.params.id]
+      [name, email, business_name, company_name, city, state, tier, address, req.params.id, country]
     );
     if (rows.length === 0) throw new AppError("Retailer not found", 404);
     res.json(rows[0]);
