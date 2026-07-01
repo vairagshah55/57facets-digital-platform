@@ -1707,16 +1707,27 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 const bd = product.priceBreakdown;
                 const diamondVal = bd ? Math.round(bd.diamondCost || 0) : Math.round(product.basePrice * 0.65 * (selectedCarat / product.specs.diamondCarat));
                 const metalVal = bd ? Math.round(bd.metalCost || 0) : Math.round(parseFloat(product.specs.metalWeight) * product.goldPricePerGram);
+                const stoneVal = bd ? Math.round(bd.stoneCost || 0) : 0;
                 // Making charges hidden from the product-detail breakdown.
                 // const makingVal = bd ? Math.round(bd.makingCost || 0) : Math.round(product.basePrice * 0.12);
                 // Total diamond carat across all diamonds (falls back to the listed carat).
                 const totalDiaCarat = product.diamonds.reduce((s, d) => s + (Number(d.carat) || 0), 0) || Number(product.specs.diamondCarat) || 0;
-                const subtotal = (diamondVal + metalVal) || 1; // used by the Total composition bar
+                // Show a Stone row only when the product actually carries stones.
+                const hasStones = stoneVal > 0 || product.stones.length > 0 || product.customization.colorStoneNames.length > 0;
+                const totalStoneCarat = product.stones.reduce((s, st) => s + (Number(st.carat) || 0), 0);
+                const stoneNames = (product.stones.length
+                  ? product.stones.map((st) => st.name)
+                  : product.customization.colorStoneNames).filter(Boolean);
+                const stoneSub = totalStoneCarat > 0
+                  ? `${Number(totalStoneCarat.toFixed(3))} ct total`
+                  : (stoneNames.slice(0, 2).join(", ") || "Coloured stones");
                 const rows = [
                   { icon: <Diamond />, accent: "#5DADE2", gradient: "93,173,226", label: "Diamond", sub: `${Number(totalDiaCarat.toFixed(3))} ct total`, val: diamondVal },
+                  ...(hasStones ? [{ icon: <Gem />, accent: "#27AE60", gradient: "39,174,96", label: "Stone", sub: stoneSub, val: stoneVal }] : []),
                   { icon: <Palette />, accent: "#D4A843", gradient: "212,168,67", label: "Metal", sub: `${product.specs.metalWeight} × ${formatPrice(product.goldPricePerGram)}/g`, val: metalVal },
                   // { icon: <Sparkles />, accent: "#A569BD", gradient: "165,105,189", label: "Making", sub: "Craftsmanship", val: makingVal },
                 ];
+                const subtotal = rows.reduce((s, r) => s + r.val, 0) || 1; // used by the Total composition bar
                 return (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -1840,24 +1851,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       </div>
                       {/* Animated stacked composition bar */}
                       <div className="flex h-1.5 relative" style={{ opacity: 0.8 }}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.round((diamondVal / subtotal) * 100)}%` }}
-                          transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
-                          style={{ background: "linear-gradient(90deg, #5DADE2, #5DADE2cc)" }}
-                        />
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.round((metalVal / subtotal) * 100)}%` }}
-                          transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
-                          style={{ background: "linear-gradient(90deg, #D4A843, #D4A843cc)" }}
-                        />
-                        <motion.div
-                          initial={{ flex: 0 }}
-                          animate={{ flex: 1 }}
-                          transition={{ delay: 0.7, duration: 0.7, ease: "easeOut" }}
-                          style={{ background: "linear-gradient(90deg, #A569BD, #A569BDcc)" }}
-                        />
+                        {rows.map((row, i) => (
+                          <motion.div
+                            key={row.label}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.round((row.val / subtotal) * 100)}%` }}
+                            transition={{ delay: 0.5 + i * 0.1, duration: 0.7, ease: "easeOut" }}
+                            style={{ background: `linear-gradient(90deg, ${row.accent}, ${row.accent}cc)` }}
+                          />
+                        ))}
                       </div>
                       {/* Composition legend */}
                       <div className="relative flex items-center justify-center gap-4 py-2.5" style={{ background: "var(--sf-glass-bg)" }}>
