@@ -219,11 +219,12 @@ async function syncGoldRates(adminId = null) {
     source = "ibja";
   }
 
+  // IBJA/Nebula are Indian sources → these update the India gold chart.
   for (const [gold_type, rate] of Object.entries(rates)) {
     await query(
-      `INSERT INTO metal_rates (gold_type, rate_per_gram, updated_by)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (gold_type) DO UPDATE SET rate_per_gram = EXCLUDED.rate_per_gram, updated_by = EXCLUDED.updated_by`,
+      `INSERT INTO metal_rates (country, gold_type, rate_per_gram, updated_by)
+       VALUES ('India',$1,$2,$3)
+       ON CONFLICT (country, gold_type) DO UPDATE SET rate_per_gram = EXCLUDED.rate_per_gram, updated_by = EXCLUDED.updated_by`,
       [gold_type, rate, adminId]);
   }
   pricing.invalidateRateCache();

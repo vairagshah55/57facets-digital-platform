@@ -36,6 +36,7 @@ const asArray = (b) => (Array.isArray(b) ? b : Array.isArray(b?.rows) ? b.rows :
 router.get("/diamond-rates", async (req, res, next) => {
   try {
     const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const { rows } = retailerId
       ? await query(
           `SELECT shape_group, sieve_size, shade, clarity, rate_per_carat, updated_at
@@ -43,7 +44,7 @@ router.get("/diamond-rates", async (req, res, next) => {
            ORDER BY shape_group, sieve_size, shade, clarity`, [retailerId])
       : await query(
           `SELECT id, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_at
-           FROM diamond_rates ORDER BY shape_group, sieve_size, shade, clarity`);
+           FROM diamond_rates WHERE country = $1 ORDER BY shape_group, sieve_size, shade, clarity`, [country]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -53,9 +54,10 @@ router.put("/diamond-rates", async (req, res, next) => {
     const items = asArray(req.body);
     if (!items) throw new AppError("Body must be an array of diamond rates");
     const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const out = await tx(async (c) => {
       let n = 0;
-      // Per-retailer: full replace of this retailer's rows (cleared rows drop back to Global).
+      // Per-retailer: full replace of this retailer's rows (cleared rows drop back to the country base).
       if (retailerId) await c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
         const { shape_group, shade, clarity, rate_per_carat } = it;
@@ -71,11 +73,11 @@ router.put("/diamond-rates", async (req, res, next) => {
             [retailerId, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
         } else {
           await c.query(
-            `INSERT INTO diamond_rates (shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6)
-             ON CONFLICT (shape_group, sieve_size, shade, clarity)
+            `INSERT INTO diamond_rates (country, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (country, shape_group, sieve_size, shade, clarity)
              DO UPDATE SET rate_per_carat = EXCLUDED.rate_per_carat, updated_by = EXCLUDED.updated_by`,
-            [shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
+            [country, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
         }
         n++;
       }
@@ -90,10 +92,11 @@ router.put("/diamond-rates", async (req, res, next) => {
 router.delete("/diamond-rates", async (req, res, next) => {
   try {
     const { retailerId, shapeGroup, sieve } = req.query;
+    const country = (req.query.country || "India").trim();
     if (!shapeGroup || !sieve) throw new AppError("shapeGroup and sieve are required");
     await tx((c) => retailerId
       ? c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1 AND shape_group = $2 AND sieve_size = $3", [retailerId, shapeGroup, sieve])
-      : c.query("DELETE FROM diamond_rates WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]));
+      : c.query("DELETE FROM diamond_rates WHERE country = $1 AND shape_group = $2 AND sieve_size = $3", [country, shapeGroup, sieve]));
     res.json({ deleted: true });
   } catch (e) { next(e); }
 });
@@ -200,12 +203,13 @@ router.delete("/diamond-sieves", async (req, res, next) => {
 /* ════════════════════════════════════════════════════════════════
    STONE RATES
    ════════════════════════════════════════════════════════════════ */
+// Stone rates are per-COUNTRY (India / United States) — no conversion.
 router.get("/stone-rates", async (req, res, next) => {
   try {
-    const { retailerId } = req.query;
-    const { rows } = retailerId
-      ? await query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_at FROM retailer_stone_rates WHERE retailer_id = $1 ORDER BY category, stone_name", [retailerId])
-      : await query("SELECT id, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_at FROM stone_rates ORDER BY category, stone_name");
+    const country = (req.query.country || "India").trim();
+    const { rows } = await query(
+      "SELECT id, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_at FROM stone_rates WHERE country = $1 ORDER BY category, stone_name",
+      [country]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -214,29 +218,21 @@ router.put("/stone-rates", async (req, res, next) => {
   try {
     const items = asArray(req.body);
     if (!items) throw new AppError("Body must be an array of stone rates");
-    const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const out = await tx(async (c) => {
       let n = 0;
-      if (retailerId) await c.query("DELETE FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
         const { category, stone_name, quality, rate, rate_pc, unit, carat, pcs } = it;
         if (!category || !stone_name) throw new AppError("Each stone needs category and stone_name");
         const caratVal = (carat === "" || carat == null) ? null : Number(carat);
         const pcsVal = (pcs === "" || pcs == null) ? null : parseInt(pcs, 10);
         const ratePcVal = (rate_pc === "" || rate_pc == null) ? null : Number(rate_pc);
-        if (retailerId) {
-          await c.query(
-            `INSERT INTO retailer_stone_rates (retailer_id, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-            [retailerId, category, stone_name, quality || null, Number(rate) || 0, ratePcVal, unit || "carat", caratVal, pcsVal, req.admin.id]);
-        } else {
-          await c.query(
-            `INSERT INTO stone_rates (category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             ON CONFLICT (category, stone_name, COALESCE(quality, ''))
-             DO UPDATE SET rate = EXCLUDED.rate, rate_pc = EXCLUDED.rate_pc, unit = EXCLUDED.unit, carat = EXCLUDED.carat, pcs = EXCLUDED.pcs, updated_by = EXCLUDED.updated_by`,
-            [category, stone_name, quality || null, Number(rate) || 0, ratePcVal, unit || "carat", caratVal, pcsVal, req.admin.id]);
-        }
+        await c.query(
+          `INSERT INTO stone_rates (country, category, stone_name, quality, rate, rate_pc, unit, carat, pcs, updated_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (country, category, stone_name, COALESCE(quality, ''))
+           DO UPDATE SET rate = EXCLUDED.rate, rate_pc = EXCLUDED.rate_pc, unit = EXCLUDED.unit, carat = EXCLUDED.carat, pcs = EXCLUDED.pcs, updated_by = EXCLUDED.updated_by`,
+          [country, category, stone_name, quality || null, Number(rate) || 0, ratePcVal, unit || "carat", caratVal, pcsVal, req.admin.id]);
         n++;
       }
       return n;
@@ -255,12 +251,13 @@ router.delete("/stone-rates/:id", async (req, res, next) => {
 /* ════════════════════════════════════════════════════════════════
    METAL RATES (daily gold price)
    ════════════════════════════════════════════════════════════════ */
+// Gold rates are per-COUNTRY (India / United States) — no conversion.
 router.get("/metal-rates", async (req, res, next) => {
   try {
-    const { retailerId } = req.query;
-    const { rows } = retailerId
-      ? await query("SELECT gold_type, rate_per_gram, updated_at FROM retailer_metal_rates WHERE retailer_id = $1 ORDER BY gold_type", [retailerId])
-      : await query("SELECT gold_type, rate_per_gram, updated_at FROM metal_rates ORDER BY gold_type");
+    const country = (req.query.country || "India").trim();
+    const { rows } = await query(
+      "SELECT gold_type, rate_per_gram, updated_at FROM metal_rates WHERE country = $1 ORDER BY gold_type",
+      [country]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -269,28 +266,17 @@ router.put("/metal-rates", async (req, res, next) => {
   try {
     const items = asArray(req.body);
     if (!items) throw new AppError("Body must be an array of metal rates");
-    const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const out = await tx(async (c) => {
       let n = 0;
-      if (retailerId) await c.query("DELETE FROM retailer_metal_rates WHERE retailer_id = $1", [retailerId]);
       for (const it of items) {
         if (!it.gold_type) throw new AppError("Each metal rate needs gold_type");
-        if (retailerId) {
-          // Only store positive overrides; 0/blank falls back to Global.
-          if (Number(it.rate_per_gram) > 0) {
-            await c.query(
-              `INSERT INTO retailer_metal_rates (retailer_id, gold_type, rate_per_gram, updated_by) VALUES ($1,$2,$3,$4)`,
-              [retailerId, it.gold_type, Number(it.rate_per_gram), req.admin.id]);
-            n++;
-          }
-        } else {
-          await c.query(
-            `INSERT INTO metal_rates (gold_type, rate_per_gram, updated_by)
-             VALUES ($1,$2,$3)
-             ON CONFLICT (gold_type) DO UPDATE SET rate_per_gram = EXCLUDED.rate_per_gram, updated_by = EXCLUDED.updated_by`,
-            [it.gold_type, Number(it.rate_per_gram) || 0, req.admin.id]);
-          n++;
-        }
+        await c.query(
+          `INSERT INTO metal_rates (country, gold_type, rate_per_gram, updated_by)
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT (country, gold_type) DO UPDATE SET rate_per_gram = EXCLUDED.rate_per_gram, updated_by = EXCLUDED.updated_by`,
+          [country, it.gold_type, Number(it.rate_per_gram) || 0, req.admin.id]);
+        n++;
       }
       return n;
     });
@@ -312,9 +298,10 @@ router.post("/metal-rates/sync", async (req, res, next) => {
 router.get("/making-charges", async (req, res, next) => {
   try {
     const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const { rows } = retailerId
       ? await query("SELECT scope, mode, value, updated_at FROM retailer_making_charges WHERE retailer_id = $1 ORDER BY scope", [retailerId])
-      : await query("SELECT id, scope, mode, value, updated_at FROM making_charges ORDER BY scope");
+      : await query("SELECT id, scope, mode, value, updated_at FROM making_charges WHERE country = $1 ORDER BY scope", [country]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -324,6 +311,7 @@ router.put("/making-charges", async (req, res, next) => {
     const items = asArray(req.body);
     if (!items) throw new AppError("Body must be an array of making charges");
     const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
     const out = await tx(async (c) => {
       let n = 0;
       if (retailerId) await c.query("DELETE FROM retailer_making_charges WHERE retailer_id = $1", [retailerId]);
@@ -337,10 +325,10 @@ router.put("/making-charges", async (req, res, next) => {
             [retailerId, scope, mode, Number(value) || 0, req.admin.id]);
         } else {
           await c.query(
-            `INSERT INTO making_charges (scope, mode, value, updated_by)
-             VALUES ($1,$2,$3,$4)
-             ON CONFLICT (scope) DO UPDATE SET mode = EXCLUDED.mode, value = EXCLUDED.value, updated_by = EXCLUDED.updated_by`,
-            [scope, mode, Number(value) || 0, req.admin.id]);
+            `INSERT INTO making_charges (country, scope, mode, value, updated_by)
+             VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (country, scope) DO UPDATE SET mode = EXCLUDED.mode, value = EXCLUDED.value, updated_by = EXCLUDED.updated_by`,
+            [country, scope, mode, Number(value) || 0, req.admin.id]);
         }
         n++;
       }
@@ -363,7 +351,7 @@ router.delete("/making-charges/:id", async (req, res, next) => {
 router.get("/retailers", async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT id, name, company_name, price_factor, flat_markup,
+      `SELECT id, name, company_name, country, price_factor, flat_markup,
               diamond_factor, gold_factor, stone_factor, making_factor,
               (SELECT COUNT(*) FROM retailer_product_price r WHERE r.retailer_id = retailers.id) AS override_count
        FROM retailers WHERE is_active = true ORDER BY name`);
@@ -491,9 +479,9 @@ router.post("/import", upload.single("file"), async (req, res, next) => {
             const rate = parseFloat(row[gradeStart + g]);
             if (!grade || !Number.isFinite(rate)) continue; // empty cells skipped
             await c.query(
-              `INSERT INTO diamond_rates (shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
-               VALUES ($1,$2,$3,$4,$5,$6)
-               ON CONFLICT (shape_group, sieve_size, shade, clarity)
+              `INSERT INTO diamond_rates (country, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
+               VALUES ('India',$1,$2,$3,$4,$5,$6)
+               ON CONFLICT (country, shape_group, sieve_size, shade, clarity)
                DO UPDATE SET rate_per_carat = EXCLUDED.rate_per_carat, updated_by = EXCLUDED.updated_by`,
               [lastShape, sieve, grade.shade, grade.clarity, rate, req.admin.id]);
             summary.diamondRates++;
@@ -509,9 +497,9 @@ router.post("/import", upload.single("file"), async (req, res, next) => {
           if (!category || !stone_name) continue;
           const rate = parseFloat(rateRaw);
           await c.query(
-            `INSERT INTO stone_rates (category, stone_name, quality, rate, unit, updated_by)
-             VALUES ($1,$2,NULL,$3,'carat',$4)
-             ON CONFLICT (category, stone_name, COALESCE(quality, ''))
+            `INSERT INTO stone_rates (country, category, stone_name, quality, rate, unit, updated_by)
+             VALUES ('India',$1,$2,NULL,$3,'carat',$4)
+             ON CONFLICT (country, category, stone_name, COALESCE(quality, ''))
              DO UPDATE SET rate = EXCLUDED.rate, updated_by = EXCLUDED.updated_by`,
             [category.trim(), stone_name.trim(), Number.isFinite(rate) ? rate : 0, req.admin.id]);
           summary.stoneRates++;
@@ -525,8 +513,8 @@ router.post("/import", upload.single("file"), async (req, res, next) => {
           const gt = (metal[r][0] || "").trim();
           if (!gt) continue;
           await c.query(
-            `INSERT INTO metal_rates (gold_type, rate_per_gram) VALUES ($1, 0)
-             ON CONFLICT (gold_type) DO NOTHING`, [gt]);
+            `INSERT INTO metal_rates (country, gold_type, rate_per_gram) VALUES ('India', $1, 0)
+             ON CONFLICT (country, gold_type) DO NOTHING`, [gt]);
           summary.metalRates++;
         }
       }

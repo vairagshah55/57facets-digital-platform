@@ -74,6 +74,7 @@ interface ProductData {
   name: string;
   description: string;
   category: string;
+  country: string;
   sku: string;
   availability: string;
   basePrice: number;
@@ -152,6 +153,7 @@ function mapApiProduct(raw: any): ProductData {
     name: (raw.name && String(raw.name).trim()) ? raw.name : (raw.sku || "Untitled Product"),
     description: raw.description || "",
     category: raw.category || "",
+    country: raw.country || "India",
     sku: raw.sku || "",
     availability: raw.availability || "in-stock",
     basePrice: Number(raw.base_price) || 0,
@@ -397,8 +399,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     setTimeout(() => setAddedToCart(false), 2000);
   }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, selectedSizeSummary, note]);
 
+  // Currency follows the retailer's country (₹ India / $ US).
+  const isINR = (product?.country || "India") === "India";
   const formatPrice = (p: number) =>
-    "₹" + p.toLocaleString("en-IN");
+    (isINR ? "₹" : "$") + p.toLocaleString(isINR ? "en-IN" : "en-US");
 
   const prevImage = useCallback(() => {
     if (!product) return;

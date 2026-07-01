@@ -83,11 +83,11 @@ const _retailerCharts = new Map(); // retailerId -> { chart, at }
 
 async function loadGlobalRows() {
   const [metals, diamonds, sieves, stones, makings] = await Promise.all([
-    query("SELECT gold_type, rate_per_gram FROM metal_rates"),
-    query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
+    query("SELECT country, gold_type, rate_per_gram FROM metal_rates"),
+    query("SELECT country, shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM diamond_sieve_map"),
-    query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM stone_rates"),
-    query("SELECT scope, mode, value FROM making_charges"),
+    query("SELECT country, category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM stone_rates"),
+    query("SELECT country, scope, mode, value FROM making_charges"),
   ]);
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
 }
@@ -103,15 +103,24 @@ async function loadRetailerRows(retailerId) {
   return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
 }
 
-/* Build a chart from global rows (g) with retailer rows (r) overlaid on top. */
-function buildChart(g, r) {
-  // Gold rates are GLOBAL for every retailer — no per-retailer overlay.
-  // (Any legacy retailer_metal_rates rows are intentionally ignored.)
+/* Build a chart from global rows (g) with retailer rows (r) overlaid on top.
+   `country` selects the gold-rate set (India / United States); defaults to
+   India and falls back to India when the requested country has no rows. */
+function buildChart(g, r, country) {
+  // Gold rates are per-COUNTRY (not per-retailer). Pick the retailer's country,
+  // falling back to India.
+  const wantC = up(country) || "INDIA";
   const metalMap = new Map();
-  for (const row of g.metals) metalMap.set(up(row.gold_type), num(row.rate_per_gram));
+  for (const row of g.metals) if (up(row.country) === wantC) metalMap.set(up(row.gold_type), num(row.rate_per_gram));
+  if (metalMap.size === 0 && wantC !== "INDIA") {
+    for (const row of g.metals) if (up(row.country) === "INDIA") metalMap.set(up(row.gold_type), num(row.rate_per_gram));
+  }
 
+  // Diamond base rates are per-COUNTRY (fallback India); retailer overrides on top.
   const diamondMap = new Map();
-  for (const row of g.diamonds) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
+  const baseDia = g.diamonds.filter((d) => up(d.country) === wantC);
+  const diaRows = baseDia.length ? baseDia : g.diamonds.filter((d) => up(d.country) === "INDIA");
+  for (const row of diaRows) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
   for (const row of r.diamonds) diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
 
   // Sieve ranges grouped by shape_group. A retailer that defines any range for
@@ -146,10 +155,16 @@ function buildChart(g, r) {
     // (e.g. "RED COLOUR STONE" in Semi Precious vs Synthetic).
     if (row.category) stoneMap.set(skey(row.category, row.stone_name), rec);
   };
-  for (const row of g.stones) addStone(row, false);
+  // Stone rates are per-COUNTRY (fallback India).
+  const baseStones = g.stones.filter((s) => up(s.country) === wantC);
+  const stoneRows = baseStones.length ? baseStones : g.stones.filter((s) => up(s.country) === "INDIA");
+  for (const row of stoneRows) addStone(row, false);
 
+  // Making charges base is per-COUNTRY (fallback India); retailer overrides on top.
   const makingMap = new Map();
-  for (const row of g.makings) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
+  const baseMk = g.makings.filter((m) => up(m.country) === wantC);
+  const mkRows = baseMk.length ? baseMk : g.makings.filter((m) => up(m.country) === "INDIA");
+  for (const row of mkRows) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
   for (const row of r.makings) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
 
   return {
@@ -179,17 +194,19 @@ async function getRateChart(retailerId) {
   const now = Date.now();
   if (!_globalRows || now - _at >= TTL_MS) {
     _globalRows = await loadGlobalRows();
-    _globalChart = buildChart(_globalRows, EMPTY_ROWS);
+    _globalChart = buildChart(_globalRows, EMPTY_ROWS, "India"); // default (India) chart
     _at = now;
     _retailerCharts.clear();
   }
   if (!retailerId) return _globalChart;
   const cached = _retailerCharts.get(retailerId);
   if (cached && now - cached.at < TTL_MS) return cached.chart;
+  // A retailer's gold rates depend on their country, so resolve it even when
+  // they have no per-retailer diamond/making overlays.
+  const { rows: cr } = await query("SELECT country FROM retailers WHERE id = $1", [retailerId]);
+  const country = cr[0]?.country || "India";
   const retRows = await loadRetailerRows(retailerId);
-  const hasAny = retRows.metals.length || retRows.diamonds.length || retRows.sieves.length ||
-                 retRows.stones.length || retRows.makings.length;
-  const chart = hasAny ? buildChart(_globalRows, retRows) : _globalChart;
+  const chart = buildChart(_globalRows, retRows, country);
   _retailerCharts.set(retailerId, { chart, at: now });
   return chart;
 }
@@ -367,13 +384,21 @@ async function loadStones(ids) {
 }
 
 /** Full price + breakdown for one product / retailer (used by preview). */
+/** The retailer's country (defaults to India). Used to pick currency. */
+async function getRetailerCountry(retailerId) {
+  if (!retailerId) return "India";
+  const { rows } = await query("SELECT country FROM retailers WHERE id = $1", [retailerId]);
+  return rows[0]?.country || "India";
+}
+
 async function priceForRetailer(product, retailerId) {
+  const country = await getRetailerCountry(retailerId);
   if (retailerId) {
     const ov = await query(
       "SELECT price FROM retailer_product_price WHERE retailer_id = $1 AND product_id = $2",
       [retailerId, product.id]);
     if (ov.rows.length) {
-      return { price: num(ov.rows[0].price), source: "override", breakdown: null, retailer: null };
+      return { price: num(ov.rows[0].price), source: "override", breakdown: null, retailer: null, country };
     }
   }
   const chart = await getRateChart(retailerId);
@@ -388,7 +413,7 @@ async function priceForRetailer(product, retailerId) {
   }
   const bd = computeBreakdown(product, chart);
   const price = finalize(bd, product);
-  return { price: price.value, source: price.source, breakdown: bd, retailer: null };
+  return { price: price.value, source: price.source, breakdown: bd, retailer: null, country };
 }
 
 /** Batch: attach `price` + `price_source` to each product for one retailer.

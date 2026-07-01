@@ -27,10 +27,9 @@ const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
    Unset cells in a retailer's chart fall back to Global. */
 const ScopeContext = createContext<string>("");
 const useScope = () => useContext(ScopeContext);
-// Tabs that respect the per-retailer scope selector.
-// NOTE: "gold" and "stones" are excluded — those rates are identical for
-// every retailer (always Global), so they show no scope dropdown.
-const CHART_TABS: TabKey[] = ["diamond", "making"];
+// Every rate tab now has its own country/scope controls inside the tab, so the
+// shared root scope selector is no longer used.
+const CHART_TABS: TabKey[] = [];
 
 /* ═══════════════════════════════════════════════════════
    ROOT
@@ -141,9 +140,9 @@ export function AdminPricing() {
       <ScopeContext.Provider value={scope}>
         <motion.div key={tab + ":" + scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
           {tab === "gold" && <GoldTab />}
-          {tab === "diamond" && <DiamondTab />}
+          {tab === "diamond" && <DiamondTab retailers={retailers} />}
           {tab === "stones" && <StonesTab />}
-          {tab === "making" && <MakingTab />}
+          {tab === "making" && <MakingTab retailers={retailers} />}
           {tab === "preview" && <PreviewTab />}
         </motion.div>
       </ScopeContext.Provider>
@@ -223,30 +222,32 @@ function useImportRefresh(reload: () => void) {
 /* ═══════════════════════════════════════════════════════
    GOLD RATES
    ═══════════════════════════════════════════════════════ */
+const GOLD_COUNTRIES = ["India", "United States"];
 function GoldTab() {
-  // Gold rates are the same for every retailer — always edit the Global chart.
-  const scope = "";
+  // Gold rates are per country (India / United States) — entered separately.
+  const [country, setCountry] = useState("India");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const isIndia = country === "India";
+  const cur = isIndia ? "₹" : "$";
 
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.metalRates(scope).then((d: any) => {
-      // Always show the 4 karat rows; pre-fill from fetched values (blank = inherits Global for a retailer).
+    adminPricing.metalRates(country).then((d: any) => {
       const byType = new Map((d || []).map((r: any) => [r.gold_type, r.rate_per_gram]));
       setRows(["14KT", "18KT", "22KT", "24KT"].map((g) => ({ gold_type: g, rate_per_gram: byType.has(g) ? byType.get(g) : "" })));
     }).catch(() => { }).finally(() => setLoading(false));
-  }, [scope]);
+  }, [country]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
 
   const save = async () => {
     setSaving(true);
     try {
-      await adminPricing.saveMetalRates(rows.map((r) => ({ gold_type: r.gold_type, rate_per_gram: Number(r.rate_per_gram) || 0 })), scope);
-      toast.success("Gold rates updated");
+      await adminPricing.saveMetalRates(rows.map((r) => ({ gold_type: r.gold_type, rate_per_gram: Number(r.rate_per_gram) || 0 })), country);
+      toast.success(`${country} gold rates updated`);
       load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
@@ -261,13 +262,20 @@ function GoldTab() {
   };
 
   return (
-    <Card title="Gold rate per gram" sub="Tracks the daily gold price — used for the metal portion of every product"
+    <Card title="Gold rate per gram" sub="Entered separately per country (India ₹ · United States $) — no conversion"
       action={
         <div className="flex items-center gap-2">
-          <Button onClick={sync} disabled={syncing} size="sm" variant="outline" className="h-8 gap-1.5 text-xs"
-            style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}>
-            {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Sync live
-          </Button>
+          <select value={country} onChange={(e) => setCountry(e.target.value)}
+            className="h-8 text-xs rounded-lg px-2"
+            style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)" }}>
+            {GOLD_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {isIndia && (
+            <Button onClick={sync} disabled={syncing} size="sm" variant="outline" className="h-8 gap-1.5 text-xs"
+              style={{ borderColor: "var(--sf-divider)", color: "var(--sf-text-secondary)" }}>
+              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Sync live
+            </Button>
+          )}
           <SaveBtn onClick={save} saving={saving} />
         </div>
       }>
@@ -277,7 +285,7 @@ function GoldTab() {
             <div key={r.gold_type} className="rounded-xl border p-3" style={{ borderColor: "var(--sf-divider)" }}>
               <p className="text-xs font-semibold mb-2" style={{ color: "var(--sf-text-secondary)" }}>{r.gold_type}</p>
               <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--sf-text-muted)" }}>₹</span>
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--sf-text-muted)" }}>{cur}</span>
                 <input type="number" value={r.rate_per_gram ?? ""}
                   onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, rate_per_gram: e.target.value } : x))}
                   className="w-full h-9 pl-6 pr-2 rounded-md text-sm border outline-none"
@@ -488,8 +496,16 @@ async function readWorkbook(file: File): Promise<Map<string, string[][]>> {
   return out;
 }
 
-function DiamondTab() {
-  const scope = useScope();
+function DiamondTab({ retailers }: { retailers: any[] }) {
+  // Country picks the base rate set (India ₹ / United States $); scope picks a
+  // retailer of that country for per-retailer overrides ("" = the country base).
+  const [country, setCountry] = useState("India");
+  const [scope, setScope] = useState("");
+  const cur = country === "India" ? "₹" : "$";
+  const countryRetailers = useMemo(
+    () => (retailers || []).filter((r) => (r.country || "India") === country),
+    [retailers, country]
+  );
   const [shape, setShape] = useState("ROUND");
   const [cells, setCells] = useState<Record<string, string>>({});      // full matrix across all shapes
   const [sievesByShape, setSievesByShape] = useState<Record<string, string[]>>({});
@@ -500,7 +516,7 @@ function DiamondTab() {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
-      adminPricing.diamondRates(scope),
+      adminPricing.diamondRates(scope, country),
       adminPricing.sieveMap(scope),
       // Sieve list is supplementary — never let its failure blank the matrix.
       adminPricing.diamondSieves().catch(() => []),
@@ -523,7 +539,7 @@ function DiamondTab() {
         }
         setCells(c); setSievesByShape(sbs);
       }).catch(() => { }).finally(() => setLoading(false));
-  }, [scope]);
+  }, [scope, country]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
 
@@ -567,7 +583,7 @@ function DiamondTab() {
       .map(([k, v]) => { const [shape_group, sieve_size, shade, clarity] = k.split("|"); return { shape_group, sieve_size, shade, clarity, rate_per_carat: Number(v) }; });
     if (!rows.length) { toast.error("Enter at least one rate"); return; }
     setSaving(true);
-    try { await adminPricing.saveDiamondRates(rows, scope); toast.success(`Saved ${rows.length} diamond rates`); load(); }
+    try { await adminPricing.saveDiamondRates(rows, scope, country); toast.success(`Saved ${rows.length} diamond rates`); load(); }
     catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
   // ── Download the matrix as a 3-sheet .xlsx (one sheet per shape group),
@@ -630,7 +646,7 @@ function DiamondTab() {
       const totalSieves = Array.from(sievesFound.values()).reduce((n, s) => n + s.size, 0);
       if (!rows.length && !totalSieves) { toast.error("Nothing to import — check the sheet names match the shape groups"); return; }
       setSaving(true);
-      if (rows.length) await adminPricing.saveDiamondRates(rows, scope);
+      if (rows.length) await adminPricing.saveDiamondRates(rows, scope, country);
       // Register every sieve found (new, blank, or rate-less) so it appears as a row.
       const sieveCalls: Promise<any>[] = [];
       for (const [sg, set] of sievesFound) for (const sv of set) sieveCalls.push(adminPricing.addDiamondSieve(sg, sv));
@@ -646,7 +662,29 @@ function DiamondTab() {
 
   return (
     <>
-      <Card title="Diamond rate matrix (₹ / carat)" sub="Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells."
+      {/* Country (base rate set) + retailer-override scope */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Country:</span>
+        <select value={country} onChange={(e) => { setCountry(e.target.value); setScope(""); }}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)" }}>
+          {["India", "United States"].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <span className="text-xs font-medium ml-2" style={{ color: "var(--sf-text-muted)" }}>Editing:</span>
+        <select value={scope} onChange={(e) => setScope(e.target.value)}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 200 }}>
+          <option value="">{country} base rate</option>
+          {countryRetailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        {scope && (
+          <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+            Empty cells fall back to the {country} base.
+          </span>
+        )}
+      </div>
+
+      <Card title={`Diamond rate matrix (${cur} / carat)`} sub="Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells."
         action={
           <div className="flex items-center gap-2">
             <button onClick={downloadSample}
@@ -748,16 +786,16 @@ function DiamondTab() {
 /* ── STONES ──────────────────────────────────────────── */
 const STONE_CATS = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Kundan", "Beads"];
 function StonesTab() {
-  // Stone rates are the same for every retailer — always edit the Global chart.
-  const scope = "";
+  // Stone rates are per country (India ₹ / United States $) — entered separately.
+  const [country, setCountry] = useState("India");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.stoneRates(scope).then((d: any) => setRows(d)).catch(() => { }).finally(() => setLoading(false));
-  }, [scope]);
+    adminPricing.stoneRates(country).then((d: any) => setRows(d)).catch(() => { }).finally(() => setLoading(false));
+  }, [country]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
 
@@ -765,14 +803,24 @@ function StonesTab() {
     setSaving(true);
     try {
       await adminPricing.saveStoneRates(rows.filter((r) => r.category && r.stone_name)
-        .map((r) => ({ ...r, rate: Number(r.rate) || 0, unit: r.unit || "carat" })), scope);
-      toast.success("Stone rates saved"); load();
+        .map((r) => ({ ...r, rate: Number(r.rate) || 0, unit: r.unit || "carat" })), country);
+      toast.success(`${country} stone rates saved`); load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
+  const cur = country === "India" ? "₹" : "$";
   return (
-    <Card title="Stone rates" sub="Store both rates; Unit picks which applies. carat → Rate(/ct) × carat · piece → Rate(/pc) × pcs"
-      action={<SaveBtn onClick={save} saving={saving} />}>
+    <Card title="Stone rates" sub={`Per country (${cur}). Unit picks the rate: carat → Rate(/ct) × carat · piece → Rate(/pc) × pcs`}
+      action={
+        <div className="flex items-center gap-2">
+          <select value={country} onChange={(e) => setCountry(e.target.value)}
+            className="h-8 text-xs rounded-lg px-2"
+            style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)" }}>
+            {["India", "United States"].map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <SaveBtn onClick={save} saving={saving} />
+        </div>
+      }>
       {loading ? <SkeletonRows cols={6} n={6} /> : (
         <EditableTable rows={rows} setRows={setRows}
           addTemplate={{ category: "Precious Stones", stone_name: "", rate: "", rate_pc: "", unit: "carat" }}
@@ -790,8 +838,15 @@ function StonesTab() {
 }
 
 /* ── MAKING ──────────────────────────────────────────── */
-function MakingTab() {
-  const scope = useScope();
+function MakingTab({ retailers }: { retailers: any[] }) {
+  // Country picks the base making set; scope picks a retailer of that country
+  // for per-retailer overrides ("" = the country base).
+  const [country, setCountry] = useState("India");
+  const [scope, setScope] = useState("");
+  const countryRetailers = useMemo(
+    () => (retailers || []).filter((r) => (r.country || "India") === country),
+    [retailers, country]
+  );
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -801,7 +856,7 @@ function MakingTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    adminPricing.makingCharges(scope).then((d: any) => {
+    adminPricing.makingCharges(scope, country).then((d: any) => {
       const data = d || [];
       const byScope = new Map(data.map((r: any) => [r.scope, r]));
       // Always-present rows for everyone, pre-filled from saved values.
@@ -815,7 +870,7 @@ function MakingTab() {
         .map((r: any) => ({ scope: r.scope, mode: r.mode || "gross", value: r.value != null ? r.value : "" }));
       setRows([...seeded, ...extra]);
     }).catch(() => { }).finally(() => setLoading(false));
-  }, [scope]);
+  }, [scope, country]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
 
@@ -825,24 +880,49 @@ function MakingTab() {
       // Only persist rows that actually have a value (blanks inherit Global / default).
       await adminPricing.saveMakingCharges(
         rows.filter((r) => r.scope && r.mode && r.value !== "" && r.value != null)
-          .map((r) => ({ scope: r.scope, mode: r.mode, value: Number(r.value) || 0 })), scope);
+          .map((r) => ({ scope: r.scope, mode: r.mode, value: Number(r.value) || 0 })), scope, country);
       toast.success("Making charges saved"); load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
+  const cur = country === "India" ? "₹" : "$";
   return (
-    <Card title="Making / labour charges" sub="Making = value (₹/g) × product's gross/net weight (g)"
-      action={<SaveBtn onClick={save} saving={saving} />}>
-      {loading ? <SkeletonRows cols={3} n={5} /> : (
-        <EditableTable rows={rows} setRows={setRows}
-          addTemplate={{ scope: "", mode: "gross", value: "" }}
-          cols={[
-            { key: "scope", label: "Scope", placeholder: "14KT / Ring", width: 200 },
-            { key: "mode", label: "Weight", options: ["gross", "net"] },
-            { key: "value", label: "Value (₹/g)", type: "number", width: 140 },
-          ]} />
-      )}
-    </Card>
+    <>
+      {/* Country (base) + retailer-override scope */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Country:</span>
+        <select value={country} onChange={(e) => { setCountry(e.target.value); setScope(""); }}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)" }}>
+          {["India", "United States"].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <span className="text-xs font-medium ml-2" style={{ color: "var(--sf-text-muted)" }}>Editing:</span>
+        <select value={scope} onChange={(e) => setScope(e.target.value)}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 200 }}>
+          <option value="">{country} base rate</option>
+          {countryRetailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        {scope && (
+          <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+            Empty cells fall back to the {country} base.
+          </span>
+        )}
+      </div>
+
+      <Card title="Making / labour charges" sub={`Making = value (${cur}/g) × product's gross/net weight (g)`}
+        action={<SaveBtn onClick={save} saving={saving} />}>
+        {loading ? <SkeletonRows cols={3} n={5} /> : (
+          <EditableTable rows={rows} setRows={setRows}
+            addTemplate={{ scope: "", mode: "gross", value: "" }}
+            cols={[
+              { key: "scope", label: "Scope", placeholder: "14KT / Ring", width: 200 },
+              { key: "mode", label: "Weight", options: ["gross", "net"] },
+              { key: "value", label: `Value (${cur}/g)`, type: "number", width: 140 },
+            ]} />
+        )}
+      </Card>
+    </>
   );
 }
 
@@ -1026,6 +1106,12 @@ function PreviewTab() {
     setLoading(true);
     adminPricing.preview(pid, rid).then((d: any) => setResult(d)).catch((e: any) => toast.error(e.message)).finally(() => setLoading(false));
   }, [pid, rid]);
+
+  // Show prices in the selected retailer's country currency (₹ India / $ US).
+  // This local `fmt` shadows the module one, so every price below switches.
+  const previewCountry = (retailers.find((r) => r.id === rid)?.country) || "India";
+  const isIN = previewCountry === "India";
+  const fmt = (n: any) => (isIN ? "₹" : "$") + (Number(n) || 0).toLocaleString(isIN ? "en-IN" : "en-US");
 
   const d = result?.breakdown?.detail;
   const makingInfo = (m: any) =>

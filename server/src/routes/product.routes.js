@@ -317,6 +317,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
       diamonds,
       stones,
       variants,
+      country: priced.country || "India",
       goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
     });
   } catch (err) {

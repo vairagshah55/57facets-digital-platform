@@ -801,7 +801,9 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
       .finally(() => setLoading(false));
   }, [productId, rid]);
 
-  const inr = (n: any) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
+  // Currency follows the previewed retailer's country (₹ India / $ US).
+  const isINR = (result?.country || "India") === "India";
+  const inr = (n: any) => (isINR ? "₹" : "$") + Math.round(Number(n) || 0).toLocaleString(isINR ? "en-IN" : "en-US");
 
   const d = result?.breakdown?.detail;
   const makingInfo = (m: any) =>

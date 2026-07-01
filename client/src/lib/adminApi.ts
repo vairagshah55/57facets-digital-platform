@@ -220,15 +220,15 @@ export const adminOrders = {
 export const adminPricing = {
   // ── Rate chart — every read/write is scoped: pass a retailerId to edit that
   // retailer's own chart, or omit it (scope = "") to edit the Global default. ──
-  // Diamond rate matrix
-  diamondRates: (retailerId?: string) =>
-    request(`/pricing/diamond-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
-  saveDiamondRates: (rows: any[], retailerId?: string) =>
-    request(`/pricing/diamond-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  // Diamond rate matrix — base is per country; a retailerId edits that retailer's overrides.
+  diamondRates: (retailerId?: string, country = "India") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`),
+  saveDiamondRates: (rows: any[], retailerId?: string, country = "India") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteDiamondRate: (id: string) => request(`/pricing/diamond-rates/${id}`, { method: "DELETE" }),
-  // Delete a whole sieve row (shape_group + sieve) — Global, or a retailer's chart.
-  deleteDiamondSieveRow: (shapeGroup: string, sieve: string, retailerId?: string) =>
-    request(`/pricing/diamond-rates?shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "DELETE" }),
+  // Delete a whole sieve row (shape_group + sieve) — country base, or a retailer's chart.
+  deleteDiamondSieveRow: (shapeGroup: string, sieve: string, retailerId?: string, country = "India") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}&shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "DELETE" }),
 
   // Carat → sieve map
   sieveMap: (retailerId?: string) =>
@@ -244,25 +244,25 @@ export const adminPricing = {
   removeDiamondSieve: (shapeGroup: string, sieve: string) =>
     request(`/pricing/diamond-sieves?shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}`, { method: "DELETE" }),
 
-  // Stone rates
-  stoneRates: (retailerId?: string) =>
-    request(`/pricing/stone-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
-  saveStoneRates: (rows: any[], retailerId?: string) =>
-    request(`/pricing/stone-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  // Stone rates — per country (India / United States)
+  stoneRates: (country = "India") =>
+    request(`/pricing/stone-rates?country=${encodeURIComponent(country)}`),
+  saveStoneRates: (rows: any[], country = "India") =>
+    request(`/pricing/stone-rates?country=${encodeURIComponent(country)}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteStoneRate: (id: string) => request(`/pricing/stone-rates/${id}`, { method: "DELETE" }),
 
-  // Metal (gold) rates
-  metalRates: (retailerId?: string) =>
-    request(`/pricing/metal-rates${retailerId ? `?retailerId=${retailerId}` : ""}`),
-  saveMetalRates: (rows: any[], retailerId?: string) =>
-    request(`/pricing/metal-rates${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  // Metal (gold) rates — per country (India / United States)
+  metalRates: (country = "India") =>
+    request(`/pricing/metal-rates?country=${encodeURIComponent(country)}`),
+  saveMetalRates: (rows: any[], country = "India") =>
+    request(`/pricing/metal-rates?country=${encodeURIComponent(country)}`, { method: "PUT", body: JSON.stringify(rows) }),
   syncGold: () => request("/pricing/metal-rates/sync", { method: "POST" }),
 
-  // Making charges
-  makingCharges: (retailerId?: string) =>
-    request(`/pricing/making-charges${retailerId ? `?retailerId=${retailerId}` : ""}`),
-  saveMakingCharges: (rows: any[], retailerId?: string) =>
-    request(`/pricing/making-charges${retailerId ? `?retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  // Making charges — base per country; a retailerId edits that retailer's overrides.
+  makingCharges: (retailerId?: string, country = "India") =>
+    request(`/pricing/making-charges?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`),
+  saveMakingCharges: (rows: any[], retailerId?: string, country = "India") =>
+    request(`/pricing/making-charges?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteMaking: (id: string) => request(`/pricing/making-charges/${id}`, { method: "DELETE" }),
 
   // Retailer pricing — factors + per-product overrides
