@@ -245,7 +245,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     let cancelled = false;
     productsApi.list({ limit: "200" })
       .then((d: any) => { if (!cancelled) setNeighborIds((d.products || []).map((p: any) => String(p.id))); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [location.state, adminPreview]); // eslint-disable-line react-hooks/exhaustive-deps
   const navIdx = neighborIds.indexOf(id || "");
@@ -727,47 +727,47 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           {/* Header */}
           <div className="mb-4 flex items-start justify-between gap-5">
             <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
-              {product.category}
-            </p>
-            <h1
-              className="text-2xl sm:text-3xl font-semibold mb-2"
-              style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
-                color: "var(--sf-text-primary)",
-              }}
-            >
-              {product.name}
-            </h1>
-            <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
-              {product.description}
-            </p>
-            <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
-              <AvailabilityBadge status={product.availability} />
-              <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                SKU: {product.sku}
-              </span>
-            </div>
-
-            {/* Certificate verification — opens the gem-science verification page in a new tab */}
-            {product.sku && (
-              <a
-                href={`https://wg.gemscience.net/vr/veri.aspx?${encodeURIComponent(product.sku)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 px-3.5 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--sf-teal)" }}>
+                {product.category}
+              </p>
+              <h1
+                className="text-2xl sm:text-3xl font-semibold mb-2"
                 style={{
-                  background: "var(--sf-teal-glass)",
-                  border: "1px solid var(--sf-teal-border)",
-                  color: "var(--sf-teal)",
+                  fontFamily: "'Melodrama', 'Georgia', serif",
+                  color: "var(--sf-text-primary)",
                 }}
-                title="Verify this product's certificate"
               >
-                <Award className="w-4 h-4" />
-                View Certificate
-                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-              </a>
-            )}
+                {product.name}
+              </h1>
+              <p className="text-sm mb-3" style={{ color: "var(--sf-text-secondary)" }}>
+                {product.description}
+              </p>
+              <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
+                <AvailabilityBadge status={product.availability} />
+                <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                  SKU: {product.sku}
+                </span>
+              </div>
+
+              {/* Certificate verification — opens the gem-science verification page in a new tab */}
+              {product.sku && (
+                <a
+                  href={`https://wg.gemscience.net/vr/veri.aspx?${encodeURIComponent(product.sku)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-3 px-3.5 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+                  style={{
+                    background: "var(--sf-teal-glass)",
+                    border: "1px solid var(--sf-teal-border)",
+                    color: "var(--sf-teal)",
+                  }}
+                  title="Verify this product's certificate"
+                >
+                  <Award className="w-4 h-4" />
+                  View Certificate
+                  <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                </a>
+              )}
             </div>
 
             {/* Matching variants — fills the empty space on the right */}
@@ -809,8 +809,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           )}
                         </div>
                         <div className="px-1.5 py-1">
-                          <div className="text-[11px] font-bold leading-tight truncate" style={{ color: "var(--sf-text-primary)" }}>{v.sku}</div>
-                          {v.category && <div className="text-[9px] leading-tight truncate" style={{ color: "var(--sf-text-muted)" }}>{v.category}</div>}
+                          <div className="text-xs font-bold leading-tight truncate" style={{ color: "var(--sf-text-primary)" }}>{v.sku}</div>
+                          {v.category && <div className="text-[10px] leading-tight truncate" style={{ color: "var(--sf-text-muted)" }}>{v.category}</div>}
                         </div>
                       </button>
                     );
@@ -862,7 +862,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               {existingOrder ? (
                 <>
                   <Shield className="w-4 h-4" style={{ color: "var(--sf-amber)" }} />
-                  <span className="text-[13px] font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
                     Order Locked
                   </span>
                   <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
@@ -873,7 +873,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                  <span className="text-[13px] font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
                     Customize Your Piece
                   </span>
                 </>
@@ -885,7 +885,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               <div className="px-5 py-3 flex items-center gap-2.5"
                 style={{ background: "var(--sf-amber-bg)", borderBottom: "1px solid var(--sf-amber-border)" }}>
                 <Info className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sf-amber)" }} />
-                <p className="text-[11px]" style={{ color: "var(--sf-amber)" }}>
+                <p className="text-xs" style={{ color: "var(--sf-amber)" }}>
                   Customization is locked because this product has an active order. Cancel the order to make changes.
                 </p>
               </div>
@@ -927,14 +927,14 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Palette className="w-4 h-4" style={{ color: "#D4A843" }} />
                         </div>
                         <div>
-                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
+                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select purity & colour</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
                         style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.26)" }}>
                         {dbColourSw && <span className="w-3 h-3 rounded-full shrink-0" style={{ background: dbColourSw.bg }} />}
-                        <span className="text-[11px] font-bold" style={{ color: "#D4A843" }}>
+                        <span className="text-xs font-bold" style={{ color: "#D4A843" }}>
                           {[dbPurity, dbColourLabel].filter(Boolean).join(" · ") || "—"}
                         </span>
                       </div>
@@ -981,14 +981,14 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Diamond className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
                         </div>
                         <div>
-                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
+                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? `${product.diamonds.length} diamonds in this design` : "Select cut, shade & clarity"}</p>
                         </div>
                       </div>
                       {multiDiamond ? (
                         <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full shrink-0"
                           style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
-                          <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: "var(--sf-teal)" }}>
+                          <span className="text-xs font-bold whitespace-nowrap" style={{ color: "var(--sf-teal)" }}>
                             {(() => {
                               const t = product.diamonds.reduce((s, dd) => s + (Number(dd.carat) || 0), 0);
                               return t > 0 ? `${Number(t.toFixed(3))} ct total` : "—";
@@ -998,7 +998,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       ) : (
                         <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
                           style={{ background: "var(--sf-teal-subtle)", border: "1px solid var(--sf-teal-border)" }}>
-                          <span className="text-[11px] font-bold" style={{ color: "var(--sf-teal)" }}>
+                          <span className="text-xs font-bold" style={{ color: "var(--sf-teal)" }}>
                             {[shape, shade, clarity].filter(Boolean).join(" · ")}
                           </span>
                         </div>
@@ -1025,20 +1025,20 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                               className="w-full flex items-center gap-2.5 h-12 rounded-xl pl-2.5 pr-3 transition-colors"
                               style={{ background: "var(--sf-glass-bg)", border: `1px solid ${diamondMenuOpen ? "var(--sf-teal)" : "var(--sf-teal-border)"}` }}
                             >
-                              <span className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black shrink-0"
+                              <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
                                 style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>
                                 {idx + 1}
                               </span>
-                              <span className="text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
+                              <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
                               {[d.color, d.clarity].filter(Boolean).length > 0 && (
-                                <span className="text-[11px] truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
+                                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
                               )}
                               <span className="ml-auto flex items-center gap-2 shrink-0">
                                 {d.carat != null && (
                                   <span className="flex items-baseline gap-0.5 px-2.5 py-1 rounded-full"
                                     style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
-                                    <span className="text-[12px] font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
-                                    <span className="text-[9px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
+                                    <span className="text-xs font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
+                                    <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
                                   </span>
                                 )}
                                 <ChevronRight className="w-4 h-4 transition-transform"
@@ -1069,17 +1069,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                                           onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
                                           onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
                                         >
-                                          <span className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black shrink-0"
+                                          <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
                                             style={{ background: active ? "var(--sf-teal)" : "var(--sf-glass-pill)", color: active ? "#fff" : "var(--sf-text-muted)" }}>
                                             {i + 1}
                                           </span>
-                                          <span className="text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
+                                          <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
                                           {[dd.color, dd.clarity].filter(Boolean).length > 0 && (
-                                            <span className="text-[11px] truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
+                                            <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
                                           )}
                                           <span className="ml-auto flex items-center gap-2 shrink-0">
                                             {dd.carat != null && (
-                                              <span className="text-[12px] font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
+                                              <span className="text-xs font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
                                             )}
                                             {active && <Check className="w-4 h-4" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
                                           </span>
@@ -1100,10 +1100,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             <GridSelect label="Type" value={selectedDiamondType || d.type || ""} options={typeOptions} onChange={setSelectedDiamondType} />
                             {detailRows.map((r) => (
                               <div key={r.label}>
-                                <span className="block text-[9px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
+                                <span className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
                                 <div className="w-full flex items-center h-10 px-3 rounded-lg"
                                   style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border-strong)" }}>
-                                  <span className="text-[13px] font-bold truncate" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
+                                  <span className="text-sm font-bold truncate" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
                                 </div>
                               </div>
                             ))}
@@ -1121,13 +1121,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                               <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
                             )}
                             <div key={field.label} className="flex items-center gap-2">
-                              <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
+                              <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {field.options.map((opt) => {
                                   const active = field.selected === opt;
                                   return (
                                     <button key={opt} onClick={() => field.set(opt)}
-                                      className="px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200"
+                                      className="px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200"
                                       style={{
                                         background: active
                                           ? "var(--sf-teal-glass)"
@@ -1192,7 +1192,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Gem className="w-4 h-4 transition-colors duration-300" style={{ color: selC.dot }} />
                         </div>
                         <div>
-                          <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Color Stones</p>
+                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Color Stones</p>
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select stone & quality</p>
                         </div>
                       </div>
@@ -1201,7 +1201,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           style={{ background: selC.activeBg, border: `1px solid ${selC.border}` }}>
                           <span className="w-2 h-2 rounded-full shrink-0 animate-pulse"
                             style={{ background: selC.dot, boxShadow: `0 0 6px ${selC.glow}` }} />
-                          <span className="text-[11px] font-bold truncate max-w-[110px]" style={{ color: selC.text }}>
+                          <span className="text-xs font-bold truncate max-w-[110px]" style={{ color: selC.text }}>
                             {selectedColorStoneQuality || selectedColorStone}
                           </span>
                         </div>
@@ -1242,12 +1242,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             {/* Labels */}
                             <div className="flex flex-col min-w-0 flex-1 gap-1">
                               {/* Category tag */}
-                              <span className="inline-flex self-start text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                              <span className="inline-flex self-start text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
                                 style={{ background: active ? c.tag : "var(--sf-glass-pill)", color: active ? c.text : "var(--sf-text-muted)" }}>
                                 {shortCat}
                               </span>
                               {/* Quality — primary */}
-                              <span className="text-[12px] font-bold leading-snug truncate"
+                              <span className="text-xs font-bold leading-snug truncate"
                                 style={{ color: active ? c.text : "var(--sf-text-primary)" }}>
                                 {pair.quality || "—"}
                               </span>
@@ -1450,7 +1450,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   key={tab.value}
                   value={tab.value}
                   className={[
-                    "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[12px] font-semibold",
+                    "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold",
                     "transition-all duration-200",
                     "data-[state=inactive]:text-[var(--sf-text-muted)] data-[state=inactive]:hover:text-[var(--sf-text-secondary)]",
                     "data-[state=active]:text-[var(--sf-teal)]",
@@ -1523,9 +1523,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         style={{ background: `${row.accent}1A`, border: `1px solid ${row.accent}30`, color: row.accent }}>
                         {row.icon}
                       </div>
-                      <span className="text-[13px] font-medium" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                      <span className="text-sm font-medium" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
                     </div>
-                    <span className="relative text-[13px] font-bold" style={{ color: "var(--sf-text-primary)" }}>{row.value}</span>
+                    <span className="relative text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{row.value}</span>
                   </motion.div>
                 ))}
               </motion.div>
@@ -1572,7 +1572,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     </div>
 
                     {/* Column labels */}
-                    <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                    <div className="grid items-center px-4 py-2 text-[10px] font-bold uppercase tracking-wider"
                       style={{
                         gridTemplateColumns: "1.3fr 0.6fr 0.6fr 0.5fr 0.7fr 0.8fr 0.7fr",
                         color: "var(--sf-text-muted)",
@@ -1590,7 +1590,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     {/* Rows */}
                     {product.diamonds.map((d, i) => (
                       <div key={i}
-                        className="grid items-center px-4 py-2.5 text-[11px]"
+                        className="grid items-center px-4 py-2.5 text-xs"
                         style={{
                           gridTemplateColumns: "1.3fr 0.6fr 0.6fr 0.5fr 0.7fr 0.8fr 0.7fr",
                           borderBottom: i < product.diamonds.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
@@ -1601,7 +1601,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             {d.shape || "—"}
                           </span>
                           {d.type && (
-                            <span className="text-[9px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
+                            <span className="text-[10px] truncate" style={{ color: "var(--sf-text-muted)" }}>· {d.type}</span>
                           )}
                         </div>
                         <span className="text-center" style={{ color: "var(--sf-text-secondary)" }}>{d.size || "—"}</span>
@@ -1622,78 +1622,78 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
             {/* ── Stones tab (only when the product has stones) ── */}
             {product.stones.length > 0 && (
-            <TabsContent value="stones" className="mt-5">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="space-y-3"
-              >
+              <TabsContent value="stones" className="mt-5">
                 <motion.div
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.45 }}
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    background: "var(--sf-glass-bg)",
-                    border: "1px solid var(--sf-glass-border)",
-                    backdropFilter: "blur(8px)",
-                  }}>
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3"
-                    style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
-                    <div className="flex items-center gap-2">
-                      <Gem className="w-3.5 h-3.5" style={{ color: "#A569BD" }} />
-                      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
-                        Stones
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: "rgba(165,105,189,0.14)", color: "#A569BD" }}>
-                      {(() => {
-                        const total = product.stones.reduce((s, st) => s + (st.carat || 0), 0);
-                        return total > 0 ? `${Number(total.toFixed(3))} ct total` : `${product.stones.length} pcs`;
-                      })()}
-                    </span>
-                  </div>
-
-                  {/* Column labels */}
-                  <div className="grid items-center px-4 py-2 text-[9px] font-bold uppercase tracking-wider"
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="space-y-3"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.45 }}
+                    className="rounded-2xl overflow-hidden"
                     style={{
-                      gridTemplateColumns: "1.6fr 1fr 0.7fr 0.6fr",
-                      color: "var(--sf-text-muted)",
-                      borderBottom: "1px solid var(--sf-glass-border)",
+                      background: "var(--sf-glass-bg)",
+                      border: "1px solid var(--sf-glass-border)",
+                      backdropFilter: "blur(8px)",
                     }}>
-                    <span>Stone</span>
-                    <span>Quality</span>
-                    <span className="text-right">Carat</span>
-                    <span className="text-right">Pcs</span>
-                  </div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3"
+                      style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                      <div className="flex items-center gap-2">
+                        <Gem className="w-3.5 h-3.5" style={{ color: "#A569BD" }} />
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+                          Stones
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(165,105,189,0.14)", color: "#A569BD" }}>
+                        {(() => {
+                          const total = product.stones.reduce((s, st) => s + (st.carat || 0), 0);
+                          return total > 0 ? `${Number(total.toFixed(3))} ct total` : `${product.stones.length} pcs`;
+                        })()}
+                      </span>
+                    </div>
 
-                  {/* Rows */}
-                  {product.stones.map((st, i) => (
-                    <div key={i}
-                      className="grid items-center px-4 py-2.5 text-[12px]"
+                    {/* Column labels */}
+                    <div className="grid items-center px-4 py-2 text-[10px] font-bold uppercase tracking-wider"
                       style={{
                         gridTemplateColumns: "1.6fr 1fr 0.7fr 0.6fr",
-                        borderBottom: i < product.stones.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
+                        color: "var(--sf-text-muted)",
+                        borderBottom: "1px solid var(--sf-glass-border)",
                       }}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Gem className="w-3 h-3 shrink-0" style={{ color: "#A569BD" }} />
-                        <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
-                          {st.name || "—"}
-                        </span>
-                      </div>
-                      <span className="truncate" style={{ color: "var(--sf-text-secondary)" }}>{st.quality || "—"}</span>
-                      <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
-                        {st.carat != null ? `${Number(st.carat)}` : "—"}
-                      </span>
-                      <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{st.pcs != null ? st.pcs : "—"}</span>
+                      <span>Stone</span>
+                      <span>Quality</span>
+                      <span className="text-right">Carat</span>
+                      <span className="text-right">Pcs</span>
                     </div>
-                  ))}
+
+                    {/* Rows */}
+                    {product.stones.map((st, i) => (
+                      <div key={i}
+                        className="grid items-center px-4 py-2.5 text-xs"
+                        style={{
+                          gridTemplateColumns: "1.6fr 1fr 0.7fr 0.6fr",
+                          borderBottom: i < product.stones.length - 1 ? "1px solid var(--sf-glass-border)" : "none",
+                        }}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Gem className="w-3 h-3 shrink-0" style={{ color: "#A569BD" }} />
+                          <span className="font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>
+                            {st.name || "—"}
+                          </span>
+                        </div>
+                        <span className="truncate" style={{ color: "var(--sf-text-secondary)" }}>{st.quality || "—"}</span>
+                        <span className="text-right font-bold" style={{ color: "var(--sf-teal)" }}>
+                          {st.carat != null ? `${Number(st.carat)}` : "—"}
+                        </span>
+                        <span className="text-right" style={{ color: "var(--sf-text-secondary)" }}>{st.pcs != null ? st.pcs : "—"}</span>
+                      </div>
+                    ))}
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            </TabsContent>
+              </TabsContent>
             )}
 
             {/* ── Pricing tab ─────────────────────────── */}
@@ -1774,7 +1774,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                                 {row.icon}
                               </motion.div>
                               <div>
-                                <p className="text-[13px] font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>{row.label}</p>
+                                <p className="text-sm font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>{row.label}</p>
                                 <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{row.sub}</p>
                               </div>
                             </div>
@@ -1783,7 +1783,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                                 key={row.val}
                                 initial={{ opacity: 0.6, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-[15px] font-black tabular-nums"
+                                className="text-base font-black tabular-nums"
                                 style={{ color: "var(--sf-text-primary)" }}>
                                 {formatPrice(row.val)}
                               </motion.p>
@@ -1823,7 +1823,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       <div className="relative px-4 py-5 flex items-center justify-between">
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "var(--sf-teal)" }}>Estimated Total</p>
-                          <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                          <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
                             {quantity > 1 ? `${quantity} pcs · ` : ""}{formatPrice(product.goldPricePerGram)}/g gold rate
                           </p>
                         </div>
@@ -1842,7 +1842,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                             {formatPrice(totalPrice)}
                           </motion.p>
                           {quantity > 1 && (
-                            <p className="text-[11px] mt-1" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
+                            <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(Math.round(totalPrice / quantity))} each</p>
                           )}
                         </div>
                       </div>
@@ -1863,7 +1863,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         {rows.map((row) => (
                           <div key={row.label} className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full" style={{ background: row.accent, boxShadow: `0 0 6px ${row.accent}50` }} />
-                            <span className="text-[9px] font-semibold" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
+                            <span className="text-[10px] font-semibold" style={{ color: "var(--sf-text-muted)" }}>{row.label}</span>
                           </div>
                         ))}
                       </div>
@@ -1917,7 +1917,7 @@ function GlassRadio({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0 w-12" style={{ color: "var(--sf-text-muted)" }}>
+      <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0 w-12" style={{ color: "var(--sf-text-muted)" }}>
         {label}
       </span>
       <div className="flex gap-1.5 flex-wrap">
@@ -1940,7 +1940,7 @@ function GlassRadio({
                 {active && <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />}
               </span>
               {o.bg && <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: o.bg }} />}
-              <span className="text-[11px] font-bold" style={{ color: active ? accent : "var(--sf-text-secondary)" }}>{o.label}</span>
+              <span className="text-xs font-bold" style={{ color: active ? accent : "var(--sf-text-secondary)" }}>{o.label}</span>
             </button>
           );
         })}
@@ -1969,7 +1969,7 @@ function GridSelect({
 
   return (
     <div className="relative">
-      <span className="block text-[9px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{label}</span>
+      <span className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{label}</span>
       <button
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
@@ -1981,7 +1981,7 @@ function GridSelect({
           cursor: "pointer",
         }}
       >
-        <span className="text-[13px] font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{value || "Select"}</span>
+        <span className="text-sm font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{value || "Select"}</span>
         <ChevronRight className="w-4 h-4 ml-auto shrink-0 transition-transform" style={{ color: "var(--sf-teal)", transform: open ? "rotate(-90deg)" : "rotate(90deg)" }} />
       </button>
 
@@ -2005,7 +2005,7 @@ function GridSelect({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}…`}
-                  className="w-full bg-transparent outline-none text-[12px]"
+                  className="w-full bg-transparent outline-none text-xs"
                   style={{ color: "var(--sf-text-primary)" }}
                 />
               </div>
@@ -2013,7 +2013,7 @@ function GridSelect({
               {/* Options */}
               <div className="sf-thin-scroll p-1.5 max-h-52 overflow-y-auto">
                 {filtered.length === 0 ? (
-                  <div className="px-3 py-3 text-center text-[11px]" style={{ color: "var(--sf-text-muted)" }}>No matches</div>
+                  <div className="px-3 py-3 text-center text-xs" style={{ color: "var(--sf-text-muted)" }}>No matches</div>
                 ) : (
                   filtered.map((o) => {
                     const active = norm(o) === norm(value);
