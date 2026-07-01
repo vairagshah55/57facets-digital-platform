@@ -406,15 +406,39 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
   const prevImage = useCallback(() => {
     if (!product) return;
-    setShowVideo(false);
-    setActiveImage((i) => (i === 0 ? product.images.length - 1 : i - 1));
-  }, [product]);
+    const hasVideo = !!product.video;
+    const last = product.images.length - 1;
+    // Sequence: [image 0 … image last] then video (if any)
+    if (showVideo) {
+      // video -> last image
+      setShowVideo(false);
+      setActiveImage(last);
+    } else if (activeImage === 0) {
+      // first image -> video (if any) else wrap to last image
+      if (hasVideo) setShowVideo(true);
+      else setActiveImage(last);
+    } else {
+      setActiveImage(activeImage - 1);
+    }
+  }, [product, showVideo, activeImage]);
 
   const nextImage = useCallback(() => {
     if (!product) return;
-    setShowVideo(false);
-    setActiveImage((i) => (i === product.images.length - 1 ? 0 : i + 1));
-  }, [product]);
+    const hasVideo = !!product.video;
+    const last = product.images.length - 1;
+    // Sequence: [image 0 … image last] then video (if any)
+    if (showVideo) {
+      // video -> first image
+      setShowVideo(false);
+      setActiveImage(0);
+    } else if (activeImage === last) {
+      // last image -> video (if any) else wrap to first image
+      if (hasVideo) setShowVideo(true);
+      else setActiveImage(0);
+    } else {
+      setActiveImage(activeImage + 1);
+    }
+  }, [product, showVideo, activeImage]);
 
   // ── Loading state ──────────────────────────────────
   if (loading) {
@@ -538,6 +562,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   loop
                   muted
                   playsInline
+                  controls
+                  controlsList="nodownload"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -571,7 +597,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
             )}
 
             {/* Nav arrows */}
-            {!showVideo && (
+            {(product.images.length > 1 || product.video) && (
               <>
                 <button
                   onClick={prevImage}
