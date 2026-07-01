@@ -173,7 +173,8 @@ export function RetailerLogin() {
     try {
       const data = await authApi.verifyOtp(getIdentifier(), otp);
       login(data.token, data.retailer);
-      navigate("/retailer/catalog");
+      // Land the retailer on the Unseen Products tab right after login
+      navigate("/retailer/catalog?tab=unseen");
     } catch (err: any) {
       setError(err.message || "Invalid OTP");
     } finally {
@@ -190,7 +191,7 @@ export function RetailerLogin() {
 
   // Already logged in — redirect after all hooks
   if (authLoading) return null;
-  if (retailer) return <Navigate to="/retailer/catalog" replace />;
+  if (retailer) return <Navigate to="/retailer/catalog?tab=unseen" replace />;
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);

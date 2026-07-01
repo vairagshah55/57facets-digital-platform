@@ -89,7 +89,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const navigate = useNavigate();
   const { retailer } = useAuth();
   const isINR = (retailer?.country || "India") === "India"; // currency for this retailer
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   // Collection can come from a dedicated route param (prop) or a ?collection= query.
   const collectionId = collectionIdProp ?? searchParams.get("collection");
   const [collectionName, setCollectionName] = useState<string | null>(null);
@@ -99,6 +99,18 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [activeTab, setActiveTab] = useState<"all" | "new" | "viewed" | "unseen">(
     (searchParams.get("tab") as any) || "all"
   );
+
+  // Switch tab AND keep the URL's ?tab= in sync so a stale param can't
+  // re-select a tab on the next render/refresh.
+  const changeTab = useCallback((key: "all" | "new" | "viewed" | "unseen") => {
+    setActiveTab(key);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (key === "all") next.delete("tab");
+      else next.set("tab", key);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const [priceRange, setPriceRange] = useState<number[]>([PRICE_MIN, PRICE_MAX]);
   const [caratRange, setCaratRange] = useState<number[]>([CARAT_MIN, CARAT_MAX]);
@@ -320,7 +332,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               return (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => changeTab(tab.key)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer"
                   style={{
                     background: isActive ? "var(--sf-teal-glass)" : "none",
@@ -359,7 +371,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <SheetHeader><SheetTitle style={{ color: "var(--sf-text-primary)" }}>Filters</SheetTitle></SheetHeader>
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
-                  availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} />
+                  availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR} />
               </ScrollArea>
             </SheetContent>
           </Sheet>
@@ -399,7 +411,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           <Card className="sticky top-20 border-[var(--sf-divider)] overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
-                availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} />
+                availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR} />
             </CardContent>
           </Card>
         </aside>
@@ -444,7 +456,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 <Diamond className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)", opacity: 0.4 }} />
                 <p className="text-base font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>No products found</p>
                 <p className="text-sm mb-4" style={{ color: "var(--sf-text-muted)" }}>Try adjusting your search or filters</p>
-                <Button variant="ghost" style={{ color: "var(--sf-teal)" }} onClick={() => { setSearch(""); setActiveCategory("All"); setActiveTab("all"); clearFilters(); }}>
+                <Button variant="ghost" style={{ color: "var(--sf-teal)" }} onClick={() => { setSearch(""); setActiveCategory("All"); changeTab("all"); clearFilters(); }}>
                   Reset all
                 </Button>
               </motion.div>
@@ -513,11 +525,11 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
    FILTER PANEL
    ═══════════════════════════════════════════════════════ */
 
-function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, availability, setAvailability, onClear, activeCount }: {
+function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, availability, setAvailability, onClear, activeCount, isINR }: {
   priceRange: number[]; setPriceRange: (v: number[]) => void;
   caratRange: number[]; setCaratRange: (v: number[]) => void;
   availability: Record<string, boolean>; setAvailability: (v: Record<string, boolean>) => void;
-  onClear: () => void; activeCount: number;
+  onClear: () => void; activeCount: number; isINR: boolean;
 }) {
   return (
     <div className="space-y-5">
