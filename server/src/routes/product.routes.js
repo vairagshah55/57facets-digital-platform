@@ -318,7 +318,10 @@ router.get("/:id", authenticate, async (req, res, next) => {
       stones,
       variants,
       country: priced.country || "India",
-      goldPricePerGram: goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null,
+      // The gold rate actually used in the price (per the retailer's country),
+      // falling back to the legacy gold_prices table only if unavailable.
+      goldPricePerGram: priced.breakdown?.detail?.gold?.rate_per_gram
+        ?? (goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null),
     });
   } catch (err) {
     next(err);
