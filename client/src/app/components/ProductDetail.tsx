@@ -82,6 +82,7 @@ interface ProductData {
   video: string;
   isNew: boolean;
   goldPricePerGram: number;
+  goldPriceUpdatedAt: string | null;
   serverPrice: number | null;
   priceSource?: string;
   priceBreakdown?: any;
@@ -164,6 +165,7 @@ function mapApiProduct(raw: any): ProductData {
     video: videoEntry ? imageUrl(videoEntry.image_url) : "",
     isNew: Boolean(raw.is_new),
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
+    goldPriceUpdatedAt: raw.goldPriceUpdatedAt || null,
     diamonds: Array.isArray(raw.diamonds)
       ? raw.diamonds.map((d: any) => ({
         type: d.diamond_type || "",
@@ -844,9 +846,25 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
-              Gold rate: {formatPrice(product.goldPricePerGram)}/g (live) &bull; Your contracted pricing
-            </p>
+            {(() => {
+              // "Gold Price: ₹XXX/g as per Mumbai Spot Price HH:MM hrs (IST), DD-MM-YYYY (India)"
+              // (NY / US for dollar retailers). Timestamp = when the country's gold
+              // rate was last updated, rendered in IST.
+              const spot = isINR ? "Mumbai" : "NY";
+              const region = isINR ? "India" : "US";
+              const ts = product.goldPriceUpdatedAt ? new Date(product.goldPriceUpdatedAt) : null;
+              let when = "";
+              if (ts && !isNaN(ts.getTime())) {
+                const time = ts.toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+                const date = ts.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-");
+                when = ` ${time} hrs (IST), ${date}`;
+              }
+              return (
+                <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>
+                  Gold Price: {formatPrice(product.goldPricePerGram)}/g as per {spot} Spot Price{when} ({region})
+                </p>
+              );
+            })()}
           </div>
 
           {/* ── Customization ────────────────────────── */}

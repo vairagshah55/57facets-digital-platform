@@ -308,6 +308,13 @@ router.get("/:id", authenticate, async (req, res, next) => {
     // Per-retailer computed price + full cost breakdown
     const priced = await pricing.priceForRetailer(rows[0], req.retailer?.id);
 
+    // When the gold (metal) rate for this retailer's country was last updated —
+    // shown as the "Spot Price ... hrs (IST)" timestamp on the product page.
+    const { rows: goldMeta } = await query(
+      "SELECT MAX(updated_at) AS updated_at FROM metal_rates WHERE country = $1",
+      [priced.country || "India"]
+    );
+
     res.json({
       ...rows[0],
       price: priced.price,
@@ -322,6 +329,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
       // falling back to the legacy gold_prices table only if unavailable.
       goldPricePerGram: priced.breakdown?.detail?.gold?.rate_per_gram
         ?? (goldPrice.length > 0 ? parseFloat(goldPrice[0].price_per_gram) : null),
+      goldPriceUpdatedAt: goldMeta[0]?.updated_at || null,
     });
   } catch (err) {
     next(err);
