@@ -163,7 +163,9 @@ export const adminProducts = {
     if (!res.ok) throw new Error(data.error || "Failed to delete image");
     return data;
   },
-  importCsv: async (file: File) => {
+  // Uploads the file and enqueues a background import job. Returns { jobId }.
+  // The heavy processing runs in the worker — poll importJob(jobId) for progress.
+  importCsv: async (file: File): Promise<{ jobId: string; status: string }> => {
     const formData = new FormData();
     formData.append("file", file);
     const token = getAdminToken();
@@ -176,6 +178,8 @@ export const adminProducts = {
     if (!res.ok) throw new Error(data.error || "Import failed");
     return data;
   },
+  // Poll a background import job's status/progress/final counts.
+  importJob: (jobId: string) => request(`/products/import-csv/jobs/${jobId}`),
 };
 
 // ── Collections (Admin) ───────────────────────────

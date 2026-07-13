@@ -216,6 +216,7 @@ export function AdminProducts() {
   const [importOpen, setImportOpen]     = useState(false);
   const [importFile, setImportFile]     = useState<File | null>(null);
   const [importing, setImporting]       = useState(false);
+  const [importProgress, setImportProgress] = useState<{ processed: number; total: number } | null>(null);
   const [importResult, setImportResult] = useState<{
     imported: number; skipped: number; total: number;
     imagesImported?: number;
@@ -281,14 +282,38 @@ export function AdminProducts() {
     if (!importFile) return;
     setImporting(true);
     setImportResult(null);
+    setImportProgress(null);
     try {
-      const result = await adminProducts.importCsv(importFile);
-      setImportResult(result);
-      fetchProducts();
+      // 1) Upload + enqueue — returns immediately with a job id.
+      const { jobId } = await adminProducts.importCsv(importFile);
+      // 2) Poll the job until it finishes (or fails).
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      // Safety cap so a stuck/never-started job doesn't poll forever (~10 min).
+      for (let attempt = 0; attempt < 400; attempt++) {
+        const job = await adminProducts.importJob(jobId);
+        if (job.status === "queued" || job.status === "running") {
+          setImportProgress({ processed: job.processed || 0, total: job.total || 0 });
+          await sleep(1500);
+          continue;
+        }
+        if (job.status === "failed") {
+          setImportResult({ imported: 0, skipped: 0, total: 0, errors: [{ row: 0, reason: job.errorMessage || "Import failed" }] });
+        } else {
+          // done
+          setImportResult({
+            imported: job.imported, skipped: job.skipped, total: job.total,
+            imagesImported: job.imagesImported, errors: job.errors,
+          });
+          fetchProducts();
+        }
+        return;
+      }
+      setImportResult({ imported: 0, skipped: 0, total: 0, errors: [{ row: 0, reason: "Import timed out — check the import status later." }] });
     } catch (e: any) {
       setImportResult({ imported: 0, skipped: 0, total: 0, errors: [{ row: 0, reason: e.message || "Import failed" }] });
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   }
 
@@ -818,6 +843,32 @@ export function AdminProducts() {
           </DialogHeader>
 
           {!importResult ? (
+            importing ? (
+              <div className="py-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--sf-teal)" }} />
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>Importing…</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                      {importProgress && importProgress.total > 0
+                        ? `${importProgress.processed} of ${importProgress.total} rows processed`
+                        : "Preparing import…"}
+                    </p>
+                  </div>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
+                  <div className="h-full rounded-full transition-all" style={{
+                    width: importProgress && importProgress.total > 0
+                      ? `${Math.round((importProgress.processed / importProgress.total) * 100)}%`
+                      : "10%",
+                    backgroundColor: "var(--sf-teal)",
+                  }} />
+                </div>
+                <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+                  The import runs in the background — this can take a while for large files with images.
+                </p>
+              </div>
+            ) : (
             <div className="space-y-3 py-1">
               <div
                 onClick={() => importFileRef.current?.click()}
@@ -845,7 +896,7 @@ export function AdminProducts() {
                       <Upload className="w-5 h-5" style={{ color: "var(--sf-text-muted)" }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>Click to select file</p>
-                    <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>CSV, XLSX, or ZIP with product images · Max 100 MB</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--sf-text-muted)" }}>CSV, XLSX, or ZIP with product images · Max 200 MB</p>
                   </>
                 )}
                 <input ref={importFileRef} type="file" accept=".csv,.xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden"
@@ -857,6 +908,7 @@ export function AdminProducts() {
                 Duplicate SKUs are automatically skipped.
               </div>
             </div>
+            )
           ) : (
             <div className="py-1">
               <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--sf-bg-surface-2)" }}>
