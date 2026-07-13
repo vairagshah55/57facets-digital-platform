@@ -206,6 +206,7 @@ router.post("/", async (req, res, next) => {
       color_stone_name, color_stone_quality, carat_options,
       collection_ids, diamonds, stones,
       mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
+      type_category, sub_category,
     } = req.body;
 
     if (!sku) throw new AppError("SKU is required");
@@ -245,11 +246,11 @@ router.post("/", async (req, res, next) => {
         price_modifiers, lead_time_days, min_order_qty, max_order_qty,
         color_stone_name, color_stone_quality, carat_options,
         mfg_code, gross_weight, net_weight, diamond_size, diamond_pcs,
-        color_stone_carat, color_stone_pcs
+        color_stone_carat, color_stone_pcs, type_category, sub_category
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
         $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,
-        $33,$34,$35,$36,$37,$38,$39
+        $33,$34,$35,$36,$37,$38,$39,$40,$41
       ) RETURNING *`,
       [
         name || "", sku, description || null, category_id || null,
@@ -267,6 +268,7 @@ router.post("/", async (req, res, next) => {
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         mfg_code || null, gross_weight || null, net_weight || null,
         dSize || null, dPcs, csCarat || null, csPcs || null,
+        type_category || null, sub_category || null,
       ]
     );
 
@@ -353,6 +355,7 @@ router.put("/:id", async (req, res, next) => {
       color_stone_name, color_stone_quality, carat_options,
       collection_ids, diamonds, stones,
       mfg_code, gross_weight, net_weight, color_stone_carat, color_stone_pcs,
+      type_category, sub_category,
     } = req.body;
 
     // First stone row bridges to the product-level color_stone_* columns.
@@ -428,6 +431,8 @@ router.put("/:id", async (req, res, next) => {
         color_stone_carat = COALESCE($38, color_stone_carat),
         color_stone_pcs = COALESCE($39, color_stone_pcs),
         sku = COALESCE($40, sku),
+        type_category = COALESCE($42, type_category),
+        sub_category = COALESCE($43, sub_category),
         updated_at = NOW()
        WHERE id = $41 RETURNING *`,
       [
@@ -446,6 +451,7 @@ router.put("/:id", async (req, res, next) => {
         dSize ?? null, dPcs ?? null, csCarat, csPcs,
         newSku,
         req.params.id,
+        type_category ?? null, sub_category ?? null,
       ]
     );
     if (rows.length === 0) throw new AppError("Product not found", 404);
@@ -727,6 +733,9 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
     const csCaratIdx = colAny("color_stone_carat", "cs_carat") !== -1 ? colAny("color_stone_carat", "cs_carat") : colNth("carat", 1);
     // Pricing uses metal_weight — fall back to net weight when the template only has gross/net.
     const metalWtIdx = col("metal_weight") !== -1 ? col("metal_weight") : netWtIdx;
+    // Group classification columns (nullable free text).
+    const typeCatIdx = colAny("type_category", "type category");
+    const subCatIdx  = colAny("sub_category", "sub category");
 
     // Field requirement tiers — driven by the colour-coded import template:
     //  • RED columns were removed from the template and are NOT imported
@@ -910,10 +919,10 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             color_stone_name, color_stone_quality,
             availability, max_order_qty, is_new, occasion_tags,
             mfg_code, gross_weight, net_weight, diamond_size, diamond_pcs,
-            color_stone_carat, color_stone_pcs
+            color_stone_carat, color_stone_pcs, type_category, sub_category
           ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-            $21,$22,$23,$24,$25,$26,$27
+            $21,$22,$23,$24,$25,$26,$27,$28,$29
           ) RETURNING id`,
           [
             name || "", sku,
@@ -942,6 +951,8 @@ router.post("/import-csv", upload.single("file"), async (req, res, next) => {
             dia.diamond_pcs,
             getNum(cols, csCaratIdx),
             getNum(cols, csPcsIdx),
+            getVal(cols, typeCatIdx),
+            getVal(cols, subCatIdx),
           ]
         );
 

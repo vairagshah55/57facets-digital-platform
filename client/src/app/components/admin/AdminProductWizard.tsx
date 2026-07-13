@@ -61,6 +61,7 @@ const EMPTY_STONE: StoneRow = { stone_name: "", stone_quality: "", carat: "", pc
 
 type FormData = {
   name: string; sku: string; mfg_code: string; description: string; category_id: string;
+  type_category: string; sub_category: string;
   collection_ids: string[]; occasion_tags: string;
   metal_type: string; gold_colour: string; metal_weight: string;
   gross_weight: string; net_weight: string;
@@ -110,10 +111,12 @@ const COLOR_STONE_QUALITY_MAP: Record<string, string[]> = {
   "Beads":                ["Beads"],
   "Kundan":               ["Kundan Billor"],
 };
+const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
 const MAX_IMAGES = 10;
 
 const EMPTY: FormData = {
-  name: "", sku: "", mfg_code: "", description: "", category_id: "", collection_ids: [],
+  name: "", sku: "", mfg_code: "", description: "", category_id: "",
+  type_category: "", sub_category: "", collection_ids: [],
   occasion_tags: "", metal_type: "", gold_colour: "", metal_weight: "",
   gross_weight: "", net_weight: "", color_stone_carat: "", color_stone_pcs: "",
   diamonds: [],
@@ -135,6 +138,7 @@ function detailToForm(d: ProductDetail): FormData {
   return {
     name: d.name || "", sku: d.sku || "", mfg_code: (d as any).mfg_code || "", description: d.description || "",
     category_id: d.category_id || "",
+    type_category: (d as any).type_category || "", sub_category: (d as any).sub_category || "",
     collection_ids: d.collections?.map((c) => c.id) || [],
     occasion_tags: Array.isArray(d.occasion_tags) ? d.occasion_tags.join(", ") : (d.occasion_tags || ""),
     metal_type: d.metal_type || "", gold_colour: d.gold_colour || "",
@@ -216,6 +220,7 @@ function formToPayload(f: FormData) {
     name: f.name.trim(), sku: f.sku.trim(), mfg_code: f.mfg_code.trim() || null,
     description: f.description.trim() || null,
     category_id: f.category_id || null, collection_ids: f.collection_ids,
+    type_category: f.type_category.trim() || null, sub_category: f.sub_category.trim() || null,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
     // Metal weight is no longer entered separately — it tracks Net Weight (used for pricing).
@@ -407,6 +412,14 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
           value={form.category_id} onValueChange={(v) => setForm((p) => ({ ...p, category_id: v }))}>
           {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
         </FSelect>
+        <FSelect label="Type Category" placeholder="Select type"
+          value={form.type_category} onValueChange={(v) => setForm((p) => ({ ...p, type_category: v }))}>
+          {TYPE_CATEGORY_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+        </FSelect>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <FInput label="Sub Category" placeholder="e.g. Solitaire, Cocktail"
+          value={form.sub_category} onChange={f("sub_category")} hint="Optional" />
         <FInput label="Occasion Tags" placeholder="wedding, anniversary, gift"
           value={form.occasion_tags} onChange={f("occasion_tags")} hint="Comma-separated" />
       </div>

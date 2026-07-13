@@ -74,6 +74,8 @@ interface ProductData {
   name: string;
   description: string;
   category: string;
+  typeCategory: string;
+  subCategory: string;
   country: string;
   sku: string;
   availability: string;
@@ -154,6 +156,8 @@ function mapApiProduct(raw: any): ProductData {
     name: (raw.name && String(raw.name).trim()) ? raw.name : (raw.sku || "Untitled Product"),
     description: raw.description || "",
     category: raw.category || "",
+    typeCategory: raw.type_category || "",
+    subCategory: raw.sub_category || "",
     country: raw.country || "India",
     sku: raw.sku || "",
     availability: raw.availability || "in-stock",
@@ -749,6 +753,22 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
                   SKU: {product.sku}
                 </span>
+                {product.typeCategory && (
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                    style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}
+                  >
+                    {product.typeCategory}
+                  </span>
+                )}
+                {product.subCategory && (
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                    style={{ background: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-secondary)" }}
+                  >
+                    {product.subCategory}
+                  </span>
+                )}
               </div>
 
               {/* Certificate verification — opens the gem-science verification page in a new tab */}
