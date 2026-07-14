@@ -69,6 +69,9 @@ type ViewMode = "grid" | "compact";
 const PRICE_MIN = 0, PRICE_MAX = 500000, CARAT_MIN = 0, CARAT_MAX = 5;
 const PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const DEFAULT_PAGE_SIZE = 12;
+// Preset type categories (mirrors the admin product editor). Shown in full in the
+// Type filter regardless of which values currently exist in the catalog.
+const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
 
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
@@ -146,7 +149,6 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   });
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeSubCategories, setActiveSubCategories] = useState<string[]>([]);
-  const [typeOptions, setTypeOptions] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([]);
 
@@ -187,8 +189,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
-    productsApi.filterOptions().then((d: { types?: string[]; subCategories?: string[]; availabilities?: string[] }) => {
-      setTypeOptions(d?.types ?? []);
+    productsApi.filterOptions().then((d: { subCategories?: string[]; availabilities?: string[] }) => {
       setSubCategoryOptions(d?.subCategories ?? []);
       setAvailabilityOptions(d?.availabilities ?? []);
     }).catch(() => {});
@@ -422,7 +423,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                   availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
               </ScrollArea>
@@ -467,7 +468,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                 availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
             </CardContent>

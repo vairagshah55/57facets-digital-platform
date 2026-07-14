@@ -123,6 +123,8 @@ function productCarats(p: ProductListItem): string[] {
 }
 
 const PAGE_SIZE = 15;
+// Preset type categories (mirrors the admin product editor); shown in full in the Type filter.
+const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
 
 /* ═══════════════════════════════════════════════════════
    SAMPLE FILE DOWNLOAD
@@ -201,7 +203,6 @@ export function AdminProducts() {
   const [typeFilter, setTypeFilter]           = useState<string[]>([]);
   const [subCategoryFilter, setSubCategoryFilter] = useState<string[]>([]);
   const [categories, setCategories]           = useState<Category[]>([]);
-  const [typeOptions, setTypeOptions]         = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
 
   // Rows expanded to show their full diamond breakdown
@@ -239,8 +240,7 @@ export function AdminProducts() {
 
   useEffect(() => {
     adminProducts.categories().then((cats: Category[]) => setCategories(cats || [])).catch(() => {});
-    adminProducts.filterOptions().then((d: { types?: string[]; subCategories?: string[] }) => {
-      setTypeOptions(d?.types ?? []);
+    adminProducts.filterOptions().then((d: { subCategories?: string[] }) => {
       setSubCategoryOptions(d?.subCategories ?? []);
     }).catch(() => {});
   }, []);
@@ -501,9 +501,7 @@ export function AdminProducts() {
             <SelectItem value="false">Not New</SelectItem>
           </FilterSelect>
 
-          {typeOptions.length > 0 && (
-            <MultiSelect options={typeOptions} selected={typeFilter} onChange={setTypeFilter} placeholder="Type" width="140px" />
-          )}
+          <MultiSelect options={TYPE_CATEGORY_OPTIONS} selected={typeFilter} onChange={setTypeFilter} placeholder="Type" width="140px" />
 
           {subCategoryOptions.length > 0 && (
             <MultiSelect options={subCategoryOptions} selected={subCategoryFilter} onChange={setSubCategoryFilter} placeholder="Sub-category" width="150px" />
