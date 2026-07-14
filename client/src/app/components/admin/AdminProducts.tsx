@@ -102,10 +102,6 @@ const AVAILABILITY_STYLE: Record<string, { bg: string; text: string; border: str
   "out-of-stock":  { bg: "var(--sf-status-oos-bg)",      text: "var(--sf-status-oos-text)",      border: "var(--sf-status-oos-border)"      },
 };
 
-function formatPrice(n: number) {
-  return "₹" + Number(n).toLocaleString("en-IN");
-}
-
 // Trim trailing zeros from a NUMERIC carat value (e.g. "1.200" -> "1.2").
 function fmtCarat(c: number | string) {
   const n = Number(c);
@@ -516,13 +512,12 @@ export function AdminProducts() {
           style={{
             borderColor: "var(--sf-divider)",
             color: "var(--sf-text-muted)",
-            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
+            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
           }}
         >
           <span></span>
           <span>Product</span>
           <span className="hidden md:block">Category</span>
-          <span>Price</span>
           <span>Availability</span>
           <span className="hidden lg:block">Carat</span>
           <span className="hidden md:block text-center">Imgs</span>
@@ -551,7 +546,7 @@ export function AdminProducts() {
                 style={{
                   borderColor: "var(--sf-divider)",
                   backgroundColor: "transparent",
-                  gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
+                  gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
                 }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--sf-bg-surface-2)")}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -635,13 +630,6 @@ export function AdminProducts() {
                   ) : (
                     <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>—</span>
                   )}
-                </div>
-
-                {/* Price */}
-                <div>
-                  <span className="text-sm font-semibold" style={{ color: "var(--sf-teal)" }}>
-                    {formatPrice(p.base_price)}
-                  </span>
                 </div>
 
                 {/* Availability */}
