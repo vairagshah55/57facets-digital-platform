@@ -31,6 +31,7 @@ import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent } from "./ui/card";
 import { MultiSelect } from "./ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import {
   Sheet,
   SheetTrigger,
@@ -66,7 +67,8 @@ type Category = { id: number; name: string; image_url: string | null; product_co
 type ViewMode = "grid" | "compact";
 
 const PRICE_MIN = 0, PRICE_MAX = 500000, CARAT_MIN = 0, CARAT_MAX = 5;
-const CATALOG_PAGE_SIZE = 6;
+const PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
+const DEFAULT_PAGE_SIZE = 12;
 
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
@@ -154,6 +156,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [viewedCount, setViewedCount] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
@@ -168,7 +171,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, collectionId]);
+  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, pageSize, collectionId]);
 
   // Fetch the collection's name when viewing a collection (for the header)
   useEffect(() => {
@@ -234,7 +237,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           if (activeTab === "new") params.is_new = "true";
           if (activeTab === "unseen") params.unseen = "true";
           params.page = String(page);
-          params.limit = String(CATALOG_PAGE_SIZE);
+          params.limit = String(pageSize);
           const data = await productsApi.list(params);
           if (!cancelled) {
             const mapped = ((data.products || []) as ApiProduct[]).map((p) => mapProduct(p, isINR));
@@ -254,7 +257,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }
     fetchProducts();
     return () => { cancelled = true; };
-  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, collectionId, isINR]);
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, pageSize, collectionId, isINR]);
 
   const toggleWishlist = useCallback(async (productId: string) => {
     const isWishlisted = wishlistedIds.has(productId);
@@ -470,11 +473,26 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 <span className="inline-block w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "var(--sf-divider)", borderTopColor: "var(--sf-teal)" }} />
               )}
             </p>
-            {activeFiltersCount > 0 && (
-              <button onClick={clearFilters} className="text-xs flex items-center gap-1 cursor-pointer" style={{ color: "var(--sf-teal)", background: "none", border: "none" }}>
-                <X className="w-3 h-3" /> Clear filters
-              </button>
-            )}
+            <div className="flex items-center gap-3 shrink-0">
+              {activeFiltersCount > 0 && (
+                <button onClick={clearFilters} className="text-xs flex items-center gap-1 cursor-pointer" style={{ color: "var(--sf-teal)", background: "none", border: "none" }}>
+                  <X className="w-3 h-3" /> Clear filters
+                </button>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs whitespace-nowrap" style={{ color: "var(--sf-text-muted)" }}>Per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="h-8 w-[68px] text-xs border-[var(--sf-divider)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Grid */}
