@@ -709,7 +709,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
           {/* GSI certification logo — display only, not clickable */}
           <div
-            className="flex items-center justify-center mt-4 px-6 py-5 rounded-2xl"
+            className="flex items-center justify-center mt-4 px-4 py-3 rounded-2xl"
             style={{
               backgroundColor: "var(--sf-bg-surface-2)",
               border: "1px solid var(--sf-divider)",
@@ -718,7 +718,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
             <img
               src={gsiEmblem}
               alt="GSI Certified"
-              className="w-40 sm:w-48 h-auto object-contain"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
             />
           </div>
         </motion.div>
