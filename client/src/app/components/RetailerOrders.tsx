@@ -14,7 +14,6 @@ import {
   ChevronDown,
   StickyNote,
   CalendarDays,
-  ShoppingCart,
   ShoppingBag,
   Eye,
   RotateCcw,
@@ -49,7 +48,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "./ui/dialog";
 import {
   Sheet,
@@ -313,9 +311,6 @@ export function RetailerOrders() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   // New order dialog
-  const [newOrderOpen, setNewOrderOpen] = useState(false);
-  const [newOrderNote, setNewOrderNote] = useState("");
-  const [creating, setCreating] = useState(false);
 
   // Edit order
   const [editMode, setEditMode]                   = useState(false);
@@ -616,27 +611,6 @@ export function RetailerOrders() {
     }
   }
 
-  const handleCreateOrder = useCallback(async () => {
-    setCreating(true);
-    try {
-      await ordersApi.create([], newOrderNote || undefined);
-      setNewOrderOpen(false);
-      setNewOrderNote("");
-      toast.success("Order request submitted! We'll confirm it shortly.");
-      const data = await ordersApi.list({});
-      setOrdersList(Array.isArray(data) ? data : data.orders ?? []);
-      if (data.summary) {
-        const s: Record<string, number> = { all: data.total ?? 0 };
-        Object.entries(data.summary).forEach(([k, v]) => { s[k] = v as number; });
-        setSummary(s);
-      }
-    } catch {
-      toast.error("Failed to create order. Please try again.");
-    } finally {
-      setCreating(false);
-    }
-  }, [newOrderNote]);
-
   const editableOrders = useMemo(() => ordersList.filter(o => o.edit_allowed), [ordersList]);
 
   const counts = useMemo(() => {
@@ -718,20 +692,6 @@ export function RetailerOrders() {
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <motion.div whileTap={{ scale: 0.97 }}>
-              <Button
-                className="h-9 text-sm gap-2 rounded-xl font-semibold"
-                style={{
-                  backgroundColor: "var(--sf-teal)",
-                  color: "var(--sf-bg-base)",
-                  boxShadow: "0 4px 16px rgba(48,184,191,0.28)",
-                }}
-                onClick={() => { setNewOrderNote(""); setNewOrderOpen(true); }}
-              >
-                <ShoppingCart className="w-4 h-4" />
-                New Order
-              </Button>
-            </motion.div>
           </div>
         </div>
 
@@ -1073,45 +1033,6 @@ export function RetailerOrders() {
         )}
       </main>
 
-      {/* === New Order Dialog === */}
-      <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <DialogContent style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', serif" }}>
-              Place New Order Request
-            </DialogTitle>
-            <DialogDescription style={{ color: "var(--sf-text-secondary)" }}>
-              Add items from the catalog or wishlist, then submit your order request.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--sf-text-secondary)" }}>
-                Special Notes / Instructions
-              </label>
-              <Textarea
-                placeholder="E.g., delivery deadline, gift wrapping, size requirements, engraving…"
-                value={newOrderNote}
-                onChange={(e) => setNewOrderNote(e.target.value)}
-                className="border-[var(--sf-divider)] min-h-[100px]"
-                style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}
-              />
-            </div>
-            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-              Your order request will be reviewed by the 57Facets team. You'll receive confirmation once approved.
-            </p>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost" style={{ color: "var(--sf-text-secondary)" }}>Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleCreateOrder} disabled={creating} style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}>
-              {creating && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-              Submit Order
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* === Order Detail Sheet === */}
       <Sheet
