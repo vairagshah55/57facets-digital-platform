@@ -12,7 +12,7 @@ router.get("/", authenticate, async (req, res, next) => {
     const {
       category, search, availability,
       min_price, max_price, min_carat, max_carat,
-      is_new, unseen, collection, page = 1, limit = 20,
+      is_new, unseen, collection, type_category, sub_category, page = 1, limit = 20,
     } = req.query;
 
     const conditions = ["p.is_active = true"];
@@ -28,6 +28,17 @@ router.get("/", authenticate, async (req, res, next) => {
     if (category) {
       conditions.push(`c.name = $${idx++}`);
       params.push(category);
+    }
+    if (type_category) {
+      // Comma-separated list (multi-select) — match any of the chosen types.
+      const types = String(type_category).split(",").map((s) => s.trim()).filter(Boolean);
+      conditions.push(`p.type_category = ANY($${idx++})`);
+      params.push(types);
+    }
+    if (sub_category) {
+      const subs = String(sub_category).split(",").map((s) => s.trim()).filter(Boolean);
+      conditions.push(`p.sub_category = ANY($${idx++})`);
+      params.push(subs);
     }
     if (search) {
       conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx})`);
@@ -130,6 +141,28 @@ router.get("/categories", authenticate, async (req, res, next) => {
        FROM categories c ORDER BY c.sort_order`
     );
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/products/filter-options ───────────────
+// Distinct type_category and sub_category values across active products,
+// used to populate the catalog filter dropdowns.
+router.get("/filter-options", authenticate, async (req, res, next) => {
+  try {
+    const [types, subs] = await Promise.all([
+      query(`SELECT DISTINCT type_category AS v FROM products
+             WHERE is_active = true AND type_category IS NOT NULL AND type_category <> ''
+             ORDER BY type_category`),
+      query(`SELECT DISTINCT sub_category AS v FROM products
+             WHERE is_active = true AND sub_category IS NOT NULL AND sub_category <> ''
+             ORDER BY sub_category`),
+    ]);
+    res.json({
+      types: types.rows.map((r) => r.v),
+      subCategories: subs.rows.map((r) => r.v),
+    });
   } catch (err) {
     next(err);
   }

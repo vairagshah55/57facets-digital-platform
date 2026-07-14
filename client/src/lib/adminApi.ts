@@ -118,6 +118,7 @@ export const adminProducts = {
     request(`/products/${id}`, { method: "DELETE" }),
   categories: () => request("/products/meta/categories"),
   collections: () => request("/products/meta/collections"),
+  filterOptions: () => request("/products/meta/filter-options"),
   uploadImages: async (productId: string, files: FileList | File[]) => {
     const formData = new FormData();
     for (const file of Array.from(files)) formData.append("images", file);

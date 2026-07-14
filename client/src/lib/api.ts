@@ -80,6 +80,7 @@ export const products = {
   },
   detail: (id: string) => request(`/products/${id}`),
   categories: () => request("/products/categories"),
+  filterOptions: () => request("/products/filter-options"),
   counts: () => request("/products/counts"),
   newArrivals: () => request("/products/new-arrivals"),
   recentlyViewed: () => request("/products/recently-viewed"),

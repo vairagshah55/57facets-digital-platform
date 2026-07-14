@@ -81,7 +81,7 @@ router.get("/:id/preview", async (req, res, next) => {
 // List all products with filters
 router.get("/", async (req, res, next) => {
   try {
-    const { search, category, availability, is_new, page = 1, limit = 20 } = req.query;
+    const { search, category, availability, is_new, type_category, sub_category, page = 1, limit = 20 } = req.query;
     const conditions = ["p.is_active = true"];
     const params = [];
     let idx = 1;
@@ -94,6 +94,17 @@ router.get("/", async (req, res, next) => {
     if (category) {
       conditions.push(`c.name = $${idx++}`);
       params.push(category);
+    }
+    if (type_category) {
+      // Comma-separated list (multi-select) — match any of the chosen types.
+      const types = String(type_category).split(",").map((s) => s.trim()).filter(Boolean);
+      conditions.push(`p.type_category = ANY($${idx++})`);
+      params.push(types);
+    }
+    if (sub_category) {
+      const subs = String(sub_category).split(",").map((s) => s.trim()).filter(Boolean);
+      conditions.push(`p.sub_category = ANY($${idx++})`);
+      params.push(subs);
     }
     if (availability) {
       conditions.push(`p.availability = $${idx++}`);
@@ -564,6 +575,25 @@ router.get("/meta/collections", async (req, res, next) => {
   try {
     const { rows } = await query("SELECT id, name, tag FROM collections WHERE is_active = true ORDER BY name");
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/products/meta/filter-options ────
+// Distinct type_category and sub_category values for the admin filter bar.
+router.get("/meta/filter-options", async (req, res, next) => {
+  try {
+    const [types, subs] = await Promise.all([
+      query(`SELECT DISTINCT type_category AS v FROM products
+             WHERE type_category IS NOT NULL AND type_category <> '' ORDER BY type_category`),
+      query(`SELECT DISTINCT sub_category AS v FROM products
+             WHERE sub_category IS NOT NULL AND sub_category <> '' ORDER BY sub_category`),
+    ]);
+    res.json({
+      types: types.rows.map((r) => r.v),
+      subCategories: subs.rows.map((r) => r.v),
+    });
   } catch (err) {
     next(err);
   }

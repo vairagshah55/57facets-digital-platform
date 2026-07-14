@@ -30,6 +30,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent } from "./ui/card";
+import { MultiSelect } from "./ui/multi-select";
 import {
   Sheet,
   SheetTrigger,
@@ -141,6 +142,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [availability, setAvailability] = useState<Record<string, boolean>>({
     "in-stock": false, "made-to-order": false, "out-of-stock": false,
   });
+  const [activeTypes, setActiveTypes] = useState<string[]>([]);
+  const [activeSubCategories, setActiveSubCategories] = useState<string[]>([]);
+  const [typeOptions, setTypeOptions] = useState<string[]>([]);
+  const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -163,7 +168,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, collectionId]);
+  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, collectionId]);
 
   // Fetch the collection's name when viewing a collection (for the header)
   useEffect(() => {
@@ -178,6 +183,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
+    productsApi.filterOptions().then((d: { types?: string[]; subCategories?: string[] }) => {
+      setTypeOptions(d?.types ?? []);
+      setSubCategoryOptions(d?.subCategories ?? []);
+    }).catch(() => {});
     wishlistApi.list().then((data: any) => {
       const items = Array.isArray(data) ? data : data.items ?? [];
       setWishlistedIds(new Set(items.map((w: any) => String(w.id))));
@@ -220,6 +229,8 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           if (caratRange[1] < CARAT_MAX) params.max_carat = String(caratRange[1]);
           const activeAvail = Object.entries(availability).filter(([, v]) => v).map(([k]) => k);
           if (activeAvail.length > 0) params.availability = activeAvail.join(",");
+          if (activeTypes.length > 0) params.type_category = activeTypes.join(",");
+          if (activeSubCategories.length > 0) params.sub_category = activeSubCategories.join(",");
           if (activeTab === "new") params.is_new = "true";
           if (activeTab === "unseen") params.unseen = "true";
           params.page = String(page);
@@ -243,7 +254,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }
     fetchProducts();
     return () => { cancelled = true; };
-  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, page, collectionId, isINR]);
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, collectionId, isINR]);
 
   const toggleWishlist = useCallback(async (productId: string) => {
     const isWishlisted = wishlistedIds.has(productId);
@@ -276,13 +287,17 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     if (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) c++;
     if (caratRange[0] > CARAT_MIN || caratRange[1] < CARAT_MAX) c++;
     if (Object.values(availability).some(Boolean)) c++;
+    if (activeTypes.length > 0) c++;
+    if (activeSubCategories.length > 0) c++;
     return c;
-  }, [priceRange, caratRange, availability]);
+  }, [priceRange, caratRange, availability, activeTypes, activeSubCategories]);
 
   const clearFilters = useCallback(() => {
     setPriceRange([PRICE_MIN, PRICE_MAX]);
     setCaratRange([CARAT_MIN, CARAT_MAX]);
     setAvailability({ "in-stock": false, "made-to-order": false, "out-of-stock": false });
+    setActiveTypes([]);
+    setActiveSubCategories([]);
   }, []);
 
   return (
@@ -392,7 +407,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <SheetHeader><SheetTitle style={{ color: "var(--sf-text-primary)" }}>Filters</SheetTitle></SheetHeader>
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
-                  availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR} />
+                  availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
+                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions}
+                  activeTypes={activeTypes} setActiveTypes={setActiveTypes}
+                  activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
               </ScrollArea>
             </SheetContent>
           </Sheet>
@@ -428,7 +446,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           <Card className="sticky top-20 border-[var(--sf-divider)] overflow-hidden" style={{ backgroundColor: "var(--sf-bg-surface-1)" }}>
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
-                availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR} />
+                availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
+                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions}
+                  activeTypes={activeTypes} setActiveTypes={setActiveTypes}
+                  activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
             </CardContent>
           </Card>
         </aside>
@@ -567,11 +588,15 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
    FILTER PANEL
    ═══════════════════════════════════════════════════════ */
 
-function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, availability, setAvailability, onClear, activeCount, isINR }: {
+function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, availability, setAvailability, onClear, activeCount, isINR,
+  typeOptions, subCategoryOptions, activeTypes, setActiveTypes, activeSubCategories, setActiveSubCategories }: {
   priceRange: number[]; setPriceRange: (v: number[]) => void;
   caratRange: number[]; setCaratRange: (v: number[]) => void;
   availability: Record<string, boolean>; setAvailability: (v: Record<string, boolean>) => void;
   onClear: () => void; activeCount: number; isINR: boolean;
+  typeOptions: string[]; subCategoryOptions: string[];
+  activeTypes: string[]; setActiveTypes: (v: string[]) => void;
+  activeSubCategories: string[]; setActiveSubCategories: (v: string[]) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -591,6 +616,40 @@ function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, ava
       </div>
 
       <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
+
+      {typeOptions.length > 0 && (
+        <>
+          <FilterSection title="Type">
+            <div className="mt-2">
+              <MultiSelect
+                options={typeOptions}
+                selected={activeTypes}
+                onChange={setActiveTypes}
+                placeholder="All Types"
+                className="w-full"
+              />
+            </div>
+          </FilterSection>
+          <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
+        </>
+      )}
+
+      {subCategoryOptions.length > 0 && (
+        <>
+          <FilterSection title="Sub-category">
+            <div className="mt-2">
+              <MultiSelect
+                options={subCategoryOptions}
+                selected={activeSubCategories}
+                onChange={setActiveSubCategories}
+                placeholder="All Sub-categories"
+                className="w-full"
+              />
+            </div>
+          </FilterSection>
+          <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
+        </>
+      )}
 
       <FilterSection title="Diamond Carat">
         <Slider min={CARAT_MIN} max={CARAT_MAX} step={0.1} value={caratRange} onValueChange={setCaratRange} className="mt-2" />

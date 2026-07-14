@@ -46,6 +46,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../ui/select";
+import { MultiSelect } from "../ui/multi-select";
 import { adminProducts } from "../../../lib/adminApi";
 import { imageUrl } from "../../../lib/api";
 
@@ -197,7 +198,11 @@ export function AdminProducts() {
   const [categoryFilter, setCategoryFilter]   = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
   const [isNewFilter, setIsNewFilter]         = useState<string>("all");
+  const [typeFilter, setTypeFilter]           = useState<string[]>([]);
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string[]>([]);
   const [categories, setCategories]           = useState<Category[]>([]);
+  const [typeOptions, setTypeOptions]         = useState<string[]>([]);
+  const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
 
   // Rows expanded to show their full diamond breakdown
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -234,16 +239,22 @@ export function AdminProducts() {
 
   useEffect(() => {
     adminProducts.categories().then((cats: Category[]) => setCategories(cats || [])).catch(() => {});
+    adminProducts.filterOptions().then((d: { types?: string[]; subCategories?: string[] }) => {
+      setTypeOptions(d?.types ?? []);
+      setSubCategoryOptions(d?.subCategories ?? []);
+    }).catch(() => {});
   }, []);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
-      if (search.trim())                params.search       = search.trim();
-      if (categoryFilter !== "all")     params.category     = categoryFilter;
-      if (availabilityFilter !== "all") params.availability = availabilityFilter;
-      if (isNewFilter !== "all")        params.is_new       = isNewFilter;
+      if (search.trim())                params.search        = search.trim();
+      if (categoryFilter !== "all")     params.category      = categoryFilter;
+      if (availabilityFilter !== "all") params.availability  = availabilityFilter;
+      if (isNewFilter !== "all")        params.is_new        = isNewFilter;
+      if (typeFilter.length > 0)        params.type_category = typeFilter.join(",");
+      if (subCategoryFilter.length > 0) params.sub_category  = subCategoryFilter.join(",");
       const data = await adminProducts.list(params);
       setProducts(data.products || []);
       setTotal(data.total || 0);
@@ -252,10 +263,10 @@ export function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, categoryFilter, availabilityFilter, isNewFilter]);
+  }, [page, search, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
-  useEffect(() => { setPage(1); }, [search, categoryFilter, availabilityFilter, isNewFilter]);
+  useEffect(() => { setPage(1); }, [search, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -370,7 +381,9 @@ export function AdminProducts() {
     } catch (err) { console.error(err); }
   }
 
-  const activeFilters = [categoryFilter, availabilityFilter, isNewFilter].filter(v => v !== "all").length;
+  const activeFilters = [categoryFilter, availabilityFilter, isNewFilter].filter(v => v !== "all").length
+    + (typeFilter.length > 0 ? 1 : 0)
+    + (subCategoryFilter.length > 0 ? 1 : 0);
 
   /* ════════════════════════════════════════════════════
      RENDER
@@ -488,9 +501,17 @@ export function AdminProducts() {
             <SelectItem value="false">Not New</SelectItem>
           </FilterSelect>
 
+          {typeOptions.length > 0 && (
+            <MultiSelect options={typeOptions} selected={typeFilter} onChange={setTypeFilter} placeholder="Type" width="140px" />
+          )}
+
+          {subCategoryOptions.length > 0 && (
+            <MultiSelect options={subCategoryOptions} selected={subCategoryFilter} onChange={setSubCategoryFilter} placeholder="Sub-category" width="150px" />
+          )}
+
           {activeFilters > 0 && (
             <button
-              onClick={() => { setCategoryFilter("all"); setAvailabilityFilter("all"); setIsNewFilter("all"); }}
+              onClick={() => { setCategoryFilter("all"); setAvailabilityFilter("all"); setIsNewFilter("all"); setTypeFilter([]); setSubCategoryFilter([]); }}
               className="text-xs font-medium flex items-center gap-1 px-2 py-1 rounded-lg transition-opacity hover:opacity-70"
               style={{ color: "var(--sf-text-muted)", background: "none", border: "none", cursor: "pointer" }}
             >
@@ -531,7 +552,7 @@ export function AdminProducts() {
         {loading ? (
           <SkeletonRows />
         ) : products.length === 0 ? (
-          <EmptyState hasFilters={!!search || activeFilters > 0} onClear={() => { setSearch(""); setCategoryFilter("all"); setAvailabilityFilter("all"); setIsNewFilter("all"); }} />
+          <EmptyState hasFilters={!!search || activeFilters > 0} onClear={() => { setSearch(""); setCategoryFilter("all"); setAvailabilityFilter("all"); setIsNewFilter("all"); setTypeFilter([]); setSubCategoryFilter([]); }} />
         ) : (
           <AnimatePresence initial={false}>
             {products.flatMap((p, i) => {
