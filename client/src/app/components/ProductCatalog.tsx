@@ -148,6 +148,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [activeSubCategories, setActiveSubCategories] = useState<string[]>([]);
   const [typeOptions, setTypeOptions] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
+  const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -186,9 +187,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
-    productsApi.filterOptions().then((d: { types?: string[]; subCategories?: string[] }) => {
+    productsApi.filterOptions().then((d: { types?: string[]; subCategories?: string[]; availabilities?: string[] }) => {
       setTypeOptions(d?.types ?? []);
       setSubCategoryOptions(d?.subCategories ?? []);
+      setAvailabilityOptions(d?.availabilities ?? []);
     }).catch(() => {});
     wishlistApi.list().then((data: any) => {
       const items = Array.isArray(data) ? data : data.items ?? [];
@@ -420,7 +422,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                   availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions}
+                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
               </ScrollArea>
@@ -465,7 +467,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                 availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions}
+                  typeOptions={typeOptions} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
             </CardContent>
@@ -619,12 +621,12 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
    ═══════════════════════════════════════════════════════ */
 
 function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, availability, setAvailability, onClear, activeCount, isINR,
-  typeOptions, subCategoryOptions, activeTypes, setActiveTypes, activeSubCategories, setActiveSubCategories }: {
+  typeOptions, subCategoryOptions, availabilityOptions, activeTypes, setActiveTypes, activeSubCategories, setActiveSubCategories }: {
   priceRange: number[]; setPriceRange: (v: number[]) => void;
   caratRange: number[]; setCaratRange: (v: number[]) => void;
   availability: Record<string, boolean>; setAvailability: (v: Record<string, boolean>) => void;
   onClear: () => void; activeCount: number; isINR: boolean;
-  typeOptions: string[]; subCategoryOptions: string[];
+  typeOptions: string[]; subCategoryOptions: string[]; availabilityOptions: string[];
   activeTypes: string[]; setActiveTypes: (v: string[]) => void;
   activeSubCategories: string[]; setActiveSubCategories: (v: string[]) => void;
 }) {
@@ -699,22 +701,27 @@ function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, ava
         </div>
       </FilterSection>
 
-      <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
-
-      <FilterSection title="Availability">
-        <div className="space-y-3 mt-2">
-          {[
-            { key: "in-stock", label: "In Stock" },
-            { key: "made-to-order", label: "Made to Order" },
-            { key: "out-of-stock", label: "Out of Stock" },
-          ].map((opt) => (
-            <label key={opt.key} className="flex items-center gap-2.5 cursor-pointer">
-              <Checkbox checked={availability[opt.key]} onCheckedChange={(checked) => setAvailability({ ...availability, [opt.key]: !!checked })} />
-              <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </FilterSection>
+      {/* Availability filter — only shown when the catalog actually has more than
+          one availability value (no point filtering when everything is in-stock). */}
+      {availabilityOptions.length > 1 && (
+        <>
+          <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
+          <FilterSection title="Availability">
+            <div className="space-y-3 mt-2">
+              {[
+                { key: "in-stock", label: "In Stock" },
+                { key: "made-to-order", label: "Made to Order" },
+                { key: "out-of-stock", label: "Out of Stock" },
+              ].filter((opt) => availabilityOptions.includes(opt.key)).map((opt) => (
+                <label key={opt.key} className="flex items-center gap-2.5 cursor-pointer">
+                  <Checkbox checked={availability[opt.key]} onCheckedChange={(checked) => setAvailability({ ...availability, [opt.key]: !!checked })} />
+                  <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </FilterSection>
+        </>
+      )}
     </div>
   );
 }
