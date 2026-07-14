@@ -10,6 +10,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ChevronDown,
   Loader2,
   Package,
@@ -762,25 +764,30 @@ export function AdminProducts() {
           </p>
 
           <div className="flex items-center gap-1">
-            <PageBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
+            <PageBtn onClick={() => setPage(1)} disabled={page <= 1} title="First page">
+              <ChevronsLeft className="w-3.5 h-3.5" />
+            </PageBtn>
+            <PageBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} title="Previous">
               <ChevronLeft className="w-3.5 h-3.5" />
             </PageBtn>
 
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let n: number;
-              if (totalPages <= 5)       n = i + 1;
-              else if (page <= 3)        n = i + 1;
-              else if (page >= totalPages - 2) n = totalPages - 4 + i;
-              else n = page - 2 + i;
-              return (
-                <PageBtn key={n} onClick={() => setPage(n)} active={page === n}>
-                  {n}
+            {pageItems(page, totalPages).map((item, i) =>
+              item === "…" ? (
+                <span key={`dots-${i}`} className="w-8 h-8 flex items-center justify-center text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                  …
+                </span>
+              ) : (
+                <PageBtn key={item} onClick={() => setPage(item)} active={page === item}>
+                  {item}
                 </PageBtn>
-              );
-            })}
+              )
+            )}
 
-            <PageBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+            <PageBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} title="Next">
               <ChevronRight className="w-3.5 h-3.5" />
+            </PageBtn>
+            <PageBtn onClick={() => setPage(totalPages)} disabled={page >= totalPages} title="Last page">
+              <ChevronsRight className="w-3.5 h-3.5" />
             </PageBtn>
           </div>
         </motion.div>
@@ -1208,18 +1215,43 @@ function FilterSelect({
   );
 }
 
+// Build the page list with ellipses: always show first & last, plus a window
+// around the current page — e.g. [1, "…", 4, 5, 6, "…", 20].
+function pageItems(current: number, total: number): (number | "…")[] {
+  const delta = 1;
+  const pages: number[] = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+      pages.push(i);
+    }
+  }
+  const out: (number | "…")[] = [];
+  let prev = 0;
+  for (const p of pages) {
+    if (prev) {
+      if (p - prev === 2) out.push(prev + 1);
+      else if (p - prev > 2) out.push("…");
+    }
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
+
 function PageBtn({
-  children, onClick, disabled, active,
+  children, onClick, disabled, active, title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
+  title?: string;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium transition-all disabled:opacity-30"
       style={{
         backgroundColor: active ? "var(--sf-teal)" : "var(--sf-bg-surface-1)",
@@ -1242,7 +1274,7 @@ function SkeletonRows() {
           className="grid items-center px-4 py-2 border-b last:border-0"
           style={{
             borderColor: "var(--sf-divider)",
-            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
+            gridTemplateColumns: "56px minmax(150px,1.4fr) minmax(96px,1fr) minmax(96px,1fr) minmax(84px,1fr) 64px 56px 88px",
           }}
         >
           <div className="skeleton-shimmer w-10 h-10 rounded-xl" />
@@ -1251,7 +1283,6 @@ function SkeletonRows() {
             <div className="skeleton-shimmer h-2.5 w-20 rounded-full" />
           </div>
           <div className="hidden md:block skeleton-shimmer h-5 w-16 rounded-full" />
-          <div className="skeleton-shimmer h-3 w-16 rounded-full" />
           <div className="skeleton-shimmer h-5 w-20 rounded-full" />
           <div className="hidden lg:block skeleton-shimmer h-3 w-10 rounded-full" />
           <div className="hidden md:block skeleton-shimmer h-3 w-6 rounded-full mx-auto" />
