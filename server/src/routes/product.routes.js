@@ -12,7 +12,7 @@ router.get("/", authenticate, async (req, res, next) => {
     const {
       category, search, availability,
       min_price, max_price, min_carat, max_carat,
-      is_new, collection, page = 1, limit = 20,
+      is_new, unseen, collection, page = 1, limit = 20,
     } = req.query;
 
     const conditions = ["p.is_active = true"];
@@ -35,8 +35,10 @@ router.get("/", authenticate, async (req, res, next) => {
       idx++;
     }
     if (availability) {
-      conditions.push(`p.availability = $${idx++}`);
-      params.push(availability);
+      // The UI may send a comma-separated list (multi-select) — match any of them.
+      const avails = String(availability).split(",").map((s) => s.trim()).filter(Boolean);
+      conditions.push(`p.availability = ANY($${idx++})`);
+      params.push(avails);
     }
     // NOTE: price is computed dynamically from the rate chart (not a column),
     // so the price-range filter is applied AFTER pricing, in JS (below).
@@ -50,6 +52,14 @@ router.get("/", authenticate, async (req, res, next) => {
     }
     if (is_new === "true") {
       conditions.push("p.is_new = true");
+    }
+    // Unseen = active products this retailer has never viewed. Folded into the
+    // main list so it inherits the same filters + pagination (no separate capped path).
+    if (unseen === "true" && req.retailer?.id) {
+      conditions.push(
+        `NOT EXISTS (SELECT 1 FROM recently_viewed rv WHERE rv.product_id = p.id AND rv.retailer_id = $${idx++})`
+      );
+      params.push(req.retailer.id);
     }
 
     const pageNum = parseInt(page), lim = parseInt(limit);

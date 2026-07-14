@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Diamond,
   Package,
   Heart,
@@ -63,12 +65,34 @@ type Category = { id: number; name: string; image_url: string | null; product_co
 type ViewMode = "grid" | "compact";
 
 const PRICE_MIN = 0, PRICE_MAX = 500000, CARAT_MIN = 0, CARAT_MAX = 5;
+const CATALOG_PAGE_SIZE = 6;
 
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
 
 function formatPrice(n: number, isINR = true): string {
   return (isINR ? "₹" : "$") + n.toLocaleString(isINR ? "en-IN" : "en-US");
+}
+
+// Build the page list with ellipses: always show first & last, plus a window
+// around the current page — e.g. [1, "…", 4, 5, 6, "…", 20].
+function pageItems(current: number, total: number): (number | "…")[] {
+  const delta = 1;
+  const pages: number[] = [];
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) pages.push(i);
+  }
+  const out: (number | "…")[] = [];
+  let prev = 0;
+  for (const p of pages) {
+    if (prev) {
+      if (p - prev === 2) out.push(prev + 1);
+      else if (p - prev > 2) out.push("…");
+    }
+    out.push(p);
+    prev = p;
+  }
+  return out;
 }
 
 function mapProduct(p: ApiProduct, isINR = true): Product {
@@ -173,11 +197,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     setLoading(true);
     async function fetchProducts() {
       try {
-        if (activeTab === "viewed" || activeTab === "unseen") {
-          const data: ApiProduct[] =
-            activeTab === "unseen" ? await productsApi.unseen() : await productsApi.recentlyViewed();
+        if (activeTab === "viewed") {
+          const data: ApiProduct[] = await productsApi.recentlyViewed();
           let result = (data || []).map((p: ApiProduct) => mapProduct(p, isINR));
-          // These lists are fetched unfiltered, so apply the active filters client-side.
+          // Recently-viewed is fetched unfiltered (capped at 20), so filter client-side.
           if (activeCategory !== "All") result = result.filter((p) => p.category === activeCategory);
           const s = debouncedSearch.trim().toLowerCase();
           if (s) result = result.filter((p) => `${p.sku} ${p.name}`.toLowerCase().includes(s));
@@ -198,8 +221,9 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           const activeAvail = Object.entries(availability).filter(([, v]) => v).map(([k]) => k);
           if (activeAvail.length > 0) params.availability = activeAvail.join(",");
           if (activeTab === "new") params.is_new = "true";
+          if (activeTab === "unseen") params.unseen = "true";
           params.page = String(page);
-          params.limit = "24";
+          params.limit = String(CATALOG_PAGE_SIZE);
           const data = await productsApi.list(params);
           if (!cancelled) {
             const mapped = ((data.products || []) as ApiProduct[]).map((p) => mapProduct(p, isINR));
@@ -461,8 +485,12 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 </Button>
               </motion.div>
             ) : (
+              /* NOTE: page is intentionally NOT in the key — paginating should
+                 swap the cards in place (dimmed via the opacity below), not
+                 remount/refade the whole grid. Only tab/category/view changes
+                 get the fade transition. */
               <motion.div
-                key={`${activeTab}-${activeCategory}-${viewMode}-${page}`}
+                key={`${activeTab}-${activeCategory}-${viewMode}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                 className="grid grid-cols-2 sm:grid-cols-3 gap-4 transition-opacity duration-300"
                 style={{ opacity: loading ? 0.45 : 1, pointerEvents: loading ? "none" : "auto" }}
@@ -474,45 +502,69 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             )}
           </AnimatePresence>
 
-          {/* Pagination */}
-          {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
-              <Button
-                variant="outline" size="sm" disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
-                style={{ color: "var(--sf-text-secondary)" }}
-              >
-                <ChevronLeft className="w-4 h-4" /> Prev
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  const p = page <= 3 ? i + 1 : page + i - 2;
-                  if (p < 1 || p > totalPages) return null;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className="w-9 h-9 rounded-lg text-sm font-medium transition-all cursor-pointer"
-                      style={{
-                        background: p === page ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
-                        color: p === page ? "#fff" : "var(--sf-text-muted)",
-                        border: p === page ? "none" : "1px solid var(--sf-divider)",
-                      }}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
+          {/* Pagination — stays mounted while loading so it doesn't flash out
+              on every page change; dimmed slightly to signal the in-flight fetch. */}
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-3 mt-8 transition-opacity duration-300" style={{ opacity: loading ? 0.6 : 1 }}>
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <Button
+                  variant="outline" size="sm" disabled={page <= 1}
+                  onClick={() => setPage(1)} title="First page"
+                  className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline" size="sm" disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev
+                </Button>
+                <div className="flex items-center gap-1">
+                  {pageItems(page, totalPages).map((item, i) =>
+                    item === "…" ? (
+                      <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-sm" style={{ color: "var(--sf-text-muted)" }}>
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setPage(item)}
+                        className="w-9 h-9 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                        style={{
+                          background: item === page ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
+                          color: item === page ? "#fff" : "var(--sf-text-muted)",
+                          border: item === page ? "none" : "1px solid var(--sf-divider)",
+                        }}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                </div>
+                <Button
+                  variant="outline" size="sm" disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline" size="sm" disabled={page >= totalPages}
+                  onClick={() => setPage(totalPages)} title="Last page"
+                  className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
+                  style={{ color: "var(--sf-text-secondary)" }}
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </Button>
               </div>
-              <Button
-                variant="outline" size="sm" disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
-                style={{ color: "var(--sf-text-secondary)" }}
-              >
-                Next <ChevronRight className="w-4 h-4" />
-              </Button>
+              <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
+                Page {page} of {totalPages} · {totalProducts.toLocaleString()} products
+              </p>
             </div>
           )}
         </div>
