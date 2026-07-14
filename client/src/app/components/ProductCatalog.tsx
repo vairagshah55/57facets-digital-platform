@@ -241,7 +241,9 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           const data = await productsApi.list(params);
           if (!cancelled) {
             const mapped = ((data.products || []) as ApiProduct[]).map((p) => mapProduct(p, isINR));
-            setProducts(mapped); setTotalProducts(data.total ?? mapped.length); setTotalPages(data.totalPages ?? 1);
+            setProducts(mapped);
+            setTotalProducts(data.total ?? mapped.length);
+            setTotalPages(data.totalPages ?? 1);
             if (mapped.length > 0) {
               try {
                 const orderMap = await ordersApi.activeByProducts(mapped.map((p) => String(p.id)));
@@ -302,6 +304,13 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     setActiveTypes([]);
     setActiveSubCategories([]);
   }, []);
+
+  // Jump to a page from the numbered pager.
+  const goToPage = useCallback((n: number) => {
+    const target = Math.min(Math.max(1, n), totalPages);
+    setPage(target);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [totalPages]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -540,65 +549,62 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             )}
           </AnimatePresence>
 
-          {/* Pagination — stays mounted while loading so it doesn't flash out
-              on every page change; dimmed slightly to signal the in-flight fetch. */}
-          {totalPages > 1 && (
-            <div className="flex flex-col items-center gap-3 mt-8 transition-opacity duration-300" style={{ opacity: loading ? 0.6 : 1 }}>
+          {/* Numbered pagination */}
+          {activeTab !== "viewed" && totalPages > 1 && (
+            <div className="mt-8 flex justify-center transition-opacity duration-300" style={{ opacity: loading ? 0.6 : 1 }}>
               <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                <Button
-                  variant="outline" size="sm" disabled={page <= 1}
-                  onClick={() => setPage(1)} title="First page"
-                  className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
-                  style={{ color: "var(--sf-text-secondary)" }}
-                >
-                  <ChevronsLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline" size="sm" disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
-                  style={{ color: "var(--sf-text-secondary)" }}
-                >
-                  <ChevronLeft className="w-4 h-4" /> Prev
-                </Button>
-                <div className="flex items-center gap-1">
-                  {pageItems(page, totalPages).map((item, i) =>
-                    item === "…" ? (
-                      <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-sm" style={{ color: "var(--sf-text-muted)" }}>
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={item}
-                        onClick={() => setPage(item)}
-                        className="w-9 h-9 rounded-lg text-sm font-medium transition-all cursor-pointer"
-                        style={{
-                          background: item === page ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
-                          color: item === page ? "#fff" : "var(--sf-text-muted)",
-                          border: item === page ? "none" : "1px solid var(--sf-divider)",
-                        }}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
-                </div>
-                <Button
-                  variant="outline" size="sm" disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
-                  style={{ color: "var(--sf-text-secondary)" }}
-                >
-                  Next <ChevronRight className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline" size="sm" disabled={page >= totalPages}
-                  onClick={() => setPage(totalPages)} title="Last page"
-                  className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
-                  style={{ color: "var(--sf-text-secondary)" }}
-                >
-                  <ChevronsRight className="w-4 h-4" />
-                </Button>
+                  <Button
+                    variant="outline" size="sm" disabled={page <= 1}
+                    onClick={() => goToPage(1)} title="First page"
+                    className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
+                    style={{ color: "var(--sf-text-secondary)" }}
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" disabled={page <= 1}
+                    onClick={() => goToPage(page - 1)}
+                    className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
+                    style={{ color: "var(--sf-text-secondary)" }}
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Prev
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {pageItems(page, totalPages).map((item, i) =>
+                      item === "…" ? (
+                        <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-sm" style={{ color: "var(--sf-text-muted)" }}>…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => goToPage(item)}
+                          className="w-9 h-9 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                          style={{
+                            background: item === page ? "var(--sf-teal)" : "var(--sf-bg-surface-2)",
+                            color: item === page ? "#fff" : "var(--sf-text-muted)",
+                            border: item === page ? "none" : "1px solid var(--sf-divider)",
+                          }}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <Button
+                    variant="outline" size="sm" disabled={page >= totalPages}
+                    onClick={() => goToPage(page + 1)}
+                    className="h-9 gap-1 rounded-lg border-[var(--sf-divider)]"
+                    style={{ color: "var(--sf-text-secondary)" }}
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" disabled={page >= totalPages}
+                    onClick={() => goToPage(totalPages)} title="Last page"
+                    className="h-9 w-9 p-0 rounded-lg border-[var(--sf-divider)]"
+                    style={{ color: "var(--sf-text-secondary)" }}
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
               </div>
             </div>
           )}
