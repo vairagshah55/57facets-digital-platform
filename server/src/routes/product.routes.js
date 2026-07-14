@@ -317,21 +317,44 @@ router.get("/:id", authenticate, async (req, res, next) => {
       [req.params.id]
     );
 
-    // Matching variants — same design (last 5 chars of SKU) in a different
-    // variant code (the first chars differ). e.g. 11260006 ↔ 12260006.
+    // Matching variants = companion pieces of the SAME jewellery SET.
+    //
+    // SKU format is [2-digit piece/category code][6-digit design serial], e.g.
+    //   11 250021 → PENDENT SET PENDENT   (the pendant piece)
+    //   12 250021 → PENDENT SET EARRING   (the earring piece) ← variant of the above
+    //   02 250021 → PENDENT (standalone)  ← NOT a variant, just reuses the serial
+    //
+    // So variants CANNOT be matched by SKU digits alone: many unrelated products
+    // (e.g. a ring 01240057 and a bangle 04240057) share a design serial by
+    // coincidence. A product only has variants when it belongs to a SET category
+    // ("… SET …"); its variants are the OTHER pieces of the same set family
+    // ("PENDENT SET", "NECKLACE SET") that carry the same 6-digit design serial.
+    // Matching is driven off the category name (not the SKU prefix), so it's
+    // robust to prefix/category data-entry mismatches.
     let variants = [];
-    const sku = rows[0].sku;
-    if (sku && sku.length >= 5) {
+    {
       const { rows: vRows } = await query(
-        `SELECT p.id, p.sku, p.name, p.metal_type, p.gold_colour, c.name AS category,
+        `WITH me AS (
+           SELECT p.id,
+                  SUBSTRING(p.sku FROM 3)               AS serial,
+                  SUBSTRING(UPPER(c.name) FROM '^(.*SET)') AS set_family
+           FROM products p
+           LEFT JOIN categories c ON c.id = p.category_id
+           WHERE p.id = $1 AND LENGTH(p.sku) = 8
+         )
+         SELECT p.id, p.sku, p.name, p.metal_type, p.gold_colour, c.name AS category,
                 (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
          FROM products p
-         LEFT JOIN categories c ON c.id = p.category_id
+         JOIN categories c ON c.id = p.category_id
+         CROSS JOIN me
          WHERE p.is_active = true
-           AND p.id <> $1
-           AND RIGHT(p.sku, 5) = RIGHT($2, 5)
+           AND p.id <> me.id
+           AND me.set_family IS NOT NULL
+           AND LENGTH(p.sku) = 8
+           AND SUBSTRING(UPPER(c.name) FROM '^(.*SET)') = me.set_family
+           AND SUBSTRING(p.sku FROM 3) = me.serial
          ORDER BY p.sku`,
-        [req.params.id, sku]
+        [req.params.id]
       );
       variants = vRows;
     }

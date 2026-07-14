@@ -26,7 +26,6 @@ import {
   Search,
   Expand,
   ExternalLink,
-  Layers,
 } from "lucide-react";
 import { ImageViewer } from "./ImageViewer";
 import { SizeSelector } from "./SizeGuide";
@@ -784,15 +783,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
             {/* Matching variants — fills the empty space on the right */}
             {!adminPreview && product.variants.length > 0 && (
               <div className="shrink-0 max-w-[55%]">
-                <div className="flex items-center justify-end gap-1.5 mb-2">
-                  <Layers className="w-3.5 h-3.5" style={{ color: "var(--sf-teal)" }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--sf-text-muted)" }}>
-                    Other variants
-                  </span>
-                  <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>
-                    {product.variants.length}
-                  </span>
-                </div>
                 <div className="flex flex-wrap justify-end gap-2">
                   {product.variants.map((v) => {
                     const dot = goldSwatch(v.goldColour);
@@ -802,7 +792,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         key={v.id}
                         onClick={() => navigate(`/retailer/product/${v.id}`)}
                         title={tip}
-                        className="group/var w-[88px] rounded-xl overflow-hidden text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5
+                        className="group/var w-16 sm:w-20 rounded-xl overflow-hidden text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5
                                    border border-[var(--sf-glass-border)] hover:border-[var(--sf-teal-border)] hover:shadow-[0_6px_16px_var(--sf-shadow-teal)]"
                         style={{ background: "var(--sf-bg-surface-2)" }}
                       >
