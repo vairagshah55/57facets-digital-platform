@@ -640,7 +640,11 @@ export function RetailerOrders() {
   const editableOrders = useMemo(() => ordersList.filter(o => o.edit_allowed), [ordersList]);
 
   const counts = useMemo(() => {
-    if (Object.keys(summary).length > 0) return summary;
+    if (Object.keys(summary).length > 0) {
+      // The API summary is keyed by status only; derive the "All Orders" total from it.
+      const total = Object.values(summary).reduce((s, n) => s + (n || 0), 0);
+      return { ...summary, all: total };
+    }
     const c: Record<string, number> = { all: ordersList.length };
     for (const o of ordersList) c[o.status] = (c[o.status] || 0) + 1;
     return c;

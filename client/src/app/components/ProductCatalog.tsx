@@ -267,9 +267,8 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   }, [wishlistedIds]);
 
   const displayCategories = useMemo(() => {
-    const total = categories.reduce((s, c) => s + (c.product_count || 0), 0);
-    const all: { name: string; image: string | null; count: number }[] = [{ name: "All", image: null, count: total }];
-    return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url, count: c.product_count || 0 })));
+    const all: { name: string; image: string | null }[] = [{ name: "All", image: null }];
+    return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url })));
   }, [categories]);
 
   const activeFiltersCount = useMemo(() => {
@@ -315,10 +314,6 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               >
                 {collectionId ? (collectionName || "Collection") : "Product Catalog"}
               </h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                style={{ background: "var(--sf-teal-glass)", color: "var(--sf-teal)", border: "1px solid var(--sf-teal-border)" }}>
-                {totalProducts}
-              </span>
             </div>
           </div>
         </div>
@@ -365,10 +360,12 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                   }}
                 >
                   {tab.icon} {tab.label}
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
-                    style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
-                    {tab.count}
-                  </span>
+                  {tab.key !== "all" && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                      style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
+                      {tab.count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -418,10 +415,6 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               >
                 {cat.image && <img src={imageUrl(cat.image)} alt={cat.name} className="w-5 h-5 rounded-full object-cover" />}
                 {cat.name === "All" ? "All Categories" : cat.name}
-                <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
-                  style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
-                  {cat.count}
-                </span>
               </button>
             );
           })}
@@ -562,9 +555,6 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                   <ChevronsRight className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                Page {page} of {totalPages} · {totalProducts.toLocaleString()} products
-              </p>
             </div>
           )}
         </div>
