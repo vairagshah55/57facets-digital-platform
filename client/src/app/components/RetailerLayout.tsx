@@ -30,7 +30,7 @@ import {
   PopoverContent,
 } from "./ui/popover";
 
-import { notifications as notificationsApi, products as productsApi } from "../../lib/api";
+import { notifications as notificationsApi, products as productsApi, orders as ordersApi } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -192,9 +192,10 @@ function RetailerHeader() {
   const { retailer, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Nav count badges (Catalog = total products, Wishlist = saved items).
+  // Nav count badges (Catalog = total products, Wishlist = saved items, Orders = active orders).
   const [catalogCount, setCatalogCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   useEffect(() => {
     // One lightweight COUNT call for the nav badges; refetched when the wishlist
     // changes anywhere (cheap COUNTs, no row fetching).
@@ -205,8 +206,22 @@ function RetailerHeader() {
     window.addEventListener("wishlist:changed", refresh);
     return () => window.removeEventListener("wishlist:changed", refresh);
   }, []);
+  useEffect(() => {
+    // Active orders = not-yet-delivered/cancelled (pending + confirmed + processing + shipped).
+    ordersApi.stats()
+      .then((d: any) => {
+        const s = d?.summary ?? {};
+        const active = ["pending", "confirmed", "processing", "shipped"]
+          .reduce((sum, k) => sum + Number(s[k] || 0), 0);
+        setActiveOrdersCount(active);
+      })
+      .catch(() => {});
+  }, []);
   const navCountFor = (path: string): number | null =>
-    path === "/retailer/catalog" ? catalogCount : path === "/retailer/wishlist" ? wishlistCount : null;
+    path === "/retailer/catalog" ? catalogCount
+    : path === "/retailer/wishlist" ? wishlistCount
+    : path === "/retailer/orders" ? (activeOrdersCount || null)
+    : null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
