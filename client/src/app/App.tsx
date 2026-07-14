@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AuthProvider } from "../context/AuthContext";
 import { AdminAuthProvider } from "../context/AdminAuthContext";
@@ -81,10 +81,21 @@ function HomePage() {
 
 function WhatsAppButton() {
   const [hovered, setHovered] = useState(false);
+  const [overlayOpen, setOverlayOpen] = useState(false);
   const location = useLocation();
 
-  // Hide only on admin routes
-  if (location.pathname.startsWith("/admin")) {
+  // Hide the floating button while any modal/drawer (Radix dialog or sheet) is open,
+  // so it never covers the modal's own controls (e.g. the order-detail Close button).
+  useEffect(() => {
+    const check = () => setOverlayOpen(!!document.querySelector('[role="dialog"][data-state="open"]'));
+    check();
+    const mo = new MutationObserver(check);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
+    return () => mo.disconnect();
+  }, []);
+
+  // Hide on admin routes, and whenever a modal/drawer is open.
+  if (location.pathname.startsWith("/admin") || overlayOpen) {
     return null;
   }
 
