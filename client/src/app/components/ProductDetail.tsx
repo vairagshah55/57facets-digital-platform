@@ -750,9 +750,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </p>
               <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
                 <AvailabilityBadge status={product.availability} />
-                <span className="text-xs" style={{ color: "var(--sf-text-muted)" }}>
-                  SKU: {product.sku}
-                </span>
                 {product.typeCategory && (
                   <span
                     className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
