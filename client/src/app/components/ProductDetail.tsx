@@ -750,14 +750,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </p>
               <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
                 <AvailabilityBadge status={product.availability} />
-                {product.typeCategory && (
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                    style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}
-                  >
-                    {product.typeCategory}
-                  </span>
-                )}
                 {product.subCategory && (
                   <span
                     className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
