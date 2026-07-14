@@ -151,17 +151,21 @@ router.get("/categories", authenticate, async (req, res, next) => {
 // used to populate the catalog filter dropdowns.
 router.get("/filter-options", authenticate, async (req, res, next) => {
   try {
-    const [types, subs] = await Promise.all([
+    const [types, subs, avails] = await Promise.all([
       query(`SELECT DISTINCT type_category AS v FROM products
              WHERE is_active = true AND type_category IS NOT NULL AND type_category <> ''
              ORDER BY type_category`),
       query(`SELECT DISTINCT sub_category AS v FROM products
              WHERE is_active = true AND sub_category IS NOT NULL AND sub_category <> ''
              ORDER BY sub_category`),
+      query(`SELECT DISTINCT availability AS v FROM products
+             WHERE is_active = true AND availability IS NOT NULL AND availability <> ''
+             ORDER BY availability`),
     ]);
     res.json({
       types: types.rows.map((r) => r.v),
       subCategories: subs.rows.map((r) => r.v),
+      availabilities: avails.rows.map((r) => r.v),
     });
   } catch (err) {
     next(err);
