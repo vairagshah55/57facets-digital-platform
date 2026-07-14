@@ -278,8 +278,8 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   }, [wishlistedIds]);
 
   const displayCategories = useMemo(() => {
-    const all: { name: string; image: string | null }[] = [{ name: "All", image: null }];
-    return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url })));
+    const all: { name: string; image: string | null; count: number }[] = [{ name: "All", image: null, count: 0 }];
+    return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url, count: c.product_count || 0 })));
   }, [categories]);
 
   const activeFiltersCount = useMemo(() => {
@@ -416,8 +416,8 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           </Sheet>
         </div>
 
-        {/* Category pills */}
-        <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        {/* Category pills — wrap onto multiple lines instead of a cut-off scroll row */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           {displayCategories.map((cat) => {
             const isActive = activeCategory === cat.name;
             return (
@@ -433,6 +433,12 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               >
                 {cat.image && <img src={imageUrl(cat.image)} alt={cat.name} className="w-5 h-5 rounded-full object-cover" />}
                 {cat.name === "All" ? "All Categories" : cat.name}
+                {cat.name !== "All" && (
+                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
+                    {cat.count}
+                  </span>
+                )}
               </button>
             );
           })}
