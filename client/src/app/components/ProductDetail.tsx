@@ -365,12 +365,23 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       if (!skuRef.current || !mainRef.current) return;
       const skuRect = skuRef.current.getBoundingClientRect();
       const mainRect = mainRef.current.getBoundingClientRect();
-      // Center on the SKU row, then nudge up a little.
-      setArrowTop(skuRect.top - mainRect.top + skuRect.height / 2 - 28);
+      // Vertically centre the arrows on the SKU/badges row.
+      setArrowTop(skuRect.top - mainRect.top + skuRect.height / 2);
     };
     measure();
+    // Re-measure across the next couple of frames + a short delay so the final
+    // position lands on the SKU row after images/fonts finish laying out
+    // (otherwise arrowTop can stick at its fallback and the arrows sit too low).
+    const r1 = requestAnimationFrame(measure);
+    const r2 = requestAnimationFrame(() => requestAnimationFrame(measure));
+    const t = setTimeout(measure, 300);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+      clearTimeout(t);
+      window.removeEventListener("resize", measure);
+    };
   }, [product, adminPreview]);
 
   // ── Wishlist toggle ────────────────────────────────
@@ -533,26 +544,26 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   return (
     <main ref={mainRef} className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Prev / next product — floating side arrows, aligned with the SKU/name row (retailer view only) */}
-      {!adminPreview && prevId && arrowTop != null && (
+      {!adminPreview && prevId && (
         <button
           onClick={() => goToProduct(prevId, navIdx - 1)}
           title="Previous product"
           aria-label="Previous product"
-          className="absolute left-2 sm:left-3 lg:-left-5 xl:-left-10 -translate-y-1/2 lg:-translate-x-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
-          style={{ top: arrowTop, backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          className="absolute left-1 sm:left-2 lg:-left-4 xl:-left-9 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ top: arrowTop ?? "42%", backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       )}
-      {!adminPreview && nextId && arrowTop != null && (
+      {!adminPreview && nextId && (
         <button
           onClick={() => goToProduct(nextId, navIdx + 1)}
           title="Next product"
           aria-label="Next product"
-          className="absolute right-2 sm:right-3 lg:-right-5 xl:-right-10 -translate-y-1/2 lg:translate-x-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
-          style={{ top: arrowTop, backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
+          className="absolute right-1 sm:right-2 lg:-right-4 xl:-right-9 -translate-y-1/2 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+          style={{ top: arrowTop ?? "42%", backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "1px solid rgba(255,255,255,0.22)" }}
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)"; }}
         >

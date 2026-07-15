@@ -148,10 +148,11 @@ function BackPill() {
   const { pathname } = useLocation();
   // No "previous page" from the dashboard home.
   if (pathname === "/retailer/dashboard") return null;
-  // Back from a product detail always returns to the catalog list.
+  // Go to the actual previous page. Fall back to the dashboard only when there's
+  // no in-app history (e.g. the URL was opened directly or the page was refreshed).
   const onBack = () => {
-    if (pathname.startsWith("/retailer/product/")) navigate("/retailer/catalog");
-    else navigate(-1);
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/retailer/dashboard");
   };
   return (
     // Sticky strip that reserves its own height (content sits below, never behind).
