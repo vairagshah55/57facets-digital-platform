@@ -1031,7 +1031,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         { label: "Carat", value: d.carat != null ? `${Number(d.carat)} ct` : "" },
                         { label: "Certification", value: d.certification },
                       ].filter((r) => r.value);
-                      const typeOptions = Array.from(new Set([...DIAMOND_TYPES, d.type].filter(Boolean))) as string[];
+                      // Preset types, plus the product's own type only if it isn't
+                      // already a preset (case-insensitive) — otherwise "NATURAL"
+                      // would show as a duplicate of "Natural".
+                      const typeOptions = [
+                        ...DIAMOND_TYPES,
+                        ...(d.type && !DIAMOND_TYPES.some((t) => t.toLowerCase() === d.type.toLowerCase()) ? [d.type] : []),
+                      ];
                       return (
                         <div className="mb-5">
                           {/* Diamond picker — custom themed dropdown */}
@@ -1981,6 +1987,9 @@ function GridSelect({
   const [query, setQuery] = useState("");
   const norm = (v: string) => (v || "").toUpperCase();
   const filtered = options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()));
+  // Show the matching option's canonical casing (e.g. "Natural") rather than the
+  // raw stored value (e.g. "NATURAL"), so the trigger matches the option list.
+  const displayValue = options.find((o) => norm(o) === norm(value)) ?? value;
 
   const close = () => { setOpen(false); setQuery(""); };
 
@@ -1998,7 +2007,7 @@ function GridSelect({
           cursor: "pointer",
         }}
       >
-        <span className="text-sm font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{value || "Select"}</span>
+        <span className="text-sm font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{displayValue || "Select"}</span>
         <ChevronRight className="w-4 h-4 ml-auto shrink-0 transition-transform" style={{ color: "var(--sf-teal)", transform: open ? "rotate(-90deg)" : "rotate(90deg)" }} />
       </button>
 
