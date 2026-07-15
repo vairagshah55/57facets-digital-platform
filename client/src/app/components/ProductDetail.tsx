@@ -1209,26 +1209,33 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   name,
                   quality: product.customization.colorStoneQualities[i] || "",
                 }));
+                // Keyed by UPPERCASE stone name (data is stored upper-case, e.g.
+                // "PRECIOUS STONES") so each stone type gets its own colour.
                 const gemPalette: Record<string, { dot: string; glow: string; bg: string; activeBg: string; border: string; text: string; tag: string }> = {
-                  "Precious Stones": { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.13)", border: "rgba(39,174,96,0.38)", text: "#2ECC71", tag: "rgba(39,174,96,0.15)" },
-                  "Semi Precious Stones": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.13)", border: "rgba(41,128,185,0.38)", text: "#5DADE2", tag: "rgba(41,128,185,0.15)" },
-                  "Synthetic Stones": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
-                  "Pearl": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
-                  "Beads": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
-                  "Kundan": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
+                  "PRECIOUS STONES": { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.13)", border: "rgba(39,174,96,0.38)", text: "#2ECC71", tag: "rgba(39,174,96,0.15)" },
+                  "SEMI PRECIOUS STONES": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.13)", border: "rgba(41,128,185,0.38)", text: "#5DADE2", tag: "rgba(41,128,185,0.15)" },
+                  "SYNTHETIC STONES": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
+                  "PEARL": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
+                  "BEADS": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
+                  "BLACK BEADS": { dot: "#4B5563", glow: "rgba(75,85,99,0.45)", bg: "rgba(75,85,99,0.06)", activeBg: "rgba(75,85,99,0.13)", border: "rgba(75,85,99,0.38)", text: "#9CA3AF", tag: "rgba(75,85,99,0.15)" },
+                  "KUNDAN": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
+                  "LAKH": { dot: "#8D6E63", glow: "rgba(141,110,99,0.45)", bg: "rgba(141,110,99,0.06)", activeBg: "rgba(141,110,99,0.13)", border: "rgba(141,110,99,0.38)", text: "#A1887F", tag: "rgba(141,110,99,0.15)" },
                 };
                 const fallback = { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" };
+                const paletteFor = (name: string) => gemPalette[(name || "").toUpperCase()] || fallback;
                 const selectedPair = pairs.find(p => p.name === selectedColorStone && p.quality === selectedColorStoneQuality);
-                const selC = selectedPair ? (gemPalette[selectedPair.name] || fallback) : fallback;
+                const selC = selectedPair ? paletteFor(selectedPair.name) : fallback;
 
-                // Short label for category tag
+                // Short label for category tag (case-insensitive; falls back to the raw name).
                 const categoryShort: Record<string, string> = {
-                  "Precious Stones": "Precious",
-                  "Semi Precious Stones": "Semi Precious",
-                  "Synthetic Stones": "Synthetic",
-                  "Pearl": "Pearl",
-                  "Beads": "Beads",
-                  "Kundan": "Kundan",
+                  "PRECIOUS STONES": "Precious",
+                  "SEMI PRECIOUS STONES": "Semi Precious",
+                  "SYNTHETIC STONES": "Synthetic",
+                  "PEARL": "Pearl",
+                  "BEADS": "Beads",
+                  "BLACK BEADS": "Black Beads",
+                  "KUNDAN": "Kundan",
+                  "LAKH": "Lakh",
                 };
 
                 return (
@@ -1266,8 +1273,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     <div className="grid grid-cols-2 gap-2.5">
                       {pairs.map((pair, i) => {
                         const active = selectedColorStone === pair.name && selectedColorStoneQuality === pair.quality;
-                        const c = gemPalette[pair.name] || fallback;
-                        const shortCat = categoryShort[pair.name] || pair.name;
+                        const c = paletteFor(pair.name);
+                        const shortCat = categoryShort[(pair.name || "").toUpperCase()] || pair.name;
                         return (
                           <button key={i}
                             onClick={() => { setSelectedColorStone(pair.name); setSelectedColorStoneQuality(pair.quality); }}
