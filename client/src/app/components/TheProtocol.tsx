@@ -108,7 +108,7 @@ function StepCard({ step }: { step: StepData }) {
           position: "absolute",
           right: "-8px",
           top: "-20px",
-          fontFamily: "'Melodrama', 'Georgia', serif",
+          fontFamily: "'General Sans', 'Inter', sans-serif",
           fontSize: "108px",
           fontWeight: 800,
           color: "#FFFFFF",
@@ -404,7 +404,7 @@ export function TheProtocol() {
           {/* Headline */}
           <h2
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               fontSize: "clamp(30px, 4vw, 50px)",
               fontWeight: 700,
               color: "#FFFFFF",

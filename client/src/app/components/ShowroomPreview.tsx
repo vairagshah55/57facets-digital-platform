@@ -465,7 +465,7 @@ export function ShowroomPreview() {
           <div>
             <h2
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "clamp(36px, 5vw, 68px)",
                 fontWeight: 500,
                 color: "#FFFFFF",

@@ -111,7 +111,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
       >
         <span
           style={{
-            fontFamily: "'Melodrama', 'Georgia', serif",
+            fontFamily: "'General Sans', 'Inter', sans-serif",
             fontSize: "28px",
             fontWeight: 500,
             letterSpacing: "0.18em",

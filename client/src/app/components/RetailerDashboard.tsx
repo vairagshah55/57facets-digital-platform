@@ -206,7 +206,7 @@ export function RetailerDashboard() {
             <div>
               <h1
                 className="text-2xl sm:text-3xl font-semibold mb-1"
-                style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
+                style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
               >
                 Welcome back, {retailerName}
               </h1>

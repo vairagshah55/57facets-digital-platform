@@ -202,7 +202,7 @@ function CategoryCard({ category, delay }: { category: (typeof CATEGORIES)[numbe
         {/* Name */}
         <p
           style={{
-            fontFamily: "'Melodrama', 'Georgia', serif",
+            fontFamily: "'General Sans', 'Inter', sans-serif",
             fontSize: "18px",
             fontWeight: 700,
             color: "#FFFFFF",
@@ -279,7 +279,7 @@ export function StoneCategories() {
           <div>
             <h2
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "clamp(28px, 3.5vw, 46px)",
                 fontWeight: 700,
                 color: "#FFFFFF",
@@ -306,7 +306,7 @@ export function StoneCategories() {
             <p
               aria-label="363 stones live"
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "32px",
                 fontWeight: 700,
                 color: "#FFFFFF",

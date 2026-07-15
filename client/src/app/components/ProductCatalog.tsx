@@ -347,7 +347,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             <div className="flex items-center gap-2">
               <h1
                 className="text-xl font-semibold leading-tight"
-                style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
+                style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
               >
                 {collectionId ? (collectionName || "Collection") : "Product Catalog"}
               </h1>

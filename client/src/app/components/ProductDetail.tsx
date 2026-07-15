@@ -707,13 +707,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           </div>
 
           {/* GSI certification logo — display only, not clickable */}
-          <div
-            className="flex items-center justify-center mt-4 px-4 py-3 rounded-2xl"
-            style={{
-              backgroundColor: "var(--sf-bg-surface-2)",
-              border: "1px solid var(--sf-divider)",
-            }}
-          >
+          <div className="flex flex-col items-center justify-center gap-1.5 mt-4">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--sf-text-muted)" }}>
+              Certified by
+            </span>
             <img
               src={gsiEmblem}
               alt="GSI Certified"
@@ -738,7 +735,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               <h1
                 className="text-2xl sm:text-3xl font-semibold mb-2"
                 style={{
-                  fontFamily: "'Melodrama', 'Georgia', serif",
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
                   color: "var(--sf-text-primary)",
                 }}
               >
@@ -879,7 +876,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               {existingOrder ? (
                 <>
                   <Shield className="w-4 h-4" style={{ color: "var(--sf-amber)" }} />
-                  <span className="text-sm font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--sf-amber)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
                     Order Locked
                   </span>
                   <span className="ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full"
@@ -890,7 +887,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-                  <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
                     Customize Your Piece
                   </span>
                 </>
@@ -1042,79 +1039,79 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         <div className="mb-5">
                           {/* Diamond picker dropdown — DISABLED (redundant). Kept for reference. */}
                           {false && (
-                          <div className="relative mb-3">
-                            <button
-                              type="button"
-                              onClick={() => setDiamondMenuOpen((o) => !o)}
-                              className="w-full flex items-center gap-2.5 h-12 rounded-xl pl-2.5 pr-3 transition-colors"
-                              style={{ background: "var(--sf-glass-bg)", border: `1px solid ${diamondMenuOpen ? "var(--sf-teal)" : "var(--sf-teal-border)"}` }}
-                            >
-                              <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
-                                style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>
-                                {idx + 1}
-                              </span>
-                              <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
-                              {[d.color, d.clarity].filter(Boolean).length > 0 && (
-                                <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
-                              )}
-                              <span className="ml-auto flex items-center gap-2 shrink-0">
-                                {d.carat != null && (
-                                  <span className="flex items-baseline gap-0.5 px-2.5 py-1 rounded-full"
-                                    style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
-                                    <span className="text-xs font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
-                                    <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
-                                  </span>
+                            <div className="relative mb-3">
+                              <button
+                                type="button"
+                                onClick={() => setDiamondMenuOpen((o) => !o)}
+                                className="w-full flex items-center gap-2.5 h-12 rounded-xl pl-2.5 pr-3 transition-colors"
+                                style={{ background: "var(--sf-glass-bg)", border: `1px solid ${diamondMenuOpen ? "var(--sf-teal)" : "var(--sf-teal-border)"}` }}
+                              >
+                                <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
+                                  style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>
+                                  {idx + 1}
+                                </span>
+                                <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
+                                {[d.color, d.clarity].filter(Boolean).length > 0 && (
+                                  <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
                                 )}
-                                <ChevronRight className="w-4 h-4 transition-transform"
-                                  style={{ color: "var(--sf-teal)", transform: diamondMenuOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
-                              </span>
-                            </button>
+                                <span className="ml-auto flex items-center gap-2 shrink-0">
+                                  {d.carat != null && (
+                                    <span className="flex items-baseline gap-0.5 px-2.5 py-1 rounded-full"
+                                      style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
+                                      <span className="text-xs font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
+                                      <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
+                                    </span>
+                                  )}
+                                  <ChevronRight className="w-4 h-4 transition-transform"
+                                    style={{ color: "var(--sf-teal)", transform: diamondMenuOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
+                                </span>
+                              </button>
 
-                            <AnimatePresence>
-                              {diamondMenuOpen && (
-                                <>
-                                  {/* click-outside catcher */}
-                                  <div className="fixed inset-0 z-40" onClick={() => setDiamondMenuOpen(false)} />
-                                  <motion.div
-                                    initial={{ opacity: 0, y: -6 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -6 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden p-1.5"
-                                    style={{ top: "calc(100% + 6px)", background: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-glass-border-strong)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }}
-                                  >
-                                    {product.diamonds.map((dd, i) => {
-                                      const active = i === idx;
-                                      return (
-                                        <button key={i} type="button"
-                                          onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); setDiamondMenuOpen(false); }}
-                                          className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors"
-                                          style={{ background: active ? "var(--sf-teal-glass)" : "transparent", border: active ? "1px solid var(--sf-teal-border)" : "1px solid transparent" }}
-                                          onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
-                                          onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-                                        >
-                                          <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
-                                            style={{ background: active ? "var(--sf-teal)" : "var(--sf-glass-pill)", color: active ? "#fff" : "var(--sf-text-muted)" }}>
-                                            {i + 1}
-                                          </span>
-                                          <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
-                                          {[dd.color, dd.clarity].filter(Boolean).length > 0 && (
-                                            <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
-                                          )}
-                                          <span className="ml-auto flex items-center gap-2 shrink-0">
-                                            {dd.carat != null && (
-                                              <span className="text-xs font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
+                              <AnimatePresence>
+                                {diamondMenuOpen && (
+                                  <>
+                                    {/* click-outside catcher */}
+                                    <div className="fixed inset-0 z-40" onClick={() => setDiamondMenuOpen(false)} />
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -6 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -6 }}
+                                      transition={{ duration: 0.15 }}
+                                      className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden p-1.5"
+                                      style={{ top: "calc(100% + 6px)", background: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-glass-border-strong)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }}
+                                    >
+                                      {product.diamonds.map((dd, i) => {
+                                        const active = i === idx;
+                                        return (
+                                          <button key={i} type="button"
+                                            onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); setDiamondMenuOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors"
+                                            style={{ background: active ? "var(--sf-teal-glass)" : "transparent", border: active ? "1px solid var(--sf-teal-border)" : "1px solid transparent" }}
+                                            onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
+                                            onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                                          >
+                                            <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
+                                              style={{ background: active ? "var(--sf-teal)" : "var(--sf-glass-pill)", color: active ? "#fff" : "var(--sf-text-muted)" }}>
+                                              {i + 1}
+                                            </span>
+                                            <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
+                                            {[dd.color, dd.clarity].filter(Boolean).length > 0 && (
+                                              <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
                                             )}
-                                            {active && <Check className="w-4 h-4" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
-                                          </span>
-                                        </button>
-                                      );
-                                    })}
-                                  </motion.div>
-                                </>
-                              )}
-                            </AnimatePresence>
-                          </div>
+                                            <span className="ml-auto flex items-center gap-2 shrink-0">
+                                              {dd.carat != null && (
+                                                <span className="text-xs font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
+                                              )}
+                                              {active && <Check className="w-4 h-4" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
+                                            </span>
+                                          </button>
+                                        );
+                                      })}
+                                    </motion.div>
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           )}
 
                           {/* Selected diamond — Shape & Shade are dropdowns, rest read-only */}

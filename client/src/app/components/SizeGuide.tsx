@@ -140,7 +140,7 @@ function SizeChartDialog({ chart, trigger }: { chart: ChartDef; trigger: React.R
         <DialogHeader className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid var(--sf-divider)" }}>
           <DialogTitle
             className="flex items-center gap-2 text-base"
-            style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}
+            style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}
           >
             <Ruler className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
             {chart.title}

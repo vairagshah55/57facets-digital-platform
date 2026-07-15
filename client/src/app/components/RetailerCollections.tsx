@@ -385,7 +385,7 @@ export function RetailerCollections() {
                   <h2
                     className="text-2xl sm:text-3xl font-semibold mb-1"
                     style={{
-                      fontFamily: "'Melodrama', 'Georgia', serif",
+                      fontFamily: "'General Sans', 'Inter', sans-serif",
                       color: "#fff",
                     }}
                   >
@@ -557,7 +557,7 @@ function CollectionCard({
           <h3
             className="text-xl sm:text-2xl font-semibold mb-0.5"
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               color: "#fff",
             }}
           >

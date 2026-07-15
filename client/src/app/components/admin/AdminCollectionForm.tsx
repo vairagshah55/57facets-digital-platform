@@ -132,7 +132,7 @@ export function AdminCollectionForm() {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h1 className="text-xl font-semibold" style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}>
+          <h1 className="text-xl font-semibold" style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}>
             {isEdit ? "Edit Collection" : "New Collection"}
           </h1>
         </div>

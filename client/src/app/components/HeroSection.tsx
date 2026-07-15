@@ -222,7 +222,7 @@ export function HeroSection() {
               >
                 <h1
                   style={{
-                    fontFamily: "'Melodrama', 'Georgia', serif",
+                    fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "clamp(30px, 5vw, 60px)",
                     fontWeight: 700,
                     color: "#FFFFFF",
@@ -248,7 +248,7 @@ export function HeroSection() {
               >
                 <span
                   style={{
-                    fontFamily: "'Melodrama', 'Georgia', serif",
+                    fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "clamp(30px, 5vw, 60px)",
                     fontWeight: 700,
                     lineHeight: 1.05,
@@ -386,7 +386,7 @@ export function HeroSection() {
         >
           <span
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               fontSize: "clamp(70px, 14vw, 180px)",
               fontWeight: 800,
               color: "#FFFFFF",

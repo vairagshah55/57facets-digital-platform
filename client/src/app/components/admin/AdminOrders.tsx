@@ -215,7 +215,7 @@ export function AdminOrders() {
       {/* Header */}
       <motion.div {...fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+          <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
             Order Management
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{total} total order{total !== 1 ? "s" : ""}</p>
@@ -378,7 +378,7 @@ export function AdminOrders() {
                   <div className="min-w-0">
                     <h2
                       className="text-2xl font-medium leading-tight"
-                      style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}
+                      style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}
                     >
                       {detailOrder.order_number}
                     </h2>

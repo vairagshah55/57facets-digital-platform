@@ -87,7 +87,7 @@ export function AdminCollections() {
             <Layers className="w-5 h-5" style={{ color: "#f59e0b" }} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold leading-tight" style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}>
+            <h1 className="text-xl font-semibold leading-tight" style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}>
               Collections
             </h1>
             <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>

@@ -66,7 +66,7 @@ export function AdminNotifications() {
       {/* Header */}
       <motion.div {...fadeUp} className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+          <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
             Notifications
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--sf-text-muted)" }}>

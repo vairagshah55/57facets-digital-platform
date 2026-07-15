@@ -1322,7 +1322,7 @@ export function AdminProductWizard() {
               <currentStep.icon className="w-5 h-5" style={{ color: currentStep.color }} />
             </div>
             <div>
-              <h2 className="text-lg font-bold" style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}>
+              <h2 className="text-lg font-bold" style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}>
                 {currentStep.label}
               </h2>
               <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{currentStep.desc}</p>

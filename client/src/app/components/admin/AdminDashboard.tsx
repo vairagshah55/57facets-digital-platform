@@ -276,7 +276,7 @@ export function AdminDashboard() {
         <div>
           <h2
             className="text-2xl font-bold"
-            style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}
+            style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
           >
             Overview
           </h2>

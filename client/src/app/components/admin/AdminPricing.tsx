@@ -77,7 +77,7 @@ export function AdminPricing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-semibold" style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}>
+          <h1 className="text-xl font-semibold" style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}>
             Pricing
           </h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>

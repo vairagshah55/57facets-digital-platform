@@ -198,7 +198,7 @@ function LeaderCard({
           </div>
           <h3
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               fontSize: "clamp(26px, 3vw, 36px)",
               fontWeight: 500,
               color: "#f0f2f5",
@@ -325,7 +325,7 @@ export function ManagementSection() {
         >
           <h2
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               fontSize: "clamp(36px, 5vw, 68px)",
               fontWeight: 500,
               color: "#f0f2f5",

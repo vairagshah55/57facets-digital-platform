@@ -296,7 +296,7 @@ export function RetailerLogin() {
             <CardTitle
               className="text-2xl font-semibold"
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 color: "var(--sf-text-primary)",
               }}
             >

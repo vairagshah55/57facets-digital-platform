@@ -247,7 +247,7 @@ export function CategoryGallery() {
             <div>
               <h1
                 style={{
-                  fontFamily: "'Melodrama', 'Georgia', serif",
+                  fontFamily: "'General Sans', 'Inter', sans-serif",
                   fontSize: "clamp(20px, 2.5vw, 30px)",
                   fontWeight: 700,
                   color: "#FFFFFF",

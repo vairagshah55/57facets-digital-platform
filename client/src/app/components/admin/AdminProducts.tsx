@@ -413,7 +413,7 @@ export function AdminProducts() {
         <div>
           <h1
             className="text-2xl font-bold"
-            style={{ fontFamily: "'Melodrama','Georgia',serif", color: "var(--sf-text-primary)" }}
+            style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
           >
             Product Catalog
           </h1>

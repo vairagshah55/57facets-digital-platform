@@ -677,7 +677,7 @@ export function RetailerOrders() {
           <div>
             <h1
               className="text-3xl sm:text-4xl font-medium tracking-tight leading-none mb-1"
-              style={{ fontFamily: "'Melodrama', Georgia, serif", color: "var(--sf-text-primary)" }}
+              style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
             >
               My Orders
             </h1>
@@ -741,7 +741,7 @@ export function RetailerOrders() {
           >
             <div className="flex items-center gap-2.5 px-5 py-3 border-b" style={{ borderColor: "rgba(245,158,11,0.2)" }}>
               <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "#f59e0b" }} />
-              <span className="text-sm font-semibold" style={{ color: "#f59e0b", fontFamily: "'Melodrama', serif" }}>
+              <span className="text-sm font-semibold" style={{ color: "#f59e0b", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
                 {editableOrders.length} order{editableOrders.length > 1 ? "s" : ""} awaiting your edit
               </span>
             </div>
@@ -948,7 +948,7 @@ export function RetailerOrders() {
               <Package className="w-7 h-7" style={{ color: "var(--sf-red-text)" }} />
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold mb-1" style={{ color: "var(--sf-text-secondary)", fontFamily: "'Melodrama', serif" }}>
+              <p className="text-base font-semibold mb-1" style={{ color: "var(--sf-text-secondary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
                 Could not load orders
               </p>
               <p className="text-sm" style={{ color: "var(--sf-text-muted)" }}>{error}</p>
@@ -987,7 +987,7 @@ export function RetailerOrders() {
               </motion.div>
             </div>
             <div className="text-center max-w-xs">
-              <h3 className="text-xl font-medium mb-2" style={{ fontFamily: "'Melodrama', Georgia, serif", color: "var(--sf-text-primary)" }}>
+              <h3 className="text-xl font-medium mb-2" style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}>
                 {hasActiveFilters ? "No matching orders" : activeTab !== "all" ? "No orders here" : "No orders yet"}
               </h3>
               <p className="text-sm leading-relaxed" style={{ color: "var(--sf-text-muted)" }}>
@@ -1084,7 +1084,7 @@ export function RetailerOrders() {
                     <div className="min-w-0">
                       <h2
                         className="text-2xl font-medium leading-tight mb-1.5"
-                        style={{ fontFamily: "'Melodrama', serif", color: "var(--sf-text-primary)" }}
+                        style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
                       >
                         {detailOrder.order_number}
                       </h2>
@@ -1202,7 +1202,7 @@ export function RetailerOrders() {
                               <div className="min-w-0">
                                 <h3
                                   className="text-xl font-medium leading-tight"
-                                  style={{ fontFamily: "'Melodrama', Georgia, serif", color: "var(--sf-text-primary)" }}
+                                  style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
                                 >
                                   Editing Order
                                 </h3>

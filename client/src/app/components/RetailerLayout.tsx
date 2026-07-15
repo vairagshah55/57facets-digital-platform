@@ -335,7 +335,7 @@ function RetailerHeader() {
             <div className="hidden sm:block">
               <span
                 className="block text-[15px] font-semibold leading-tight"
-                style={{ fontFamily: "'Melodrama', 'Georgia', serif", color: "var(--sf-text-primary)" }}
+                style={{ fontFamily: "'General Sans', 'Inter', sans-serif", color: "var(--sf-text-primary)" }}
               >
                 {retailer?.companyName || retailer?.name || "Retailer"}
               </span>

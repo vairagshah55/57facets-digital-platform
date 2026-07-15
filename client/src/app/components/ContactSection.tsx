@@ -504,7 +504,7 @@ export function ContactSection() {
             {/* Heading — consistent with rest of site */}
             <h2
               style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "clamp(34px, 3.8vw, 56px)",
                 fontWeight: 500,
                 color: "#F0EDE8",
@@ -549,7 +549,7 @@ export function ContactSection() {
                 </svg>
                 <p
                   style={{
-                    fontFamily: "'Melodrama', 'Georgia', serif",
+                    fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "22px",
                     fontWeight: 500,
                     color: "#F0EDE8",

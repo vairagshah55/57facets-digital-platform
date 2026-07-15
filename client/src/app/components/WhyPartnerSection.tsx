@@ -167,7 +167,7 @@ function ReasonCard({
       {/* Headline */}
       <h3
         style={{
-          fontFamily: "'Melodrama', 'Georgia', serif",
+          fontFamily: "'General Sans', 'Inter', sans-serif",
           fontSize: "clamp(20px, 2vw, 26px)",
           fontWeight: 500,
           color: "#e8ecf0",
@@ -261,7 +261,7 @@ function MobileCarousel() {
               }}>{reason.icon}</div>
 
               <h3 style={{
-                fontFamily: "'Melodrama', 'Georgia', serif",
+                fontFamily: "'General Sans', 'Inter', sans-serif",
                 fontSize: "clamp(22px, 5vw, 28px)", fontWeight: 500,
                 color: "#e8ecf0", lineHeight: 1.18, letterSpacing: "-0.01em", margin: 0,
               }}>{reason.headline}</h3>
@@ -370,7 +370,7 @@ export function WhyPartnerSection() {
         >
           <h2
             style={{
-              fontFamily: "'Melodrama', 'Georgia', serif",
+              fontFamily: "'General Sans', 'Inter', sans-serif",
               fontSize: "clamp(36px, 5vw, 64px)",
               fontWeight: 500,
               color: "#f0f2f5",

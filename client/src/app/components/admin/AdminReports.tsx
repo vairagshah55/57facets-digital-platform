@@ -254,7 +254,7 @@ export function AdminReports() {
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
         className="mb-5"
       >
-        <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'Melodrama', 'Georgia', serif" }}>
+        <h1 className="text-xl font-semibold" style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', 'Inter', sans-serif" }}>
           Reports
         </h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--sf-text-muted)" }}>

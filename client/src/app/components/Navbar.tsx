@@ -187,7 +187,7 @@ export function Navbar() {
                   className="nav-mobile-link"
                   style={{
                     display: "inline-block",
-                    fontFamily: "'Melodrama', 'Georgia', serif",
+                    fontFamily: "'General Sans', 'Inter', sans-serif",
                     fontSize: "clamp(26px, 7vw, 40px)",
                     fontWeight: 500,
                     color: "#e8ecf0",

@@ -120,7 +120,7 @@ export function AboutSection() {
    const totalWords = line1Words.length;
 
   const headlineStyle: React.CSSProperties = {
-    fontFamily: "'Melodrama', 'Georgia', serif",
+    fontFamily: "'General Sans', 'Inter', sans-serif",
     fontSize: "clamp(46px, 5.6vw, 76px)",
     fontWeight: 500,
     letterSpacing: "-0.02em",
