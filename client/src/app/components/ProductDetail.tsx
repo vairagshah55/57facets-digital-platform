@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -359,7 +359,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   }, [id, adminPreview, previewRetailerId]);
 
   // Measure the SKU/name row so the floating side arrows line up with it.
-  useEffect(() => {
+  // useLayoutEffect → the position is set BEFORE paint, so there's no visible
+  // jump from the fallback and it's consistent across environments.
+  useLayoutEffect(() => {
     if (adminPreview) return;
     const measure = () => {
       if (!skuRef.current || !mainRef.current) return;
