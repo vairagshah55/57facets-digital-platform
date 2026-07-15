@@ -17,12 +17,14 @@ export function ImageViewer({
   const [index, setIndex] = useState(startIndex);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState(0);
   const drag = useRef<{ active: boolean; x: number; y: number; ox: number; oy: number }>({
     active: false, x: 0, y: 0, ox: 0, oy: 0,
   });
 
   const MIN = 1, MAX = 5, STEP = 0.5;
-  const reset = useCallback(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, []);
+  const reset = useCallback(() => { setZoom(1); setOffset({ x: 0, y: 0 }); setRotation(0); }, []);
+  const rotate = useCallback(() => setRotation((r) => (r - 90) % 360), []);
   const zoomIn = useCallback(() => setZoom((z) => Math.min(MAX, +(z + STEP).toFixed(2))), []);
   const zoomOut = useCallback(() => setZoom((z) => {
     const n = Math.max(MIN, +(z - STEP).toFixed(2));
@@ -40,13 +42,14 @@ export function ImageViewer({
       else if (e.key === "ArrowRight" && images.length > 1) next();
       else if (e.key === "+" || e.key === "=") zoomIn();
       else if (e.key === "-" || e.key === "_") zoomOut();
+      else if (e.key === "r" || e.key === "R") rotate();
       else if (e.key === "0") reset();
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
-  }, [images.length, onClose, prev, next, zoomIn, zoomOut, reset]);
+  }, [images.length, onClose, prev, next, zoomIn, zoomOut, rotate, reset]);
 
   const onWheel = (e: React.WheelEvent) => {
     if (e.deltaY < 0) zoomIn(); else zoomOut();
@@ -80,7 +83,7 @@ export function ImageViewer({
       {/* Toolbar */}
       <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8, zIndex: 2 }}>
         <button title="Zoom out (-)" onClick={zoomOut} style={btn}><ZoomOut className="w-5 h-5" /></button>
-        <button title="Reset (0)" onClick={reset} style={btn}><RotateCcw className="w-[18px] h-[18px]" /></button>
+        <button title="Rotate (R)" onClick={rotate} style={btn}><RotateCcw className="w-[18px] h-[18px]" /></button>
         <button title="Zoom in (+)" onClick={zoomIn} style={btn}><ZoomIn className="w-5 h-5" /></button>
         <button title="Close (Esc)" onClick={onClose} style={btn}><X className="w-5 h-5" /></button>
       </div>
@@ -115,7 +118,7 @@ export function ImageViewer({
         onPointerUp={onPointerUp}
         style={{
           maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain",
-          transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+          transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom}) rotate(${rotation}deg)`,
           transition: drag.current.active ? "none" : "transform 0.15s ease-out",
           cursor: zoom > 1 ? (drag.current.active ? "grabbing" : "grab") : "zoom-in",
           touchAction: "none", userSelect: "none",

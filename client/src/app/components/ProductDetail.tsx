@@ -274,6 +274,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [activeImage, setActiveImage] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  // Image counter (e.g. "1 / 4") auto-hides after a few seconds and re-appears
+  // on interaction (Flipkart-style).
+  const [showCounter, setShowCounter] = useState(true);
+  const counterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const revealCounter = useCallback(() => {
+    setShowCounter(true);
+    if (counterTimerRef.current) clearTimeout(counterTimerRef.current);
+    counterTimerRef.current = setTimeout(() => setShowCounter(false), 2500);
+  }, []);
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
@@ -306,6 +315,12 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
+
+  // Show the image counter briefly whenever the shown image/video changes.
+  useEffect(() => {
+    revealCounter();
+    return () => { if (counterTimerRef.current) clearTimeout(counterTimerRef.current); };
+  }, [activeImage, showVideo, revealCounter]);
 
   // ── Fetch product on mount ─────────────────────────
   useEffect(() => {
@@ -584,6 +599,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
           <div
             className="relative aspect-square rounded-2xl overflow-hidden mb-3"
             style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
+            onMouseMove={revealCounter}
+            onMouseEnter={revealCounter}
+            onClick={revealCounter}
+            onTouchStart={revealCounter}
           >
             <AnimatePresence mode="wait">
               {showVideo && product.video ? (
@@ -667,12 +686,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </Badge>
             )}
 
-            {/* Image counter */}
+            {/* Image counter — auto-hides after a few seconds, reveals on interaction */}
             <div
               className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md"
               style={{
                 backgroundColor: "var(--sf-overlay-bg)",
                 color: "var(--sf-text-secondary)",
+                opacity: showCounter ? 1 : 0,
+                transition: "opacity 0.4s ease",
+                pointerEvents: "none",
               }}
             >
               {showVideo ? "Video" : `${activeImage + 1} / ${product.images.length}`}
