@@ -67,6 +67,7 @@ import {
 import { ScrollArea } from "./ui/scroll-area";
 
 import { orders as ordersApi, products as productsApi } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -200,8 +201,12 @@ const STEPPER_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "delivered",  label: "Delivered" },
 ];
 
+// Currency for the logged-in retailer's country (₹ for India, $ otherwise).
+// Set once per render by the page component from AuthContext, then read by the
+// module-level formatters and the ItemCard/OrderCard sub-components below.
+let _isINR = true;
 function formatPrice(price: number): string {
-  return "₹" + price.toLocaleString("en-IN");
+  return (_isINR ? "₹" : "$") + price.toLocaleString(_isINR ? "en-IN" : "en-US");
 }
 
 function formatDate(dateStr: string): string {
@@ -291,6 +296,9 @@ const THIN_MUTED_SCROLLBAR =
 
 export function RetailerOrders() {
   const navigate = useNavigate();
+  const { retailer } = useAuth();
+  // Set the module-level currency flag for this retailer's country (see formatPrice).
+  _isINR = (retailer?.country || "India") === "India";
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
@@ -398,7 +406,7 @@ export function RetailerOrders() {
     setDetailLoading(true);
     try {
       const data = await ordersApi.detail(order.id);
-      const formatP = (n: number) => "₹" + Number(n).toLocaleString("en-IN");
+      const formatP = (n: number) => formatPrice(Number(n) || 0);
       setDetailOrder({
         ...data,
         items: (data.items || []).map((it: any) => ({
@@ -587,7 +595,7 @@ export function RetailerOrders() {
           name: it.name || "Unknown", image: it.image || null,
           category: it.category || "", carat: it.carat || 0, metal: it.metal_type || "",
           quantity: it.quantity || 1, unitPrice: Number(it.unit_price) || 0,
-          priceLabel: "₹" + Number(it.unit_price).toLocaleString("en-IN"),
+          priceLabel: formatPrice(Number(it.unit_price) || 0),
           goldColour: it.gold_colour, diamondShape: it.diamond_shape,
           diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
           colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,

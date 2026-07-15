@@ -59,8 +59,11 @@ type RecentOrder = { id: string; number: string; status: string; total: string; 
    HELPERS
    ═══════════════════════════════════════════════════════ */
 
+// Currency for the logged-in retailer's country (₹ India / $ otherwise); set by
+// the page component from AuthContext.
+let _isINR = true;
 function formatCurrency(amount: number): string {
-  return "₹" + amount.toLocaleString("en-IN");
+  return (_isINR ? "₹" : "$") + amount.toLocaleString(_isINR ? "en-IN" : "en-US");
 }
 
 function formatDate(dateStr: string): string {
@@ -87,6 +90,7 @@ const fadeUp = {
 export function RetailerDashboard() {
   const navigate = useNavigate();
   const { retailer, loading: authLoading } = useAuth();
+  _isINR = (retailer?.country || "India") === "India"; // set currency for formatCurrency
 
   const isFirstTime = retailer?.firstLogin ?? false;
   const retailerName = retailer?.companyName || retailer?.name || "Retailer";
@@ -145,7 +149,7 @@ export function RetailerDashboard() {
               id: o.id,
               number: o.order_number || o.id?.slice(0, 8),
               status: o.status || "pending",
-              total: typeof o.total === "number" ? formatCurrency(o.total) : o.total ?? "₹0",
+              total: typeof o.total === "number" ? formatCurrency(o.total) : o.total ?? formatCurrency(0),
               date: formatDate(o.created_at),
               items: o.item_count ?? 0,
             }))
@@ -586,7 +590,7 @@ function InsightsCard({ data }: { data: MonthlyTrend[] }) {
 
   const metricConfig = {
     pcs:    { label: "Pieces", color: "#30B8BF", formatter: (v: number) => `${v} pcs`, dotLabel: (v: number) => `${v}` },
-    value:  { label: "Value (₹)", color: "#8b5cf6", formatter: (v: number) => formatCurrency(v), dotLabel: (v: number) => `₹${(v / 1000).toFixed(0)}k` },
+    value:  { label: _isINR ? "Value (₹)" : "Value ($)", color: "#8b5cf6", formatter: (v: number) => formatCurrency(v), dotLabel: (v: number) => `${_isINR ? "₹" : "$"}${(v / 1000).toFixed(0)}k` },
     orders: { label: "Orders", color: "#f59e0b", formatter: (v: number) => `${v} orders`, dotLabel: (v: number) => `${v}` },
   };
 
@@ -660,7 +664,7 @@ function InsightsCard({ data }: { data: MonthlyTrend[] }) {
                   axisLine={false}
                   tickLine={false}
                   width={50}
-                  tickFormatter={(v) => metric === "value" ? `₹${(v / 1000).toFixed(0)}k` : String(v)}
+                  tickFormatter={(v) => metric === "value" ? `${_isINR ? "₹" : "$"}${(v / 1000).toFixed(0)}k` : String(v)}
                 />
                 <RechartsTooltip
                   contentStyle={{

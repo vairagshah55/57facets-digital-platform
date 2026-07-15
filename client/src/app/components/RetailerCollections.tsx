@@ -35,6 +35,7 @@ import {
 
 import { collections as collectionsApi, wishlist as wishlistApi, imageUrl } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -96,8 +97,11 @@ const FILTER_TABS: { key: FilterTag; label: string }[] = [
   { key: "festive", label: "Festive" },
 ];
 
+// Currency for the logged-in retailer's country (₹ India / $ otherwise); set by
+// the page component from AuthContext.
+let _isINR = true;
 function formatPrice(price: number): string {
-  return "₹" + price.toLocaleString("en-IN");
+  return (_isINR ? "₹" : "$") + price.toLocaleString(_isINR ? "en-IN" : "en-US");
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -107,6 +111,8 @@ function formatPrice(price: number): string {
 export function RetailerCollections() {
   const navigate = useNavigate();
   const { addItem, items: cartItems } = useCart();
+  const { retailer } = useAuth();
+  _isINR = (retailer?.country || "India") === "India"; // set currency for formatPrice
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTag>("all");
   const [collectionsList, setCollectionsList] = useState<Collection[]>([]);

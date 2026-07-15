@@ -14,12 +14,16 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import { orders as ordersApi } from "../../lib/api";
-
-const formatPrice = (p: number) => "₹" + p.toLocaleString("en-IN");
 
 export function CartBar() {
   const { items, totalItems, totalPrice, removeItem, updateQuantity, updateNote, clearCart } = useCart();
+  const { retailer } = useAuth();
+  // Currency follows the retailer's country (₹ for India, $ otherwise) — matches
+  // the catalog/detail formatting so the cart bar doesn't force INR for everyone.
+  const isINR = (retailer?.country || "India") === "India";
+  const formatPrice = (p: number) => (isINR ? "₹" : "$") + p.toLocaleString(isINR ? "en-IN" : "en-US");
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
