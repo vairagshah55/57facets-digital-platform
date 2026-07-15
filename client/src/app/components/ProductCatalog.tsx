@@ -81,6 +81,12 @@ function formatPrice(n: number, isINR = true): string {
   return (isINR ? "₹" : "$") + n.toLocaleString(isINR ? "en-IN" : "en-US");
 }
 
+// Normalize a (possibly ALL-CAPS) category/label to Title Case: "PENDENT SET
+// PENDENT" -> "Pendent Set Pendent". Leaves already-cased names looking the same.
+function titleCase(s: string): string {
+  return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // Build the page list with ellipses: always show first & last, plus a window
 // around the current page — e.g. [1, "…", 4, 5, 6, "…", 20].
 function pageItems(current: number, total: number): (number | "…")[] {
@@ -448,7 +454,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 }}
               >
                 {cat.image && <img src={imageVariant(cat.image, "thumb")} alt={cat.name} loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover" />}
-                {cat.name === "All" ? "All Categories" : cat.name}
+                {cat.name === "All" ? "All Categories" : titleCase(cat.name)}
                 {cat.name !== "All" && (
                   <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
                     style={{ background: isActive ? "var(--sf-teal-border)" : "var(--sf-divider)", color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)" }}>
