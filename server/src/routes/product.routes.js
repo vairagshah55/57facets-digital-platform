@@ -342,16 +342,21 @@ router.get("/:id", authenticate, async (req, res, next) => {
     // ("PENDENT SET", "NECKLACE SET") that carry the same 6-digit design serial.
     // Matching is driven off the category name (not the SKU prefix), so it's
     // robust to prefix/category data-entry mismatches.
+    //
+    // Any alphabetic characters in the SKU are ignored: we match on the DIGITS
+    // only, so e.g. "FF13220015" is treated as "13220015" (piece 13, serial
+    // 220015). Requires 8 digits after stripping letters.
     let variants = [];
     {
+      const DIGITS = "REGEXP_REPLACE(p.sku, '[^0-9]', '', 'g')";
       const { rows: vRows } = await query(
         `WITH me AS (
            SELECT p.id,
-                  SUBSTRING(p.sku FROM 3)               AS serial,
+                  SUBSTRING(${DIGITS} FROM 3)              AS serial,
                   SUBSTRING(UPPER(c.name) FROM '^(.*SET)') AS set_family
            FROM products p
            LEFT JOIN categories c ON c.id = p.category_id
-           WHERE p.id = $1 AND LENGTH(p.sku) = 8
+           WHERE p.id = $1 AND LENGTH(${DIGITS}) = 8
          )
          SELECT p.id, p.sku, p.name, p.metal_type, p.gold_colour, c.name AS category,
                 (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
@@ -361,9 +366,9 @@ router.get("/:id", authenticate, async (req, res, next) => {
          WHERE p.is_active = true
            AND p.id <> me.id
            AND me.set_family IS NOT NULL
-           AND LENGTH(p.sku) = 8
+           AND LENGTH(${DIGITS}) = 8
            AND SUBSTRING(UPPER(c.name) FROM '^(.*SET)') = me.set_family
-           AND SUBSTRING(p.sku FROM 3) = me.serial
+           AND SUBSTRING(${DIGITS} FROM 3) = me.serial
          ORDER BY p.sku`,
         [req.params.id]
       );
