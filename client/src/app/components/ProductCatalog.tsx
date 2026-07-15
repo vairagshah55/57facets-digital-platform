@@ -31,6 +31,7 @@ import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent } from "./ui/card";
 import { MultiSelect } from "./ui/multi-select";
+import { SmartImage } from "./ui/SmartImage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import {
   Sheet,
@@ -40,7 +41,7 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 import { useNavigate, useSearchParams } from "react-router";
-import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, uploads as uploadsApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, uploads as uploadsApi, imageUrl, imageVariant } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 
@@ -446,7 +447,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                   color: isActive ? "var(--sf-teal)" : "var(--sf-text-muted)",
                 }}
               >
-                {cat.image && <img src={imageUrl(cat.image)} alt={cat.name} className="w-5 h-5 rounded-full object-cover" />}
+                {cat.image && <img src={imageVariant(cat.image, "thumb")} alt={cat.name} loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover" />}
                 {cat.name === "All" ? "All Categories" : cat.name}
                 {cat.name !== "All" && (
                   <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
@@ -832,7 +833,7 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
       style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
     >
       <div className="aspect-square" style={{ position: "relative", overflow: "hidden" }}>
-        <img src={images[activeIdx] || product.image} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        <SmartImage src={images[activeIdx] || product.image} size="card" alt={product.name} className="w-full h-full" imgClassName="transition-transform duration-300 group-hover:scale-105" />
 
         {/* Expand / zoom — bottom-right so it never overlaps the wishlist heart (top-right) */}
         <button

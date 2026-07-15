@@ -36,7 +36,7 @@ import { Textarea } from "./ui/textarea";
 import { Slider } from "./ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl } from "../../lib/api";
+import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, imageUrl, imageVariant } from "../../lib/api";
 import { adminProducts } from "../../lib/adminApi";
 import { useCart } from "../../context/CartContext";
 
@@ -598,7 +598,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  src={product.images[activeImage]}
+                  src={imageVariant(product.images[activeImage], "full")}
                   alt={product.name}
                   onClick={() => setViewerOpen(true)}
                   className="w-full h-full object-cover cursor-zoom-in"
@@ -684,7 +684,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   opacity: !showVideo && activeImage === i ? 1 : 0.6,
                 }}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={imageVariant(img, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </button>
             ))}
             {/* Video thumb — only if admin uploaded a video */}
@@ -798,7 +798,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       >
                         <div className="relative aspect-square overflow-hidden" style={{ background: "var(--sf-bg-surface-1)" }}>
                           {v.image ? (
-                            <img src={v.image} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110" />
+                            <img src={imageVariant(v.image, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Gem className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />

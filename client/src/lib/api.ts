@@ -9,6 +9,18 @@ export function imageUrl(path: string | null | undefined): string {
   return `${SERVER_URL}${path}`;
 }
 
+// Resolve a resized WebP variant of an uploaded image ("thumb" | "card" | "full"
+// | "blur"). Variants are sibling files named "<base>_<size>.webp" generated on
+// upload (see server imageVariants.js). Falls back to the original URL for inline
+// data-URIs, non-uploads, or unknown extensions.
+export type ImageSize = "thumb" | "card" | "full" | "blur";
+export function imageVariant(path: string | null | undefined, size: ImageSize): string {
+  if (!path) return "";
+  if (path.startsWith("data:")) return path;
+  if (!path.includes("/uploads/") || !/\.(jpe?g|png|webp|avif)$/i.test(path)) return imageUrl(path);
+  return imageUrl(path.replace(/\.(jpe?g|png|webp|avif)$/i, `_${size}.webp`));
+}
+
 function getToken(): string | null {
   return localStorage.getItem("sf_token");
 }

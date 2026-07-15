@@ -48,7 +48,7 @@ import {
 } from "../ui/select";
 import { MultiSelect } from "../ui/multi-select";
 import { adminProducts } from "../../../lib/adminApi";
-import { imageUrl } from "../../../lib/api";
+import { imageUrl, imageVariant } from "../../../lib/api";
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -591,7 +591,7 @@ export function AdminProducts() {
                   style={{ backgroundColor: "var(--sf-bg-surface-2)", border: "none", cursor: "pointer", padding: 0 }}
                 >
                   {p.image ? (
-                    <img src={imageUrl(p.image)} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={imageVariant(p.image, "thumb")} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <ImageIcon className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
                   )}

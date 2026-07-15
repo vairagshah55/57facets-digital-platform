@@ -5,6 +5,7 @@ const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
 const { uploadFile } = require("../utils/gcsUpload");
+const { generateImageVariants } = require("../utils/imageVariants");
 
 // -- Multer config (memory storage  files go to GCS, not local disk) ------
 const fileFilter = (req, file, cb) => {
@@ -64,6 +65,11 @@ router.post(
 
         const isVideo = /\.(mp4|mov)$/i.test(file.originalname);
         const mediaType = isVideo ? "video" : "image";
+        // Resized WebP variants + blur placeholder (best-effort — never block upload).
+        if (!isVideo) {
+          try { await generateImageVariants(file.buffer, gcsFilename); }
+          catch (e) { console.error("Variant generation failed for", gcsFilename, e.message); }
+        }
         const isPrimary = !hasPrimary && i === 0;
 
         const { rows } = await query(
@@ -141,6 +147,10 @@ router.post(
 
       const gcsFilename = makeFilename("categories", req.file.originalname);
       const imageUrl = await uploadFile(req.file.buffer, gcsFilename, req.file.mimetype);
+      if (!/\.(mp4|mov)$/i.test(req.file.originalname)) {
+        try { await generateImageVariants(req.file.buffer, gcsFilename); }
+        catch (e) { console.error("Variant generation failed for", gcsFilename, e.message); }
+      }
 
       await query(
         "UPDATE categories SET image_url = $1 WHERE id = $2",
@@ -166,6 +176,10 @@ router.post(
 
       const gcsFilename = makeFilename("collections", req.file.originalname);
       const imageUrl = await uploadFile(req.file.buffer, gcsFilename, req.file.mimetype);
+      if (!/\.(mp4|mov)$/i.test(req.file.originalname)) {
+        try { await generateImageVariants(req.file.buffer, gcsFilename); }
+        catch (e) { console.error("Variant generation failed for", gcsFilename, e.message); }
+      }
 
       await query(
         "UPDATE collections SET cover_image = $1 WHERE id = $2",

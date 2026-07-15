@@ -33,8 +33,13 @@ app.set("trust proxy", 1); // Required for Cloud Run / load balancers
 const PORT = process.env.PORT || 5000;
 
 // ── Static uploads (local dev only) ────────────────
+// Upload filenames are unique + content-immutable (original + _thumb/_card/_full
+// /_blur.webp variants), so cache them aggressively — repeat views hit the cache.
 if (process.env.NODE_ENV === "local") {
-  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
+    maxAge: "1y",
+    immutable: true,
+  }));
 }
 
 // ── Middleware ──────────────────────────────────────
