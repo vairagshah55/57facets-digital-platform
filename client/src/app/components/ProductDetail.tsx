@@ -1209,22 +1209,35 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   name,
                   quality: product.customization.colorStoneQualities[i] || "",
                 }));
-                // Keyed by UPPERCASE stone name (data is stored upper-case, e.g.
-                // "PRECIOUS STONES") so each stone type gets its own colour.
-                const gemPalette: Record<string, { dot: string; glow: string; bg: string; activeBg: string; border: string; text: string; tag: string }> = {
-                  "PRECIOUS STONES": { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.13)", border: "rgba(39,174,96,0.38)", text: "#2ECC71", tag: "rgba(39,174,96,0.15)" },
-                  "SEMI PRECIOUS STONES": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.13)", border: "rgba(41,128,185,0.38)", text: "#5DADE2", tag: "rgba(41,128,185,0.15)" },
-                  "SYNTHETIC STONES": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
-                  "PEARL": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
-                  "BEADS": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
-                  "BLACK BEADS": { dot: "#455A64", glow: "rgba(69,90,100,0.5)", bg: "rgba(69,90,100,0.08)", activeBg: "rgba(69,90,100,0.18)", border: "rgba(69,90,100,0.5)", text: "#78909C", tag: "rgba(69,90,100,0.22)" },
-                  "KUNDAN": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
-                  "LAKH": { dot: "#8D6E63", glow: "rgba(141,110,99,0.45)", bg: "rgba(141,110,99,0.06)", activeBg: "rgba(141,110,99,0.13)", border: "rgba(141,110,99,0.38)", text: "#A1887F", tag: "rgba(141,110,99,0.15)" },
+                // Colour each stone by its ACTUAL colour, read from the quality/colour
+                // keyword (Ruby/Red → red, Emerald/Green → green, Sapphire/Blue → blue,
+                // Black → dark, Lakh → brown), so e.g. a Ruby and an Emerald (both
+                // "Precious Stones") show different colours. Text tones stay mid-range
+                // so they read on both light and dark themes.
+                const HUE = {
+                  red:     { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.14)", border: "rgba(192,57,43,0.42)", text: "#E74C3C", tag: "rgba(192,57,43,0.16)" },
+                  green:   { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.14)", border: "rgba(39,174,96,0.42)", text: "#2ECC71", tag: "rgba(39,174,96,0.16)" },
+                  blue:    { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.14)", border: "rgba(41,128,185,0.42)", text: "#5DADE2", tag: "rgba(41,128,185,0.16)" },
+                  gold:    { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.14)", border: "rgba(183,149,11,0.42)", text: "#D4A843", tag: "rgba(183,149,11,0.16)" },
+                  pearl:   { dot: "#C9A882", glow: "rgba(201,168,130,0.45)", bg: "rgba(201,168,130,0.06)", activeBg: "rgba(201,168,130,0.14)", border: "rgba(201,168,130,0.42)", text: "#C9A882", tag: "rgba(201,168,130,0.16)" },
+                  brown:   { dot: "#8D6E63", glow: "rgba(141,110,99,0.45)", bg: "rgba(141,110,99,0.06)", activeBg: "rgba(141,110,99,0.14)", border: "rgba(141,110,99,0.42)", text: "#A1887F", tag: "rgba(141,110,99,0.16)" },
+                  black:   { dot: "#455A64", glow: "rgba(69,90,100,0.5)", bg: "rgba(69,90,100,0.08)", activeBg: "rgba(69,90,100,0.18)", border: "rgba(69,90,100,0.5)", text: "#78909C", tag: "rgba(69,90,100,0.22)" },
+                  neutral: { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.14)", border: "rgba(142,68,173,0.42)", text: "#9B59B6", tag: "rgba(142,68,173,0.16)" },
                 };
-                const fallback = { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" };
-                const paletteFor = (name: string) => gemPalette[(name || "").toUpperCase()] || fallback;
+                const fallback = HUE.neutral;
+                const paletteFor = (name: string, quality: string) => {
+                  const s = `${quality || ""} ${name || ""}`.toUpperCase();
+                  if (s.includes("RUBY") || s.includes("RED")) return HUE.red;
+                  if (s.includes("EMERALD") || s.includes("GREEN")) return HUE.green;
+                  if (s.includes("SAPPHIRE") || s.includes("BLUE")) return HUE.blue;
+                  if (s.includes("PEARL") || s.includes("WHITE")) return HUE.pearl;
+                  if (s.includes("KUNDAN") || s.includes("GOLD") || s.includes("YELLOW")) return HUE.gold;
+                  if (s.includes("LAKH")) return HUE.brown;
+                  if (s.includes("BLACK")) return HUE.black;
+                  return HUE.neutral;
+                };
                 const selectedPair = pairs.find(p => p.name === selectedColorStone && p.quality === selectedColorStoneQuality);
-                const selC = selectedPair ? paletteFor(selectedPair.name) : fallback;
+                const selC = selectedPair ? paletteFor(selectedPair.name, selectedPair.quality) : fallback;
 
                 // Short label for category tag (case-insensitive; falls back to the raw name).
                 const categoryShort: Record<string, string> = {
@@ -1273,7 +1286,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                     <div className="grid grid-cols-2 gap-2.5">
                       {pairs.map((pair, i) => {
                         const active = selectedColorStone === pair.name && selectedColorStoneQuality === pair.quality;
-                        const c = paletteFor(pair.name);
+                        const c = paletteFor(pair.name, pair.quality);
                         const shortCat = categoryShort[(pair.name || "").toUpperCase()] || pair.name;
                         return (
                           <button key={i}
