@@ -1217,7 +1217,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   "SYNTHETIC STONES": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
                   "PEARL": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
                   "BEADS": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
-                  "BLACK BEADS": { dot: "#455A64", glow: "rgba(69,90,100,0.5)", bg: "rgba(69,90,100,0.08)", activeBg: "rgba(69,90,100,0.18)", border: "rgba(69,90,100,0.5)", text: "#78909C", tag: "rgba(69,90,100,0.22)" },
+                  "BLACK BEADS": { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" },
                   "KUNDAN": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
                   "LAKH": { dot: "#8D6E63", glow: "rgba(141,110,99,0.45)", bg: "rgba(141,110,99,0.06)", activeBg: "rgba(141,110,99,0.13)", border: "rgba(141,110,99,0.38)", text: "#A1887F", tag: "rgba(141,110,99,0.15)" },
                 };
