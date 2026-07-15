@@ -30,7 +30,6 @@ import { Checkbox } from "./ui/checkbox";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent } from "./ui/card";
-import { MultiSelect } from "./ui/multi-select";
 import { SmartImage } from "./ui/SmartImage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import {
@@ -73,6 +72,24 @@ const DEFAULT_PAGE_SIZE = 12;
 // Preset type categories (mirrors the admin product editor). Shown in full in the
 // Type filter regardless of which values currently exist in the catalog.
 const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
+
+// Canonical category → type → sub-category taxonomy (business spec). Drives the
+// Sub-category filter so only VALID sub-categories show for the chosen category
+// AND type — regardless of mis-tagged data. E.g. a Gold Ring must not offer
+// "Solitaire". "*" is the full set used when no specific type is selected.
+// Categories not listed here fall back to the sub-categories present in the data.
+const CANONICAL_SUBCATEGORIES: Record<string, Record<string, string[]>> = {
+  Rings: {
+    "*":     ["LADIES", "GENTS", "SOLITAIRE", "COCKTAIL"],
+    DIAMOND: ["LADIES", "GENTS", "SOLITAIRE", "COCKTAIL"],
+    GOLD:    ["LADIES", "GENTS", "SOLITAIRE"],
+  },
+  Earrings: {
+    "*":     ["TOPS", "SOLITAIRE", "BALI", "JHUMKA", "KODA JODI"],
+    DIAMOND: ["TOPS", "SOLITAIRE", "BALI", "JHUMKA", "KODA JODI"],
+    GOLD:    ["TOPS", "BALI", "JHUMKA"],
+  },
+};
 
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
@@ -158,6 +175,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [activeSubCategories, setActiveSubCategories] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([]);
+  const [subByCategory, setSubByCategory] = useState<Record<string, string[]>>({});
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -196,9 +214,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
 
   useEffect(() => {
     productsApi.categories().then((data: Category[]) => setCategories(data)).catch(() => {});
-    productsApi.filterOptions().then((d: { subCategories?: string[]; availabilities?: string[] }) => {
+    productsApi.filterOptions().then((d: { subCategories?: string[]; availabilities?: string[]; subCategoriesByCategory?: Record<string, string[]> }) => {
       setSubCategoryOptions(d?.subCategories ?? []);
       setAvailabilityOptions(d?.availabilities ?? []);
+      setSubByCategory(d?.subCategoriesByCategory ?? {});
     }).catch(() => {});
     wishlistApi.list().then((data: any) => {
       const items = Array.isArray(data) ? data : data.items ?? [];
@@ -296,6 +315,30 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     const all: { name: string; image: string | null; count: number }[] = [{ name: "All", image: null, count: 0 }];
     return all.concat(categories.map((c) => ({ name: c.name, image: c.image_url, count: c.product_count || 0 })));
   }, [categories]);
+
+  // Sub-category options cascade off the selected category: "All" shows every
+  // sub-category, otherwise only the ones that exist within that category.
+  const cascadedSubCategoryOptions = useMemo(() => {
+    if (activeCategory === "All") return subCategoryOptions;
+    const canon = CANONICAL_SUBCATEGORIES[activeCategory];
+    if (!canon) return subByCategory[activeCategory] ?? [];
+    const full = canon["*"] ?? [];
+    // With type(s) selected, union each type's allowed sub-categories (so e.g.
+    // Gold Ring drops Solitaire); with no type selected, show the full set.
+    if (activeTypes.length > 0) {
+      const allowed = new Set<string>();
+      for (const t of activeTypes) (canon[t] ?? full).forEach((s) => allowed.add(s));
+      return full.filter((s) => allowed.has(s)); // keep canonical order
+    }
+    return full;
+  }, [activeCategory, activeTypes, subCategoryOptions, subByCategory]);
+  // Drop any selected sub-categories that aren't valid for the current category.
+  useEffect(() => {
+    setActiveSubCategories((prev) => {
+      const next = prev.filter((s) => cascadedSubCategoryOptions.includes(s));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [cascadedSubCategoryOptions]);
 
   const activeFiltersCount = useMemo(() => {
     let c = 0;
@@ -430,7 +473,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                   availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
               </ScrollArea>
@@ -475,7 +518,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                 availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={subCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
             </CardContent>
@@ -660,14 +703,16 @@ function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, ava
       {typeOptions.length > 0 && (
         <>
           <FilterSection title="Type">
-            <div className="mt-2">
-              <MultiSelect
-                options={typeOptions}
-                selected={activeTypes}
-                onChange={setActiveTypes}
-                placeholder="All Types"
-                className="w-full"
-              />
+            <div className="space-y-3 mt-2">
+              {typeOptions.map((t) => (
+                <label key={t} className="flex items-center gap-2.5 cursor-pointer">
+                  <Checkbox
+                    checked={activeTypes.includes(t)}
+                    onCheckedChange={(checked) => setActiveTypes(checked ? [...activeTypes, t] : activeTypes.filter((x) => x !== t))}
+                  />
+                  <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{titleCase(t)}</span>
+                </label>
+              ))}
             </div>
           </FilterSection>
           <Separator style={{ backgroundColor: "var(--sf-divider)" }} />
@@ -677,14 +722,16 @@ function FilterPanel({ priceRange, setPriceRange, caratRange, setCaratRange, ava
       {subCategoryOptions.length > 0 && (
         <>
           <FilterSection title="Sub-category">
-            <div className="mt-2">
-              <MultiSelect
-                options={subCategoryOptions}
-                selected={activeSubCategories}
-                onChange={setActiveSubCategories}
-                placeholder="All Sub-categories"
-                className="w-full"
-              />
+            <div className="space-y-3 mt-2">
+              {subCategoryOptions.map((s) => (
+                <label key={s} className="flex items-center gap-2.5 cursor-pointer">
+                  <Checkbox
+                    checked={activeSubCategories.includes(s)}
+                    onCheckedChange={(checked) => setActiveSubCategories(checked ? [...activeSubCategories, s] : activeSubCategories.filter((x) => x !== s))}
+                  />
+                  <span className="text-sm" style={{ color: "var(--sf-text-secondary)" }}>{titleCase(s)}</span>
+                </label>
+              ))}
             </div>
           </FilterSection>
           <Separator style={{ backgroundColor: "var(--sf-divider)" }} />

@@ -151,7 +151,7 @@ router.get("/categories", authenticate, async (req, res, next) => {
 // used to populate the catalog filter dropdowns.
 router.get("/filter-options", authenticate, async (req, res, next) => {
   try {
-    const [types, subs, avails] = await Promise.all([
+    const [types, subs, avails, byCat] = await Promise.all([
       query(`SELECT DISTINCT type_category AS v FROM products
              WHERE is_active = true AND type_category IS NOT NULL AND type_category <> ''
              ORDER BY type_category`),
@@ -161,11 +161,22 @@ router.get("/filter-options", authenticate, async (req, res, next) => {
       query(`SELECT DISTINCT availability AS v FROM products
              WHERE is_active = true AND availability IS NOT NULL AND availability <> ''
              ORDER BY availability`),
+      // Which sub-categories exist within each category — drives the cascading
+      // Sub-category filter (pick a category → see only its sub-categories).
+      query(`SELECT DISTINCT c.name AS category, p.sub_category AS sub
+             FROM products p JOIN categories c ON c.id = p.category_id
+             WHERE p.is_active = true AND p.sub_category IS NOT NULL AND p.sub_category <> ''
+             ORDER BY c.name, p.sub_category`),
     ]);
+    const subCategoriesByCategory = {};
+    for (const r of byCat.rows) {
+      (subCategoriesByCategory[r.category] ||= []).push(r.sub);
+    }
     res.json({
       types: types.rows.map((r) => r.v),
       subCategories: subs.rows.map((r) => r.v),
       availabilities: avails.rows.map((r) => r.v),
+      subCategoriesByCategory,
     });
   } catch (err) {
     next(err);
