@@ -296,8 +296,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [showNote, setShowNote] = useState(false);
 
   // Cart
-  const { addItem, items: cartItems } = useCart();
-  const [addedToCart, setAddedToCart] = useState(false);
+  const { addItem, removeItem, items: cartItems } = useCart();
   const [existingOrder, setExistingOrder] = useState<{ order_number: string; status: string } | null>(null);
 
   // Is this product already in the current (not yet placed) cart?
@@ -433,8 +432,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       note: [selectedSizeSummary ? `Size: ${selectedSizeSummary}` : null, note || null]
         .filter(Boolean).join("\n") || null,
     });
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
   }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, selectedSizeSummary, note]);
 
   // Currency follows the retailer's country (₹ India / $ US).
@@ -1403,37 +1400,34 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 {existingOrder.order_number} — {existingOrder.status}
               </Button>
             ) : alreadyInCart ? (
-              /* Already in the current unsent cart */
+              /* Already in the current unsent cart — click to remove it (toggle back to "Add to Cart") */
               <Button
+                key="in-cart"
                 className="flex-1 h-12 text-base font-semibold gap-2"
                 style={{
                   backgroundColor: "var(--sf-teal-glass)",
                   color: "var(--sf-teal)",
                   border: "1.5px solid var(--sf-teal-border)",
                 }}
-                onClick={() => navigate("/retailer/catalog")}
+                title="Remove from cart"
+                onClick={() => cartItems.filter((i) => i.productId === id).forEach((i) => removeItem(i.cartId))}
               >
-                <Check className="w-5 h-5" /> In Cart · Keep Shopping
+                <Check className="w-5 h-5" /> In Cart · Remove
               </Button>
             ) : (
               /* Normal add to cart */
               <Button
-                className="flex-1 h-12 text-base font-semibold gap-2 transition-all duration-200"
+                key="add-to-cart"
+                className="flex-1 h-12 text-base font-semibold gap-2"
                 style={{
-                  backgroundColor: addedToCart ? "#22c55e" : "var(--sf-blue-primary)",
+                  backgroundColor: "var(--sf-blue-primary)",
                   color: "#ffffff",
                   border: "none",
-                  boxShadow: addedToCart
-                    ? "0 4px 20px rgba(34,197,94,0.4)"
-                    : "0 4px 20px rgba(38,96,160,0.35)",
+                  boxShadow: "0 4px 20px rgba(38,96,160,0.35)",
                 }}
                 onClick={handleAddToCart}
               >
-                {addedToCart ? (
-                  <><Check className="w-5 h-5" /> Added to Cart!</>
-                ) : (
-                  <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
-                )}
+                <ShoppingCart className="w-5 h-5" /> Add to Cart
               </Button>
             )}
             <Button
