@@ -1040,7 +1040,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       ];
                       return (
                         <div className="mb-5">
-                          {/* Diamond picker — custom themed dropdown */}
+                          {/* Diamond picker dropdown — DISABLED (redundant). Kept for reference. */}
+                          {false && (
                           <div className="relative mb-3">
                             <button
                               type="button"
@@ -1114,6 +1115,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                               )}
                             </AnimatePresence>
                           </div>
+                          )}
 
                           {/* Selected diamond — Shape & Shade are dropdowns, rest read-only */}
                           <div className="grid grid-cols-2 gap-2">
