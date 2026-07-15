@@ -197,6 +197,8 @@ export function AdminProducts() {
   const [page, setPage]                       = useState(1);
   const [loading, setLoading]                 = useState(true);
   const [search, setSearch]                   = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const reqSeqRef = useRef(0); // guards against out-of-order search responses
   const [categoryFilter, setCategoryFilter]   = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("all");
   const [isNewFilter, setIsNewFilter]         = useState<string>("all");
@@ -245,28 +247,37 @@ export function AdminProducts() {
     }).catch(() => {});
   }, []);
 
+  // Debounce the search box so we don't fire a request on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchProducts = useCallback(async () => {
+    const seq = ++reqSeqRef.current;
     setLoading(true);
     try {
       const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
-      if (search.trim())                params.search        = search.trim();
+      if (debouncedSearch)              params.search        = debouncedSearch;
       if (categoryFilter !== "all")     params.category      = categoryFilter;
       if (availabilityFilter !== "all") params.availability  = availabilityFilter;
       if (isNewFilter !== "all")        params.is_new        = isNewFilter;
       if (typeFilter.length > 0)        params.type_category = typeFilter.join(",");
       if (subCategoryFilter.length > 0) params.sub_category  = subCategoryFilter.join(",");
       const data = await adminProducts.list(params);
+      // Ignore stale responses: only the most recent request may update state.
+      if (seq !== reqSeqRef.current) return;
       setProducts(data.products || []);
       setTotal(data.total || 0);
     } catch (err) {
       console.error("Failed to fetch products:", err);
     } finally {
-      setLoading(false);
+      if (seq === reqSeqRef.current) setLoading(false);
     }
-  }, [page, search, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
+  }, [page, debouncedSearch, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
-  useEffect(() => { setPage(1); }, [search, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, categoryFilter, availabilityFilter, isNewFilter, typeFilter, subCategoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
