@@ -630,6 +630,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   src={imageVariant(product.images[activeImage], "full")}
                   alt={product.name}
                   onClick={() => setViewerOpen(true)}
+                  onError={(e) => {
+                    const fallback = imageUrl(product.images[activeImage]);
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
                   className="w-full h-full object-cover cursor-zoom-in"
                 />
               )}
@@ -716,7 +720,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   opacity: !showVideo && activeImage === i ? 1 : 0.6,
                 }}
               >
-                <img src={imageVariant(img, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img
+                  src={imageVariant(img, "thumb")}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    const fallback = imageUrl(img);
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
             {/* Video thumb — only if admin uploaded a video */}
@@ -827,7 +841,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       >
                         <div className="relative aspect-square overflow-hidden" style={{ background: "var(--sf-bg-surface-1)" }}>
                           {v.image ? (
-                            <img src={imageVariant(v.image, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110" />
+                            <img
+                              src={imageVariant(v.image, "thumb")}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => {
+                                const fallback = imageUrl(v.image);
+                                if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Gem className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
@@ -1257,7 +1281,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select stone & quality</p>
                         </div>
                       </div>
-                      {selectedColorStone && (
+                      {/* With a single stone option the card below already shows the
+                          value (and is pre-checked), so this summary chip would just
+                          repeat it — only show it when there's an actual choice. */}
+                      {selectedColorStone && pairs.length > 1 && (
                         <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
                           style={{ background: selC.activeBg, border: `1px solid ${selC.border}` }}>
                           <span className="w-2 h-2 rounded-full shrink-0 animate-pulse"
@@ -1275,6 +1302,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                         const active = selectedColorStone === pair.name && selectedColorStoneQuality === pair.quality;
                         const c = paletteFor(pair.name);
                         const shortCat = categoryShort[(pair.name || "").toUpperCase()] || pair.name;
+                        // Some stone types (e.g. Beads) don't carry a distinct quality
+                        // grade — the quality field just repeats the stone name. Don't
+                        // print the same text twice on one card in that case.
+                        const qualitySameAsName = !pair.quality || pair.quality.trim().toUpperCase() === (pair.name || "").trim().toUpperCase();
                         return (
                           <button key={i}
                             onClick={() => { setSelectedColorStone(pair.name); setSelectedColorStoneQuality(pair.quality); }}
@@ -1302,15 +1333,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
                             {/* Labels */}
                             <div className="flex flex-col min-w-0 flex-1 gap-1">
-                              {/* Category tag */}
-                              <span className="inline-flex self-start text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                style={{ background: active ? c.tag : "var(--sf-glass-pill)", color: active ? c.text : "var(--sf-text-muted)" }}>
-                                {shortCat}
-                              </span>
+                              {/* Category tag — omitted when it would just repeat the quality below */}
+                              {!qualitySameAsName && (
+                                <span className="inline-flex self-start text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                                  style={{ background: active ? c.tag : "var(--sf-glass-pill)", color: active ? c.text : "var(--sf-text-muted)" }}>
+                                  {shortCat}
+                                </span>
+                              )}
                               {/* Quality — primary */}
                               <span className="text-xs font-bold leading-snug truncate"
                                 style={{ color: active ? c.text : "var(--sf-text-primary)" }}>
-                                {pair.quality || "—"}
+                                {qualitySameAsName ? (shortCat || "—") : (pair.quality || "—")}
                               </span>
                             </div>
 

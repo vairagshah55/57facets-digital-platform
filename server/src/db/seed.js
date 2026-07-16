@@ -68,10 +68,12 @@ async function seed() {
     ];
 
     for (const c of collections) {
+      // collections.name carries no unique constraint, so ON CONFLICT has no
+      // target to match — guard against re-seeding with NOT EXISTS instead.
       const { rows } = await pool.query(
         `INSERT INTO collections (name, tagline, tag, launch_date)
-         VALUES ($1,$2,$3,$4)
-         ON CONFLICT (name) DO NOTHING
+         SELECT $1::varchar, $2::varchar, $3::varchar, $4::date
+          WHERE NOT EXISTS (SELECT 1 FROM collections WHERE name = $1)
          RETURNING id`,
         [c.name, c.tagline, c.tag, c.launch]
       );

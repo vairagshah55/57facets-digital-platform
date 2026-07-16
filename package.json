@@ -1,0 +1,17 @@
+{
+  "name": "57facets-digital-platform",
+  "version": "1.0.0",
+  "description": "57Facets Digital Platform — retailer portal (client) + API (server)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green -k \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:api": "npm --prefix server run dev",
+    "dev:web": "npm --prefix client run dev",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed": "npm --prefix server run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

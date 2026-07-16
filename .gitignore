@@ -1,0 +1,10 @@
+# Dependencies (root workspace — server/ and client/ ignore their own)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
