@@ -48,12 +48,21 @@ export function CartBar() {
         note: item.note,
       }));
       await ordersApi.create(orderItems);
+      // Tell any mounted catalog/detail view which products were just ordered so
+      // they can flip to the "ordered" state immediately (no stale "Add to Cart"
+      // until a manual refresh). The listener self-corrects on its next fetch.
+      window.dispatchEvent(new CustomEvent("sf:order-placed", {
+        detail: { productIds: orderItems.map((i) => String(i.productId)) },
+      }));
       setSuccess(true);
       clearCart();
+      // Keep the covering success overlay up briefly, THEN navigate to Orders and
+      // reset. Navigating first (CartBar lives in the persistent layout, so it
+      // doesn't unmount on route change) avoids a 1-frame flash of the catalog.
       setTimeout(() => {
+        navigate("/retailer/orders");
         setOpen(false);
         setSuccess(false);
-        navigate("/retailer/orders");
       }, 1500);
     } catch (err: any) {
       alert(err.message || "Failed to place order");
@@ -62,7 +71,41 @@ export function CartBar() {
     }
   }, [items, clearCart, navigate]);
 
-  if (totalItems === 0) return null;
+  // While the order is being confirmed the cart is already empty, so keep
+  // rendering for the success overlay instead of unmounting (which would reveal
+  // the catalog and briefly flip just-ordered products back to "Add to Cart").
+  if (totalItems === 0 && !success) return null;
+
+  // Full-screen "Order Placed!" confirmation that covers the page during the
+  // hand-off to the Orders screen — standard post-checkout behaviour.
+  if (success) {
+    return (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center px-6"
+        style={{ background: "var(--sf-backdrop)", backdropFilter: "blur(4px)" }}
+      >
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex flex-col items-center gap-3 rounded-3xl px-8 py-7 text-center"
+          style={{
+            backgroundColor: "var(--sf-bg-surface-1)",
+            border: "1px solid var(--sf-glass-border)",
+            boxShadow: "0 8px 40px var(--sf-shadow-lg)",
+          }}
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }}
+          >
+            <Check className="w-7 h-7 text-white" />
+          </div>
+          <p className="text-[15px] font-bold" style={{ color: "var(--sf-text-primary)" }}>Order Placed!</p>
+          <p className="text-[12px]" style={{ color: "var(--sf-text-muted)" }}>Taking you to your orders…</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <>

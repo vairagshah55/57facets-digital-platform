@@ -303,6 +303,26 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     return () => { cancelled = true; };
   }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, pageSize, collectionId, isINR]);
 
+  // When an order is placed (from the CartBar), optimistically mark those
+  // products as "pending" so their cards flip out of "Add to Cart" immediately,
+  // instead of staying stale until a manual refresh. The next fetch reconciles
+  // this with the real order data.
+  useEffect(() => {
+    function onOrderPlaced(e: Event) {
+      const ids: string[] = (e as CustomEvent).detail?.productIds ?? [];
+      if (!ids.length) return;
+      setActiveOrders((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          if (!next[String(id)]) next[String(id)] = { order_number: "", status: "pending" };
+        }
+        return next;
+      });
+    }
+    window.addEventListener("sf:order-placed", onOrderPlaced);
+    return () => window.removeEventListener("sf:order-placed", onOrderPlaced);
+  }, []);
+
   const toggleWishlist = useCallback(async (productId: string) => {
     const isWishlisted = wishlistedIds.has(productId);
     // Optimistic update
