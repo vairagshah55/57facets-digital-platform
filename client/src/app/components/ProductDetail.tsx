@@ -316,6 +316,20 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     window.scrollTo(0, 0);
   }, [id]);
 
+  // When an order is placed (from the CartBar), flip this product to the
+  // "ordered" state immediately if it was one of the ordered items — same fix as
+  // the catalog, so it doesn't stay stale on "Add to Cart" until a refresh.
+  useEffect(() => {
+    function onOrderPlaced(e: Event) {
+      const ids: string[] = (e as CustomEvent).detail?.productIds ?? [];
+      if (id && ids.includes(String(id))) {
+        setExistingOrder((prev) => prev ?? { order_number: "", status: "pending" });
+      }
+    }
+    window.addEventListener("sf:order-placed", onOrderPlaced);
+    return () => window.removeEventListener("sf:order-placed", onOrderPlaced);
+  }, [id]);
+
   // Show the image counter briefly whenever the shown image/video changes.
   useEffect(() => {
     revealCounter();
