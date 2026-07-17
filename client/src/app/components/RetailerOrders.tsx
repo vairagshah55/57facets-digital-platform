@@ -66,7 +66,7 @@ import {
 } from "./ui/table";
 import { ScrollArea } from "./ui/scroll-area";
 
-import { orders as ordersApi, products as productsApi } from "../../lib/api";
+import { orders as ordersApi, products as productsApi, imageUrl } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
 /* ═══════════════════════════════════════════════════════
@@ -80,6 +80,7 @@ type OrderItem = {
   productId?: string | null;
   note?: string | null;
   name: string;
+  sku?: string;
   image: string | null;
   category: string;
   carat: number;
@@ -411,7 +412,8 @@ export function RetailerOrders() {
         ...data,
         items: (data.items || []).map((it: any) => ({
           id: it.id, productId: it.product_id, note: it.note || "",
-          name: it.name || "Unknown", image: it.image || null,
+          sku: it.sku || "",
+          name: (it.name && String(it.name).trim()) ? it.name : (it.sku || "Unknown"), image: it.image ? imageUrl(it.image) : null,
           category: it.category || "", carat: it.carat || 0,
           metal: it.metal_type || "", quantity: it.quantity || 1,
           unitPrice: Number(it.unit_price) || 0,
@@ -505,8 +507,8 @@ export function RetailerOrders() {
         const rows = Array.isArray(data) ? data : data.products ?? [];
         if (!cancelled) {
           setEditProductResults(rows.map((p: any) => ({
-            id: p.id, name: p.name || "Unknown", sku: p.sku || "",
-            image: p.image || null, category: p.category || "",
+            id: p.id, name: (p.name && String(p.name).trim()) ? p.name : (p.sku || "Unknown"), sku: p.sku || "",
+            image: p.image ? imageUrl(p.image) : null, category: p.category || "",
             basePrice: Number(p.base_price) || 0, carat: Number(p.carat) || 0,
             metalType: p.metal_type || "", diamondShape: p.diamond_shape || null,
           })));
@@ -592,7 +594,8 @@ export function RetailerOrders() {
         ...prev, ...data,
         items: (data.items || []).map((it: any) => ({
           id: it.id, productId: it.product_id, note: it.note || "",
-          name: it.name || "Unknown", image: it.image || null,
+          sku: it.sku || "",
+          name: (it.name && String(it.name).trim()) ? it.name : (it.sku || "Unknown"), image: it.image ? imageUrl(it.image) : null,
           category: it.category || "", carat: it.carat || 0, metal: it.metal_type || "",
           quantity: it.quantity || 1, unitPrice: Number(it.unit_price) || 0,
           priceLabel: formatPrice(Number(it.unit_price) || 0),
@@ -1961,6 +1964,16 @@ function ItemCard({ item }: { item: OrderItem }) {
         >
           {item.name}
         </p>
+
+        {/* SKU */}
+        {item.sku && item.sku !== item.name && (
+          <p
+            className="text-[11px] mb-1.5"
+            style={{ color: "var(--sf-text-muted)", fontFamily: "monospace" }}
+          >
+            SKU: {item.sku}
+          </p>
+        )}
 
         {/* Attribute chips */}
         {chips.length > 0 && (

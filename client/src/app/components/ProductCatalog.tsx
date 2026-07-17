@@ -997,9 +997,9 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
 
       <div className={compact ? "p-2" : "p-3"}>
         <p className={`font-semibold leading-snug ${compact ? "text-xs truncate" : "text-sm line-clamp-2"} mb-0.5`} style={{ color: "var(--sf-text-primary)" }}>
-          {product.name}
+          {product.name || product.sku}
         </p>
-        {product.sku && (
+        {product.sku && product.name && (
           <p className="text-[10px] mb-2 truncate" style={{ color: "var(--sf-text-muted)", fontFamily: "monospace" }}>
             {product.sku}
           </p>

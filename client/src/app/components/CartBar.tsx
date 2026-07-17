@@ -216,11 +216,13 @@ export function CartBar() {
                           className="text-[13px] font-bold truncate leading-tight"
                           style={{ color: "var(--sf-text-primary)" }}
                         >
-                          {item.productName}
+                          {item.productName || item.productSku || "Item"}
                         </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-                          SKU: {item.productSku}
-                        </p>
+                        {item.productSku && (
+                          <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
+                            SKU: {item.productSku}
+                          </p>
+                        )}
                         {/* Customization pills */}
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {item.carat && (
