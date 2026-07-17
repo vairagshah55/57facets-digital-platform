@@ -98,8 +98,8 @@ function formatPrice(n: number, isINR = true): string {
   return (isINR ? "₹" : "$") + n.toLocaleString(isINR ? "en-IN" : "en-US");
 }
 
-// Normalize a (possibly ALL-CAPS) category/label to Title Case: "PENDENT SET
-// PENDENT" -> "Pendent Set Pendent". Leaves already-cased names looking the same.
+// Normalize a (possibly ALL-CAPS) category/label to Title Case: "PENDANT SET"
+// -> "Pendant Set". Leaves already-cased names looking the same.
 function titleCase(s: string): string {
   return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }

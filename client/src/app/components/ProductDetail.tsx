@@ -630,6 +630,10 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   src={imageVariant(product.images[activeImage], "full")}
                   alt={product.name}
                   onClick={() => setViewerOpen(true)}
+                  onError={(e) => {
+                    const fallback = imageUrl(product.images[activeImage]);
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
                   className="w-full h-full object-cover cursor-zoom-in"
                 />
               )}
@@ -716,7 +720,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   opacity: !showVideo && activeImage === i ? 1 : 0.6,
                 }}
               >
-                <img src={imageVariant(img, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img
+                  src={imageVariant(img, "thumb")}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    const fallback = imageUrl(img);
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
             {/* Video thumb — only if admin uploaded a video */}
@@ -827,7 +841,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       >
                         <div className="relative aspect-square overflow-hidden" style={{ background: "var(--sf-bg-surface-1)" }}>
                           {v.image ? (
-                            <img src={imageVariant(v.image, "thumb")} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110" />
+                            <img
+                              src={imageVariant(v.image, "thumb")}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => {
+                                const fallback = imageUrl(v.image);
+                                if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover/var:scale-110"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Gem className="w-4 h-4" style={{ color: "var(--sf-text-muted)" }} />
@@ -973,7 +997,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Palette className="w-4 h-4" style={{ color: "#D4A843" }} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
+                          <p className="text-sm font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select purity & colour</p>
                         </div>
                       </div>
@@ -1027,7 +1051,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Diamond className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
+                          <p className="text-sm font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
                           <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? `${product.diamonds.length} diamonds in this design` : "Select cut, shade & clarity"}</p>
                         </div>
                       </div>
@@ -1203,131 +1227,39 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 );
               })()}
 
-              {/* ─── Color Stones ─────────────────────────── */}
-              {product.customization.colorStoneNames.length > 0 && (() => {
-                const pairs = product.customization.colorStoneNames.map((name, i) => ({
-                  name,
-                  quality: product.customization.colorStoneQualities[i] || "",
-                }));
-                // Keyed by UPPERCASE stone name (data is stored upper-case, e.g.
-                // "PRECIOUS STONES") so each stone type gets its own colour.
-                const gemPalette: Record<string, { dot: string; glow: string; bg: string; activeBg: string; border: string; text: string; tag: string }> = {
-                  "PRECIOUS STONES": { dot: "#27AE60", glow: "rgba(39,174,96,0.45)", bg: "rgba(39,174,96,0.06)", activeBg: "rgba(39,174,96,0.13)", border: "rgba(39,174,96,0.38)", text: "#2ECC71", tag: "rgba(39,174,96,0.15)" },
-                  "SEMI PRECIOUS STONES": { dot: "#2980B9", glow: "rgba(41,128,185,0.45)", bg: "rgba(41,128,185,0.06)", activeBg: "rgba(41,128,185,0.13)", border: "rgba(41,128,185,0.38)", text: "#5DADE2", tag: "rgba(41,128,185,0.15)" },
-                  "SYNTHETIC STONES": { dot: "#C0392B", glow: "rgba(192,57,43,0.45)", bg: "rgba(192,57,43,0.06)", activeBg: "rgba(192,57,43,0.13)", border: "rgba(192,57,43,0.38)", text: "#E74C3C", tag: "rgba(192,57,43,0.15)" },
-                  "PEARL": { dot: "#D4B896", glow: "rgba(212,184,150,0.45)", bg: "rgba(212,184,150,0.06)", activeBg: "rgba(212,184,150,0.13)", border: "rgba(212,184,150,0.38)", text: "#C9A882", tag: "rgba(212,184,150,0.15)" },
-                  "BEADS": { dot: "#D68910", glow: "rgba(214,137,16,0.45)", bg: "rgba(214,137,16,0.06)", activeBg: "rgba(214,137,16,0.13)", border: "rgba(214,137,16,0.38)", text: "#F39C12", tag: "rgba(214,137,16,0.15)" },
-                  "BLACK BEADS": { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" },
-                  "KUNDAN": { dot: "#B7950B", glow: "rgba(183,149,11,0.45)", bg: "rgba(183,149,11,0.06)", activeBg: "rgba(183,149,11,0.13)", border: "rgba(183,149,11,0.38)", text: "#D4A843", tag: "rgba(183,149,11,0.15)" },
-                  "LAKH": { dot: "#8D6E63", glow: "rgba(141,110,99,0.45)", bg: "rgba(141,110,99,0.06)", activeBg: "rgba(141,110,99,0.13)", border: "rgba(141,110,99,0.38)", text: "#A1887F", tag: "rgba(141,110,99,0.15)" },
-                };
-                const fallback = { dot: "#8E44AD", glow: "rgba(142,68,173,0.45)", bg: "rgba(142,68,173,0.06)", activeBg: "rgba(142,68,173,0.13)", border: "rgba(142,68,173,0.38)", text: "#9B59B6", tag: "rgba(142,68,173,0.15)" };
-                const paletteFor = (name: string) => gemPalette[(name || "").toUpperCase()] || fallback;
-                const selectedPair = pairs.find(p => p.name === selectedColorStone && p.quality === selectedColorStoneQuality);
-                const selC = selectedPair ? paletteFor(selectedPair.name) : fallback;
-
-                // Short label for category tag (case-insensitive; falls back to the raw name).
-                const categoryShort: Record<string, string> = {
-                  "PRECIOUS STONES": "Precious",
-                  "SEMI PRECIOUS STONES": "Semi Precious",
-                  "SYNTHETIC STONES": "Synthetic",
-                  "PEARL": "Pearl",
-                  "BEADS": "Beads",
-                  "BLACK BEADS": "Black Beads",
-                  "KUNDAN": "Kundan",
-                  "LAKH": "Lakh",
-                };
-
-                return (
-                  <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
-
-                    {/* Section header */}
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
-                          style={{
-                            background: `linear-gradient(135deg, ${selC.activeBg}, ${selC.bg})`,
-                            border: `1px solid ${selC.border}`,
-                            boxShadow: selectedColorStone ? `0 2px 10px ${selC.glow.replace("0.45", "0.3")}` : "none",
-                          }}>
-                          <Gem className="w-4 h-4 transition-colors duration-300" style={{ color: selC.dot }} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Color Stones</p>
-                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select stone & quality</p>
-                        </div>
-                      </div>
-                      {selectedColorStone && (
-                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
-                          style={{ background: selC.activeBg, border: `1px solid ${selC.border}` }}>
-                          <span className="w-2 h-2 rounded-full shrink-0 animate-pulse"
-                            style={{ background: selC.dot, boxShadow: `0 0 6px ${selC.glow}` }} />
-                          <span className="text-xs font-bold truncate max-w-[110px]" style={{ color: selC.text }}>
-                            {selectedColorStoneQuality || selectedColorStone}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Stone cards — 2-column grid */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {pairs.map((pair, i) => {
-                        const active = selectedColorStone === pair.name && selectedColorStoneQuality === pair.quality;
-                        const c = paletteFor(pair.name);
-                        const shortCat = categoryShort[(pair.name || "").toUpperCase()] || pair.name;
-                        return (
-                          <button key={i}
-                            onClick={() => { setSelectedColorStone(pair.name); setSelectedColorStoneQuality(pair.quality); }}
-                            className="relative flex items-start gap-3 px-3.5 py-3.5 rounded-2xl text-left transition-all duration-200"
-                            style={{
-                              background: active
-                                ? `linear-gradient(135deg, ${c.activeBg}, ${c.bg})`
-                                : "var(--sf-glass-bg)",
-                              border: active ? `1.5px solid ${c.border}` : "1px solid var(--sf-glass-border)",
-                              boxShadow: active ? `0 0 0 3px ${c.bg}, 0 8px 24px ${c.glow.replace("0.45", "0.2")}` : "none",
-                              transform: active ? "translateY(-1px)" : "none",
-                            }}>
-
-                            {/* Gem orb */}
-                            <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5 transition-all duration-200"
-                              style={{
-                                background: active
-                                  ? `radial-gradient(circle at 32% 32%, ${c.dot}DD, ${c.dot}77)`
-                                  : "var(--sf-glass-pill)",
-                                boxShadow: active ? `0 4px 14px ${c.glow}` : "none",
-                                border: active ? `1px solid ${c.dot}55` : "1px solid var(--sf-glass-border)",
-                              }}>
-                              <Gem className="w-4.5 h-4.5" style={{ color: active ? "#fff" : "var(--sf-text-muted)", opacity: active ? 1 : 0.45, width: 18, height: 18 }} />
-                            </div>
-
-                            {/* Labels */}
-                            <div className="flex flex-col min-w-0 flex-1 gap-1">
-                              {/* Category tag */}
-                              <span className="inline-flex self-start text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                style={{ background: active ? c.tag : "var(--sf-glass-pill)", color: active ? c.text : "var(--sf-text-muted)" }}>
-                                {shortCat}
-                              </span>
-                              {/* Quality — primary */}
-                              <span className="text-xs font-bold leading-snug truncate"
-                                style={{ color: active ? c.text : "var(--sf-text-primary)" }}>
-                                {pair.quality || "—"}
-                              </span>
-                            </div>
-
-                            {/* Active check badge */}
-                            {active && (
-                              <span className="absolute flex items-center justify-center rounded-full"
-                                style={{ top: -8, right: -8, width: 20, height: 20, background: c.dot, boxShadow: `0 2px 10px ${c.glow}` }}>
-                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* ─── Retailer's Note ──────────────────────────── */}
+              <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
+                <button
+                  onClick={() => setShowNote(!showNote)}
+                  className="flex items-center gap-2 text-sm font-medium mb-2"
+                  style={{ color: "var(--sf-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  <StickyNote className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+                  {showNote ? "Hide Retailer's Note" : "Retailer's Note"}
+                </button>
+                <AnimatePresence>
+                  {showNote && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <Textarea
+                        placeholder="Eg. Engraving text, size preferences, special requests like use 2 round setting instead of pear/marquis"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="border-[var(--sf-divider)] min-h-[80px]"
+                        style={{
+                          backgroundColor: "var(--sf-bg-surface-1)",
+                          color: "var(--sf-text-primary)",
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* ─── Size (ring / bracelet / bangle) ──────── */}
               <SizeSelector
@@ -1362,40 +1294,6 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </div>
 
             </div>{/* end lock wrapper */}
-          </div>
-
-          {/* ── Note Section ─────────────────────────── */}
-          <div className="order-2 mb-5">
-            <button
-              onClick={() => setShowNote(!showNote)}
-              className="flex items-center gap-2 text-sm font-medium mb-2"
-              style={{ color: "var(--sf-text-secondary)", background: "none", border: "none", cursor: "pointer" }}
-            >
-              <StickyNote className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
-              {showNote ? "Hide note" : "Add a note for this order"}
-            </button>
-            <AnimatePresence>
-              {showNote && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <Textarea
-                    placeholder="Eg. Engraving text, size preferences, special requests like use 2 round setting instead of pear/marquis"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="border-[var(--sf-divider)] min-h-[80px]"
-                    style={{
-                      backgroundColor: "var(--sf-bg-surface-1)",
-                      color: "var(--sf-text-primary)",
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           {/* ── Action Buttons ───────────────────────── */}

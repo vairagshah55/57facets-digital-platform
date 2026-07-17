@@ -87,6 +87,7 @@ type OrderItem = {
   quantity: number;
   unitPrice: number;
   priceLabel: string;
+  isCustomized?: boolean;
   goldColour?: string | null;
   diamondShape?: string | null;
   diamondShade?: string | null;
@@ -416,6 +417,7 @@ export function RetailerOrders() {
           metal: it.metal_type || "", quantity: it.quantity || 1,
           unitPrice: Number(it.unit_price) || 0,
           priceLabel: formatP(Number(it.unit_price) || 0),
+          isCustomized: !!it.is_customized,
           goldColour: it.gold_colour, diamondShape: it.diamond_shape,
           diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
           colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,
@@ -596,6 +598,7 @@ export function RetailerOrders() {
           category: it.category || "", carat: it.carat || 0, metal: it.metal_type || "",
           quantity: it.quantity || 1, unitPrice: Number(it.unit_price) || 0,
           priceLabel: formatPrice(Number(it.unit_price) || 0),
+          isCustomized: !!it.is_customized,
           goldColour: it.gold_colour, diamondShape: it.diamond_shape,
           diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
           colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,
@@ -1955,12 +1958,22 @@ function ItemCard({ item }: { item: OrderItem }) {
       {/* Info column */}
       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
         {/* Name */}
-        <p
-          className="text-sm font-semibold leading-snug mb-1.5"
-          style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', sans-serif" }}
-        >
-          {item.name}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          <p
+            className="text-sm font-semibold leading-snug"
+            style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', sans-serif" }}
+          >
+            {item.name}
+          </p>
+          {item.isCustomized && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+              style={{ background: "var(--sf-amber-subtle)", color: "var(--sf-amber)", border: "1px solid var(--sf-amber-border)" }}
+            >
+              <Sparkles className="w-3 h-3" /> Customized
+            </span>
+          )}
+        </div>
 
         {/* Attribute chips */}
         {chips.length > 0 && (

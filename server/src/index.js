@@ -68,7 +68,25 @@ const tirichCors = cors({
 app.use("/api/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
 app.use("/api/sub-domain/lead-list", tirichCors, express.json(), tirichLeadListRoutes);
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
+const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true); // curl / server-to-server (no Origin)
+      if (origin === clientOrigin) return cb(null, true);
+      // Local dev only: Vite moves to another port when 5173 is taken, and a
+      // rejected preflight surfaces in the browser as an opaque "Load failed"
+      // with nothing logged here. Accept any localhost port so that's not fatal.
+      if (
+        process.env.NODE_ENV === "local" &&
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        return cb(null, true);
+      }
+      return cb(null, false);
+    },
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 

@@ -4,7 +4,7 @@ import {
   Search, Eye, ChevronLeft, ChevronRight, Loader2, ShoppingCart,
   Package, Truck, CheckCircle2, XCircle, Clock,
   User, Phone, Mail, FileText, ToggleLeft, ToggleRight,
-  History, ChevronDown as ChevronDownIcon, ArrowRightLeft,
+  History, ChevronDown as ChevronDownIcon, ArrowRightLeft, Sparkles,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -63,6 +63,7 @@ type OrderItem = {
   diamond_shape: string | null; diamond_shade: string | null; diamond_quality: string | null;
   color_stone_name: string | null; color_stone_quality: string | null; note: string | null;
   name: string; sku: string; image: string | null; category: string | null;
+  is_customized?: boolean;
 };
 
 type TrackingEntry = { status: string; detail: string | null; created_at: string };
@@ -74,6 +75,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   shipped:    { label: "Shipped",    color: "#06b6d4", bg: "rgba(6,182,212,0.12)",  icon: <Truck className="w-3.5 h-3.5" /> },
   delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.12)",  icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   cancelled:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3.5 h-3.5" /> },
+};
+
+// Summary cards show these in place of the underlying status labels (badges/actions elsewhere keep Processing/Cancelled)
+const SUMMARY_LABEL_OVERRIDES: Record<string, string> = {
+  processing: "Accept",
+  cancelled: "Reject",
 };
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -236,7 +243,7 @@ export function AdminOrders() {
                 borderColor: active ? cfg.color : "var(--sf-divider)",
               }}>
               <p className="text-lg font-bold" style={{ color: active ? cfg.color : "var(--sf-text-primary)" }}>{count}</p>
-              <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: active ? cfg.color : "var(--sf-text-muted)" }}>{cfg.label}</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: active ? cfg.color : "var(--sf-text-muted)" }}>{SUMMARY_LABEL_OVERRIDES[key] || cfg.label}</p>
             </button>
           );
         })}
@@ -455,7 +462,17 @@ export function AdminOrders() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>{item.name}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold truncate" style={{ color: "var(--sf-text-primary)" }}>{item.name}</p>
+                              {item.is_customized && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                                  style={{ background: "var(--sf-amber-subtle)", color: "var(--sf-amber)", border: "1px solid var(--sf-amber-border)" }}
+                                >
+                                  <Sparkles className="w-3 h-3" /> Customized
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
                               {item.sku} {item.category ? `· ${item.category}` : ""}
                             </p>

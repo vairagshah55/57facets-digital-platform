@@ -157,13 +157,19 @@ CREATE TRIGGER trg_rpp_updated BEFORE UPDATE ON retailer_product_price
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── Seed the metal rows (rates 0 until admin sets the daily price) ─
-INSERT INTO metal_rates (gold_type, rate_per_gram) VALUES
-  ('14KT', 0), ('18KT', 0), ('22KT', 0), ('24KT', 0)
-ON CONFLICT (gold_type) DO NOTHING;
+-- Guarded with NOT EXISTS rather than ON CONFLICT: migrate-metal-country
+-- later replaces the unique key with (country, gold_type) and makes country
+-- NOT NULL, so a re-run has no matching conflict target and must not insert.
+INSERT INTO metal_rates (gold_type, rate_per_gram)
+SELECT v.gold_type, v.rate
+  FROM (VALUES ('14KT', 0), ('18KT', 0), ('22KT', 0), ('24KT', 0)) AS v(gold_type, rate)
+ WHERE NOT EXISTS (SELECT 1 FROM metal_rates m WHERE m.gold_type = v.gold_type);
 
 -- ── Default making charge (0% until configured) ───────────────────
-INSERT INTO making_charges (scope, mode, value) VALUES ('default', 'percent', 0)
-ON CONFLICT (scope) DO NOTHING;
+-- Same reasoning: migrate-making-country re-keys this on (country, scope).
+INSERT INTO making_charges (scope, mode, value)
+SELECT 'default', 'percent', 0
+ WHERE NOT EXISTS (SELECT 1 FROM making_charges c WHERE c.scope = 'default');
 `;
 
 async function run() {

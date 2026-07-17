@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
+const { isItemCustomized } = require("../utils/orderItemCustomization");
 
 router.use(adminAuth);
 
@@ -108,6 +109,14 @@ router.get("/:id", async (req, res, next) => {
 
     const { rows: items } = await query(
       `SELECT oi.*, p.name, p.sku,
+              p.metal_type AS product_metal_type,
+              p.gold_colour AS product_gold_colour,
+              p.diamond_shape AS product_diamond_shape,
+              p.diamond_color AS product_diamond_color,
+              p.diamond_clarity AS product_diamond_clarity,
+              p.color_stone_name AS product_color_stone_name,
+              p.color_stone_quality AS product_color_stone_quality,
+              p.carat AS product_carat,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               c.name AS category
        FROM order_items oi
@@ -117,13 +126,14 @@ router.get("/:id", async (req, res, next) => {
        ORDER BY oi.id`,
       [req.params.id]
     );
+    const itemsWithFlag = items.map((it) => ({ ...it, is_customized: isItemCustomized(it) }));
 
     const { rows: tracking } = await query(
       "SELECT status, detail, created_at FROM order_tracking WHERE order_id = $1 ORDER BY created_at",
       [req.params.id]
     );
 
-    res.json({ ...rows[0], items, tracking, edit_logs_count: parseInt(logCount[0].count) });
+    res.json({ ...rows[0], items: itemsWithFlag, tracking, edit_logs_count: parseInt(logCount[0].count) });
   } catch (err) {
     next(err);
   }

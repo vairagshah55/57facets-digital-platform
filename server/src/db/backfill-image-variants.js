@@ -15,10 +15,11 @@ const UPLOADS = path.join(__dirname, "../../uploads");
 const CONCURRENCY = 4;
 const IMG_RE = /\.(jpe?g|png|webp|avif)$/i;
 
-// "/uploads/products/x.jpg" or "https://host/uploads/products/x.jpg" -> "products/x.jpg"
+// "/uploads/products/x.jpg" or "https://host/uploads/products/Earrings%20(1)/x.jpg"
+// -> "products/x.jpg" / "products/Earrings (1)/x.jpg"
 function toFilename(url) {
   const i = url.indexOf("/uploads/");
-  return i === -1 ? null : url.slice(i + "/uploads/".length);
+  return i === -1 ? null : decodeURIComponent(url.slice(i + "/uploads/".length));
 }
 
 async function collectUrls() {

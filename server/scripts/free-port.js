@@ -3,6 +3,9 @@
    Best-effort and cross-platform (Windows / macOS / Linux); never throws. */
 const { execSync } = require("child_process");
 
+// Must match how src/index.js resolves PORT, or we free the wrong port.
+require("dotenv").config({ path: __dirname + "/../.env" });
+
 const PORT = process.env.PORT || 5000;
 
 function pidsOnPort(port) {
