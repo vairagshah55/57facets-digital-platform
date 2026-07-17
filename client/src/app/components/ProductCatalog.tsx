@@ -819,7 +819,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 
 function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWishlist, existingOrder }: { product: Product; index: number; allIds: string[]; compact: boolean; wishlisted: boolean; onToggleWishlist: () => void; existingOrder: { order_number: string; status: string } | null }) {
   const navigate = useNavigate();
-  const { addItem, items: cartItems } = useCart();
+  const { addItem, removeItem, items: cartItems } = useCart();
   const [images, setImages] = useState<string[]>([product.image]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [fetched, setFetched] = useState(false);
@@ -851,6 +851,13 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
+  }
+
+  // Same behaviour as the product detail page: when already in the cart, clicking
+  // the button removes the product (toggle back to "Add to Cart").
+  function handleRemoveFromCart(e: React.MouseEvent) {
+    e.stopPropagation();
+    cartItems.filter((i) => i.productId === String(product.id)).forEach((i) => removeItem(i.cartId));
   }
 
   // Solid, theme-independent colours — readable on both light and dark backgrounds.
@@ -1000,17 +1007,18 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
         <p className={`font-bold ${compact ? "text-xs" : "text-sm"} ${compact ? "" : "mb-2.5"}`} style={{ color: "var(--sf-teal)" }}>{product.priceLabel}</p>
         {!compact && (
           <button
-            onClick={isLocked || !!existingOrder ? undefined : handleAddToCart}
+            onClick={isLocked || !!existingOrder ? undefined : (alreadyInCart ? handleRemoveFromCart : handleAddToCart)}
+            title={alreadyInCart ? "Remove from cart" : undefined}
             className="w-full h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
             style={{
               backgroundColor: isLocked || existingOrder ? "var(--sf-bg-surface-2)" : (alreadyInCart || addedToCart) ? "rgba(38,96,160,0.14)" : "var(--sf-blue-primary)",
               color: isLocked || existingOrder ? "var(--sf-text-muted)" : (alreadyInCart || addedToCart) ? "var(--sf-blue-primary)" : "#fff",
               border: isLocked || existingOrder ? "1px solid var(--sf-divider)" : (alreadyInCart || addedToCart) ? "1px solid rgba(38,96,160,0.45)" : "none",
-              cursor: isLocked || existingOrder || alreadyInCart || addedToCart ? "default" : "pointer",
+              cursor: isLocked || existingOrder ? "default" : "pointer",
               transition: "all 0.2s ease",
             }}
             disabled={isLocked || !!existingOrder}
-            onMouseEnter={(e) => { if (!isLocked && !existingOrder && !alreadyInCart && !addedToCart) e.currentTarget.style.opacity = "0.82"; }}
+            onMouseEnter={(e) => { if (!isLocked && !existingOrder) e.currentTarget.style.opacity = "0.82"; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
             {isLocked ? (
@@ -1018,7 +1026,7 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
             ) : existingOrder ? (
               <><Check className="w-3.5 h-3.5" /> {existingOrder.status}</>
             ) : alreadyInCart || addedToCart ? (
-              <><Check className="w-3.5 h-3.5" /> In Cart</>
+              <><Check className="w-3.5 h-3.5" /> In Cart · Remove</>
             ) : (
               <><ShoppingCart className="w-3.5 h-3.5" /> Add to Cart</>
             )}
