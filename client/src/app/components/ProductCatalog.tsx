@@ -166,6 +166,19 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }, { replace: true });
   }, [setSearchParams]);
 
+  // Change category AND keep the URL's ?category= in sync. This is what lets the
+  // filter survive a round-trip to a product detail page and back: the catalog's
+  // history entry carries the param, so remounting restores the category.
+  const changeCategory = useCallback((name: string) => {
+    setActiveCategory(name);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (name === "All") next.delete("category");
+      else next.set("category", name);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [priceRange, setPriceRange] = useState<number[]>([PRICE_MIN, PRICE_MAX]);
   const [caratRange, setCaratRange] = useState<number[]>([CARAT_MIN, CARAT_MAX]);
   const [availability, setAvailability] = useState<Record<string, boolean>>({
@@ -488,7 +501,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             return (
               <button
                 key={cat.name}
-                onClick={() => setActiveCategory(cat.name)}
+                onClick={() => changeCategory(cat.name)}
                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 cursor-pointer"
                 style={{
                   background: isActive ? "var(--sf-teal-glass)" : "var(--sf-bg-surface-2)",
@@ -580,7 +593,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                 <Diamond className="w-12 h-12 mb-4" style={{ color: "var(--sf-text-muted)", opacity: 0.4 }} />
                 <p className="text-base font-medium mb-1" style={{ color: "var(--sf-text-secondary)" }}>No products found</p>
                 <p className="text-sm mb-4" style={{ color: "var(--sf-text-muted)" }}>Try adjusting your search or filters</p>
-                <Button variant="ghost" style={{ color: "var(--sf-teal)" }} onClick={() => { setSearch(""); setActiveCategory("All"); changeTab("all"); clearFilters(); }}>
+                <Button variant="ghost" style={{ color: "var(--sf-teal)" }} onClick={() => { setSearch(""); changeCategory("All"); changeTab("all"); clearFilters(); }}>
                   Reset all
                 </Button>
               </motion.div>

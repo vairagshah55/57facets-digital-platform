@@ -146,8 +146,8 @@ export function RetailerLayout() {
 function BackPill() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  // No "previous page" from the dashboard home.
-  if (pathname === "/retailer/dashboard") return null;
+  // Top-level landing pages (dashboard, catalog) have no "previous page".
+  if (pathname === "/retailer/dashboard" || pathname === "/retailer/catalog") return null;
   // Don't show Back when this is the entry page — i.e. the URL was opened
   // directly or the tab was refreshed, so there's no in-app page behind it.
   // React Router tracks a history index on window.history.state: it's 0 on the
