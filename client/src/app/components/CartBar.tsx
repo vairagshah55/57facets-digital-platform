@@ -191,8 +191,13 @@ export function CartBar() {
                       border: `1px solid var(--sf-glass-border)`,
                     }}
                   >
-                    {/* Item row */}
-                    <div className="flex items-center gap-3 px-4 py-3.5">
+                    {/* Item row — tap image/info to open the product page */}
+                    <div
+                      className="flex items-center gap-3 px-4 py-3.5 cursor-pointer"
+                      role="button"
+                      title="View product"
+                      onClick={() => { setOpen(false); navigate(`/retailer/product/${item.productId}`); }}
+                    >
                       {/* Image / placeholder */}
                       <div
                         className="w-14 h-14 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
