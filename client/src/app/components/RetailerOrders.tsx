@@ -1995,6 +1995,17 @@ function ItemCard({ item }: { item: OrderItem }) {
           </div>
         )}
 
+        {/* Per-item note */}
+        {item.note && (
+          <p
+            className="text-[11px] mb-2"
+            style={{ color: "var(--sf-text-secondary)", whiteSpace: "pre-line" }}
+          >
+            <span style={{ color: "var(--sf-text-muted)", fontWeight: 600 }}>Note: </span>
+            {item.note}
+          </p>
+        )}
+
         {/* Qty · Price */}
         <div className="flex items-center justify-between">
           <span

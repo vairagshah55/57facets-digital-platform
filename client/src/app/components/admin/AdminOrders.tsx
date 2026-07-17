@@ -481,6 +481,15 @@ export function AdminOrders() {
                                   </span>
                                 ))}
                             </div>
+                            {item.note && (
+                              <p
+                                className="text-[11px] mt-1.5"
+                                style={{ color: "var(--sf-text-secondary)", whiteSpace: "pre-line" }}
+                              >
+                                <span style={{ color: "var(--sf-text-muted)", fontWeight: 600 }}>Note: </span>
+                                {item.note}
+                              </p>
+                            )}
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-sm font-semibold" style={{ color: "var(--sf-text-primary)" }}>{formatPrice(item.unit_price)}</p>
