@@ -280,9 +280,6 @@ export function AdminDashboard() {
           >
             Overview
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-            {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </p>
         </div>
         <div
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
