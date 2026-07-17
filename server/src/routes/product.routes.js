@@ -331,15 +331,15 @@ router.get("/:id", authenticate, async (req, res, next) => {
     // Matching variants = companion pieces of the SAME jewellery SET.
     //
     // SKU format is [2-digit piece/category code][6-digit design serial], e.g.
-    //   11 250021 → PENDENT SET PENDENT   (the pendant piece)
-    //   12 250021 → PENDENT SET EARRING   (the earring piece) ← variant of the above
-    //   02 250021 → PENDENT (standalone)  ← NOT a variant, just reuses the serial
+    //   11 250021 → Pendant Set          (the pendant piece)
+    //   12 250021 → Pendant Set Earring  (the earring piece) ← variant of the above
+    //   02 250021 → Pendant (standalone) ← NOT a variant, just reuses the serial
     //
     // So variants CANNOT be matched by SKU digits alone: many unrelated products
     // (e.g. a ring 01240057 and a bangle 04240057) share a design serial by
     // coincidence. A product only has variants when it belongs to a SET category
     // ("… SET …"); its variants are the OTHER pieces of the same set family
-    // ("PENDENT SET", "NECKLACE SET") that carry the same 6-digit design serial.
+    // ("Pendant Set", "Necklace Set") that carry the same 6-digit design serial.
     // Matching is driven off the category name (not the SKU prefix), so it's
     // robust to prefix/category data-entry mismatches.
     //

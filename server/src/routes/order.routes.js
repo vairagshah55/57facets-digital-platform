@@ -4,6 +4,7 @@ const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
 const pricing = require("../services/pricing.service");
+const { isItemCustomized } = require("../utils/orderItemCustomization");
 
 // Columns the pricing engine needs to compute a per-retailer price.
 const PRICING_COLS =
@@ -121,6 +122,7 @@ router.get("/:id", async (req, res, next) => {
               p.color_stone_name AS product_color_stone_name,
               p.color_stone_quality AS product_color_stone_quality,
               p.carat_options AS product_carat_options,
+              p.carat AS product_carat,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image,
               c.name AS category
        FROM order_items oi
@@ -129,6 +131,7 @@ router.get("/:id", async (req, res, next) => {
        WHERE oi.order_id = $1`,
       [req.params.id]
     );
+    const itemsWithFlag = items.map((it) => ({ ...it, is_customized: isItemCustomized(it) }));
 
     // Tracking
     const { rows: tracking } = await query(
@@ -136,7 +139,7 @@ router.get("/:id", async (req, res, next) => {
       [req.params.id]
     );
 
-    res.json({ ...rows[0], items, tracking });
+    res.json({ ...rows[0], items: itemsWithFlag, tracking });
   } catch (err) {
     next(err);
   }
