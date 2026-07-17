@@ -148,12 +148,14 @@ function BackPill() {
   const { pathname } = useLocation();
   // No "previous page" from the dashboard home.
   if (pathname === "/retailer/dashboard") return null;
-  // Go to the actual previous page. Fall back to the dashboard only when there's
-  // no in-app history (e.g. the URL was opened directly or the page was refreshed).
-  const onBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate("/retailer/dashboard");
-  };
+  // Don't show Back when this is the entry page — i.e. the URL was opened
+  // directly or the tab was refreshed, so there's no in-app page behind it.
+  // React Router tracks a history index on window.history.state: it's 0 on the
+  // first page and increments with each in-app navigation.
+  const idx = (window.history.state && window.history.state.idx) || 0;
+  if (idx === 0) return null;
+  // There's in-app history, so going back one entry is safe.
+  const onBack = () => navigate(-1);
   return (
     // Sticky strip that reserves its own height (content sits below, never behind).
     // Background matches the page so content scrolls cleanly underneath when pinned.
