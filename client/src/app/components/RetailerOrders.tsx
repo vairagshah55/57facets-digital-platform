@@ -2006,11 +2006,19 @@ function ItemCard({ item, onOpenProduct }: { item: OrderItem; onOpenProduct?: (p
       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
         {/* Name */}
         <p
-          className="text-sm font-semibold leading-snug mb-1.5"
+          className="text-sm font-semibold leading-snug mb-1"
           style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', sans-serif" }}
         >
           {item.name}
         </p>
+        {isCustomizedItem(item) && (
+          <span
+            className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded mb-1.5 w-fit"
+            style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}
+          >
+            <Sparkles className="w-2.5 h-2.5" /> Customized
+          </span>
+        )}
 
         {/* SKU */}
         {item.sku && item.sku !== item.name && (

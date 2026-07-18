@@ -10,11 +10,34 @@ import {
   Loader2,
   Check,
   Diamond,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useCart } from "../../context/CartContext";
+import { useCart, type CartItem } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { orders as ordersApi } from "../../lib/api";
+
+// A cart item is "customized" if the retailer added a note or picked any option.
+function isItemCustomized(item: CartItem): boolean {
+  return !!(
+    (item.note && item.note.trim()) ||
+    item.metalType || item.goldColour ||
+    item.diamondShape || item.diamondShade || item.diamondQuality ||
+    item.colorStoneName || item.colorStoneQuality
+  );
+}
+
+// Small violet "Customized" tag reused across the item rows.
+function CustomizedTag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded ${className}`}
+      style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}
+    >
+      <Sparkles className="w-2.5 h-2.5" /> Customized
+    </span>
+  );
+}
 
 export function CartBar() {
   const { items, totalItems, totalPrice, removeItem, updateQuantity, updateNote, clearCart } = useCart();
@@ -45,22 +68,11 @@ export function CartBar() {
         colorStoneQuality: item.colorStoneQuality,
         note: item.note,
       });
-      // Dynamic split: customized items (a note or any selected option) go into
-      // their own order, standard items into another. Only non-empty groups
-      // become orders — so an all-standard or all-customized cart is still 1 order.
-      const isCustom = (item: typeof items[number]) => !!(
-        (item.note && item.note.trim()) ||
-        item.metalType || item.goldColour ||
-        item.diamondShape || item.diamondShade || item.diamondQuality ||
-        item.colorStoneName || item.colorStoneQuality
-      );
-      const customised = items.filter(isCustom).map(toOrderItem);
-      const standard = items.filter((i) => !isCustom(i)).map(toOrderItem);
-      const groups = [customised, standard].filter((g) => g.length > 0);
-      // Sequential (not parallel) so order numbers are generated without racing.
-      for (const group of groups) {
-        await ordersApi.create(group);
-      }
+      // One order for the whole cart. Customized and standard items are grouped
+      // into separate sections inside the order detail (see RetailerOrders), so a
+      // mixed cart stays a single order that shows BOTH a Customized and an
+      // Other Items section.
+      await ordersApi.create(items.map(toOrderItem));
       // Tell any mounted catalog/detail view which products were just ordered so
       // they can flip to the "ordered" state immediately (no stale "Add to Cart"
       // until a manual refresh). The listener self-corrects on its next fetch.
@@ -274,6 +286,7 @@ export function CartBar() {
                         >
                           {item.productName || item.productSku || "Item"}
                         </p>
+                        {isItemCustomized(item) && <CustomizedTag className="mt-1" />}
                         {item.productSku && (
                           <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
                             SKU: {item.productSku}

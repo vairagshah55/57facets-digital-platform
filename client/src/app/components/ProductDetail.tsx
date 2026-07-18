@@ -310,6 +310,14 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
   // Is this product already in the current (not yet placed) cart?
   const alreadyInCart = cartItems.some((i) => i.productId === id);
+  // Whether this product's cart entry carries any customization (note or option).
+  const cartEntry = cartItems.find((i) => i.productId === id);
+  const productCustomized = !!cartEntry && !!(
+    (cartEntry.note && cartEntry.note.trim()) ||
+    cartEntry.metalType || cartEntry.goldColour ||
+    cartEntry.diamondShape || cartEntry.diamondShade || cartEntry.diamondQuality ||
+    cartEntry.colorStoneName || cartEntry.colorStoneQuality
+  );
 
   // ── Scroll to top on mount ─────────────────────────
   useEffect(() => {
@@ -816,6 +824,14 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </p>
               <div ref={skuRef} className="flex items-center gap-3 flex-wrap">
                 <AvailabilityBadge status={product.availability} />
+                {productCustomized && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}
+                  >
+                    <Sparkles className="w-3 h-3" /> Customized
+                  </span>
+                )}
                 {product.subCategory && (
                   <span
                     className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
