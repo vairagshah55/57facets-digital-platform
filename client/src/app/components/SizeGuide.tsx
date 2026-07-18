@@ -236,7 +236,7 @@ export function SizeSelector({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Ruler className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
-          <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>
+          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>
             {chart.sizeLabel}
           </span>
         </div>
@@ -245,7 +245,7 @@ export function SizeSelector({
           trigger={
             <button
               type="button"
-              className="flex items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
+              className="flex items-center gap-1 text-[13px] font-semibold transition-opacity hover:opacity-80"
               style={{ color: "var(--sf-teal)", background: "none", border: "none", cursor: "pointer" }}
             >
               <Ruler className="w-3 h-3" />
@@ -298,7 +298,7 @@ export function SizeSelector({
       </div>
 
       {/* Helper line for the selected size */}
-      <p className="text-[11px] mt-3" style={{ color: "var(--sf-text-muted)" }}>
+      <p className="text-[13px] mt-3" style={{ color: "var(--sf-text-muted)" }}>
         {selectedRow ? (
           <>Selected: <span className="font-semibold" style={{ color: "var(--sf-text-secondary)" }}>{chart.summary(selectedRow)}</span></>
         ) : (

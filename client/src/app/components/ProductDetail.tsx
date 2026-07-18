@@ -987,8 +987,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Palette className="w-4 h-4" style={{ color: "#D4A843" }} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
-                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select purity & colour</p>
+                          <p className="text-sm font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Metal</p>
+                          <p className="text-xs leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>Select purity & colour</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full"
@@ -1041,8 +1041,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                           <Diamond className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
-                          <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? `${product.diamonds.length} diamonds in this design` : "Select cut, shade & clarity"}</p>
+                          <p className="text-sm font-bold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Diamond</p>
+                          <p className="text-xs leading-tight mt-0.5" style={{ color: "var(--sf-text-muted)" }}>{multiDiamond ? `${product.diamonds.length} diamonds in this design` : "Select cut, shade & clarity"}</p>
                         </div>
                       </div>
                       {multiDiamond ? (
@@ -1354,7 +1354,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               <div className="px-5 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <ShoppingCart className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
-                  <span className="text-xs font-medium" style={{ color: "var(--sf-text-secondary)" }}>Quantity</span>
+                  <span className="text-sm font-medium" style={{ color: "var(--sf-text-secondary)" }}>Quantity</span>
                 </div>
                 <div className="flex items-center rounded-lg overflow-hidden"
                   style={{ border: "1px solid var(--sf-glass-border)" }}>
