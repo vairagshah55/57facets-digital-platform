@@ -17,7 +17,6 @@ import {
   ShoppingCart,
   Users,
   Package,
-  KeyRound,
   Clock,
   AlertTriangle,
   Heart,
@@ -29,6 +28,8 @@ import {
   Box,
   BarChart3,
   LineChart,
+  LogIn,
+  XCircle,
 } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { adminDashboard } from "../../../lib/adminApi";
@@ -40,7 +41,6 @@ import { adminDashboard } from "../../../lib/adminApi";
 type Stats = {
   ordersToday: number;
   newRetailersToday: number;
-  pendingOtps: number;
   totalRetailers: number;
   totalProducts: number;
   totalOrders: number;
@@ -91,15 +91,28 @@ function formatRelativeTime(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function actionMeta(action: string): { label: string; color: string; bg: string } {
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    admin_login:    { label: "Admin logged in",       color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
-    order_placed:   { label: "New order placed",      color: "#30b8bf", bg: "rgba(48,184,191,0.12)" },
-    retailer_login: { label: "Retailer logged in",    color: "#22c55e", bg: "rgba(34,197,94,0.12)"  },
-    product_viewed: { label: "Product viewed",        color: "#a855f7", bg: "rgba(168,85,247,0.12)" },
-    wishlist_add:   { label: "Added to wishlist",     color: "#ef4444", bg: "rgba(239,68,68,0.12)"  },
+type ActionMeta = { label: string; color: string; bg: string; Icon: React.ComponentType<any> };
+
+// The action names come straight from the server's activity_log (dot notation).
+function actionMeta(action: string): ActionMeta {
+  const map: Record<string, ActionMeta> = {
+    login:             { label: "logged in",          color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: LogIn },
+    "order.placed":    { label: "placed an order",    color: "#30b8bf", bg: "rgba(48,184,191,0.12)", Icon: ShoppingCart },
+    "order.cancelled": { label: "cancelled an order", color: "#ef4444", bg: "rgba(239,68,68,0.12)",  Icon: XCircle },
   };
-  return map[action] ?? { label: action.replace(/_/g, " "), color: "#8A929F", bg: "rgba(138,146,159,0.12)" };
+  return map[action] ?? { label: action.replace(/[._]/g, " "), color: "#8A929F", bg: "rgba(138,146,159,0.12)", Icon: Activity };
+}
+
+// One-line detail for an activity row (order number/total, or login method).
+function activityDetail(a: ActivityItem): string {
+  const d = a.details || {};
+  if (a.action === "order.placed") {
+    return [d.order_number, d.total != null ? formatPrice(d.total) : null, d.items != null ? `${d.items} item${d.items !== 1 ? "s" : ""}` : null]
+      .filter(Boolean).join(" · ");
+  }
+  if (a.action === "order.cancelled") return d.order_number || "";
+  if (a.action === "login") return d.method ? `via ${d.method}` : (d.phone || "");
+  return "";
 }
 
 function initials(name: string) {
@@ -200,8 +213,8 @@ export function AdminDashboard() {
           <div className="skeleton-shimmer h-8 w-24 rounded-full hidden sm:block" />
         </div>
         {/* Stat cards skeleton */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
               <div className="skeleton-shimmer w-9 h-9 rounded-lg" />
               <div className="skeleton-shimmer h-3 w-16 rounded-md" />
@@ -267,11 +280,10 @@ export function AdminDashboard() {
       </motion.div>
 
       {/* ── Stat cards ──────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { icon: <ShoppingCart />, label: "Orders Today",    value: stats?.ordersToday ?? 0,        color: "var(--sf-teal)",          glow: "#30b8bf" },
           { icon: <Users />,        label: "New Retailers",   value: stats?.newRetailersToday ?? 0,  color: "#22c55e",                  glow: "#22c55e" },
-          { icon: <KeyRound />,     label: "Pending OTPs",   value: stats?.pendingOtps ?? 0,        color: "#f59e0b",                  glow: "#f59e0b" },
           { icon: <Users />,        label: "Total Retailers", value: stats?.totalRetailers ?? 0,     color: "var(--sf-blue-secondary)", glow: "#3880be" },
           { icon: <Package />,      label: "Total Products",  value: stats?.totalProducts ?? 0,      color: "#a855f7",                  glow: "#a855f7" },
           { icon: <ShoppingCart />, label: "Total Orders",    value: stats?.totalOrders ?? 0,        color: "var(--sf-teal)",           glow: "#30b8bf" },
@@ -381,50 +393,44 @@ export function AdminDashboard() {
             className="rounded-2xl p-5 border"
             style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
           >
-            <SectionHeader icon={<Activity />} title="Recent Activity" subtitle="Platform events" />
+            <SectionHeader icon={<Activity />} title="Recent Activity" subtitle="Retailer logins & orders" />
             <ScrollArea className="h-[300px] mt-1">
               {activity.length === 0 ? (
-                <EmptyState label="No activity yet" />
+                <EmptyState label="No retailer activity yet" />
               ) : (
                 <div>
-                  {activity.map((a, idx) => {
+                  {activity.map((a) => {
                     const meta = actionMeta(a.action);
-                    const isLast = idx === activity.length - 1;
+                    const Icon = meta.Icon;
+                    const detail = activityDetail(a);
                     return (
-                      <div key={a.id} className="flex gap-3">
-                        {/* Dot + connector line column */}
-                        <div className="flex flex-col items-center shrink-0 pt-1">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
-                            style={{
-                              borderColor: meta.color,
-                              backgroundColor: "var(--sf-bg-surface-1)",
-                            }}
-                          />
-                          {!isLast && (
-                            <div
-                              className="w-px flex-1 mt-1"
-                              style={{ backgroundColor: "var(--sf-divider)", minHeight: "16px" }}
-                            />
-                          )}
+                      <div
+                        key={a.id}
+                        className="flex items-center gap-3 py-2.5 border-b last:border-0"
+                        style={{ borderColor: "var(--sf-divider)" }}
+                      >
+                        {/* Action icon badge */}
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: meta.bg }}
+                        >
+                          <Icon className="w-4 h-4" style={{ color: meta.color }} />
                         </div>
                         {/* Content */}
-                        <div className="flex-1 min-w-0 pb-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-xs font-medium capitalize" style={{ color: "var(--sf-text-primary)" }}>
-                                {meta.label}
-                              </p>
-                              <p className="text-[10px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-                                {a.actor_name || a.actor_type}
-                                {a.details?.email ? ` · ${a.details.email}` : ""}
-                              </p>
-                            </div>
-                            <span className="text-[10px] shrink-0" style={{ color: "var(--sf-text-muted)" }}>
-                              {formatRelativeTime(a.created_at)}
-                            </span>
-                          </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs truncate" style={{ color: "var(--sf-text-primary)" }}>
+                            <span className="font-semibold">{a.actor_name || "A retailer"}</span>
+                            <span style={{ color: "var(--sf-text-secondary)" }}> {meta.label}</span>
+                          </p>
+                          {detail && (
+                            <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--sf-text-muted)" }}>
+                              {detail}
+                            </p>
+                          )}
                         </div>
+                        <span className="text-[10px] shrink-0" style={{ color: "var(--sf-text-muted)" }}>
+                          {formatRelativeTime(a.created_at)}
+                        </span>
                       </div>
                     );
                   })}
@@ -777,8 +783,44 @@ function formatMonthLabel(ym: string): string {
   return `${months[parseInt(m) - 1]} ${y.slice(2)}`;
 }
 
-function InsightsCard({ data }: { data: MonthlyTrend[] }) {
+const INSIGHTS_PERIODS = [
+  { key: "3m", label: "3 Months" },
+  { key: "6m", label: "6 Months" },
+  { key: "1y", label: "1 Year" },
+  { key: "all", label: "All Time" },
+] as const;
+
+type InsightsPeriod = typeof INSIGHTS_PERIODS[number]["key"];
+
+function InsightsCard({ data: initialData }: { data: MonthlyTrend[] }) {
   const [metric, setMetric] = useState<"pcs" | "value" | "orders">("pcs");
+  const [period, setPeriod] = useState<InsightsPeriod>("6m");
+  const [data, setData] = useState<MonthlyTrend[]>(initialData);
+  const [loading, setLoading] = useState(false);
+
+  // Parent fetches the default (6-month) dataset; keep in sync when it changes.
+  useEffect(() => { setData(initialData); }, [initialData]);
+
+  // "6m" is the default the parent already loaded; other periods fetch from the server.
+  useEffect(() => {
+    if (period === "6m") { setData(initialData); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await adminDashboard.monthlyTrends(period) as any;
+        if (!cancelled) {
+          setData((res || []).map((t: any) => ({ month: t.month, orders: parseInt(t.orders) || 0, value: parseFloat(t.value) || 0, pcs: parseInt(t.pcs) || 0 })));
+        }
+      } catch (err) {
+        console.error("Monthly trends fetch error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [period, initialData]);
+
   const chartData = useMemo(() => data.map((d) => ({ ...d, label: formatMonthLabel(d.month) })), [data]);
 
   const metricConfig = {
@@ -797,29 +839,56 @@ function InsightsCard({ data }: { data: MonthlyTrend[] }) {
           </div>
           <div>
             <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Buying Insights</h3>
-            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Platform buying pattern over the last 6 months</p>
+            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+              Platform buying pattern · {INSIGHTS_PERIODS.find((p) => p.key === period)?.label}
+            </p>
           </div>
         </div>
-        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
-          {(["pcs", "value", "orders"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMetric(m)}
-              className="px-3 py-1.5 text-[11px] font-medium transition-colors"
-              style={{
-                backgroundColor: metric === m ? metricConfig[m].color : "transparent",
-                color: metric === m ? "#fff" : "var(--sf-text-muted)",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              {metricConfig[m].label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Date filter */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+            {INSIGHTS_PERIODS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className="px-2 sm:px-2.5 py-1.5 text-[10px] font-medium transition-colors"
+                style={{
+                  backgroundColor: period === p.key ? "var(--sf-teal)" : "transparent",
+                  color: period === p.key ? "#fff" : "var(--sf-text-muted)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {/* Metric toggle */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+            {(["pcs", "value", "orders"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className="px-3 py-1.5 text-[11px] font-medium transition-colors"
+                style={{
+                  backgroundColor: metric === m ? metricConfig[m].color : "transparent",
+                  color: metric === m ? "#fff" : "var(--sf-text-muted)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {metricConfig[m].label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {data.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center" style={{ height: 260 }}>
+          <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--sf-text-muted)" }} />
+        </div>
+      ) : data.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <LineChart className="w-10 h-10 mb-3" style={{ color: "rgba(48,184,191,0.25)" }} />
           <p className="text-sm font-medium mb-1" style={{ color: "var(--sf-text-muted)" }}>No data yet</p>

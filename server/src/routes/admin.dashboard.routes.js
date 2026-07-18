@@ -10,11 +10,10 @@ router.get("/stats", async (req, res, next) => {
   try {
     const today = new Date().toISOString().split("T")[0];
 
-    const [ordersToday, newRetailers, pendingOtps, totalRetailers, totalProducts, totalOrders] =
+    const [ordersToday, newRetailers, totalRetailers, totalProducts, totalOrders] =
       await Promise.all([
         query("SELECT COUNT(*) FROM orders WHERE created_at::date = $1", [today]),
         query("SELECT COUNT(*) FROM retailers WHERE created_at::date = $1", [today]),
-        query("SELECT COUNT(*) FROM otps WHERE is_used = false AND expires_at > NOW()"),
         query("SELECT COUNT(*) FROM retailers WHERE is_active = true"),
         query("SELECT COUNT(*) FROM products WHERE is_active = true"),
         query("SELECT COUNT(*) FROM orders"),
@@ -23,7 +22,6 @@ router.get("/stats", async (req, res, next) => {
     res.json({
       ordersToday: parseInt(ordersToday.rows[0].count),
       newRetailersToday: parseInt(newRetailers.rows[0].count),
-      pendingOtps: parseInt(pendingOtps.rows[0].count),
       totalRetailers: parseInt(totalRetailers.rows[0].count),
       totalProducts: parseInt(totalProducts.rows[0].count),
       totalOrders: parseInt(totalOrders.rows[0].count),
@@ -78,22 +76,32 @@ router.get("/quick-access", async (req, res, next) => {
 });
 
 // ── GET /api/admin/dashboard/activity ──────────────
-// Recent activity feed
+// Recent activity feed — the main actions taken by retailers.
+// Recent logins and recent orders are fetched SEPARATELY then merged, so a
+// burst of orders can't push logins out of the feed (both are always shown).
 router.get("/activity", async (req, res, next) => {
   try {
     const { limit = 20 } = req.query;
+    const n = parseInt(limit) || 20;
+    const loginLimit = Math.ceil(n / 2);
+    const orderLimit = Math.floor(n / 2);
 
     const { rows } = await query(
-      `SELECT al.id, al.actor_type, al.action, al.entity_type, al.details, al.created_at,
-              CASE
-                WHEN al.actor_type = 'admin' THEN (SELECT name FROM admins WHERE id = al.actor_id)
-                WHEN al.actor_type = 'retailer' THEN (SELECT name FROM retailers WHERE id = al.actor_id)
-                ELSE 'System'
-              END AS actor_name
-       FROM activity_log al
-       ORDER BY al.created_at DESC
-       LIMIT $1`,
-      [parseInt(limit)]
+      `SELECT * FROM (
+         (SELECT al.id, al.actor_type, al.action, al.entity_type, al.details, al.created_at,
+                 (SELECT name FROM retailers WHERE id = al.actor_id) AS actor_name
+          FROM activity_log al
+          WHERE al.actor_type = 'retailer' AND al.action = 'login'
+          ORDER BY al.created_at DESC LIMIT $1)
+         UNION ALL
+         (SELECT al.id, al.actor_type, al.action, al.entity_type, al.details, al.created_at,
+                 (SELECT name FROM retailers WHERE id = al.actor_id) AS actor_name
+          FROM activity_log al
+          WHERE al.actor_type = 'retailer' AND al.action IN ('order.placed', 'order.cancelled')
+          ORDER BY al.created_at DESC LIMIT $2)
+       ) combined
+       ORDER BY created_at DESC`,
+      [loginLimit, orderLimit]
     );
 
     res.json(rows);
@@ -133,9 +141,15 @@ router.get("/charts/category-breakdown", async (req, res, next) => {
 });
 
 // ── GET /api/admin/dashboard/charts/monthly-trends ───
-// Platform-wide monthly buying trends (last 6 months)
+// Platform-wide monthly buying trends (period: 3m/6m/1y/all, default 6m)
 router.get("/charts/monthly-trends", async (req, res, next) => {
   try {
+    const period = req.query.period; // "3m","6m","1y","all"
+    let dateFilter = "AND o.created_at >= NOW() - INTERVAL '6 months'"; // default 6m
+    if (period === "3m") dateFilter = "AND o.created_at >= NOW() - INTERVAL '3 months'";
+    else if (period === "1y") dateFilter = "AND o.created_at >= NOW() - INTERVAL '1 year'";
+    else if (period === "all") dateFilter = "";
+
     const { rows } = await query(
       `SELECT TO_CHAR(o.created_at, 'YYYY-MM') AS month,
               COUNT(DISTINCT o.id) AS orders,
@@ -144,7 +158,7 @@ router.get("/charts/monthly-trends", async (req, res, next) => {
        FROM orders o
        LEFT JOIN order_items oi ON oi.order_id = o.id
        WHERE o.status != 'cancelled'
-         AND o.created_at >= NOW() - INTERVAL '6 months'
+         ${dateFilter}
        GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
        ORDER BY month ASC`
     );

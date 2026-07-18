@@ -57,7 +57,7 @@ export const adminDashboard = {
   quickAccess: () => request("/dashboard/quick-access"),
   activity: (limit = 20) => request(`/dashboard/activity?limit=${limit}`),
   categoryBreakdown: (period?: string) => request(`/dashboard/charts/category-breakdown${period ? `?categoryPeriod=${period}` : ""}`),
-  monthlyTrends: () => request("/dashboard/charts/monthly-trends"),
+  monthlyTrends: (period?: string) => request(`/dashboard/charts/monthly-trends${period ? `?period=${period}` : ""}`),
   topRetailers: () => request("/dashboard/charts/top-retailers"),
   notifications: () => request("/dashboard/notifications"),
   markNotificationRead: (id: string) => request(`/dashboard/notifications/${id}/read`, { method: "PUT" }),
