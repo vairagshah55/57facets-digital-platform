@@ -386,6 +386,30 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     return () => { cancelled = true; };
   }, [id, adminPreview, previewRetailerId]);
 
+  // Restore the retailer's customization from the cart. The cart persists in
+  // localStorage, so without this a page refresh would reset every selector back
+  // to defaults even though the customized item is still in the cart.
+  useEffect(() => {
+    if (adminPreview || !product) return;
+    const cartItem = cartItems.find((i) => i.productId === id);
+    if (!cartItem) return;
+    if (cartItem.quantity) setQuantity(cartItem.quantity);
+    if (cartItem.carat != null) setSelectedCarat(cartItem.carat);
+    if (cartItem.metalType) setSelectedGoldType(cartItem.metalType);
+    if (cartItem.goldColour) setSelectedGoldColour(cartItem.goldColour);
+    if (cartItem.diamondShape) setSelectedDiamondShape(cartItem.diamondShape);
+    if (cartItem.diamondShade) setSelectedDiamondShade(cartItem.diamondShade);
+    if (cartItem.diamondQuality) setSelectedDiamondQuality(cartItem.diamondQuality);
+    if (cartItem.colorStoneName) setSelectedColorStone(cartItem.colorStoneName);
+    if (cartItem.colorStoneQuality) setSelectedColorStoneQuality(cartItem.colorStoneQuality);
+    // The note carries a "Size: …" prefix added at add-to-cart; restore only the
+    // free-text part (the size selector has its own value) and show the note field.
+    if (cartItem.note) {
+      const freeText = cartItem.note.split("\n").filter((l) => !l.startsWith("Size: ")).join("\n");
+      if (freeText) { setNote(freeText); setShowNote(true); }
+    }
+  }, [product, cartItems, id, adminPreview]);
+
   // Measure the SKU/name row so the floating side arrows line up with it.
   // useLayoutEffect → the position is set BEFORE paint, so there's no visible
   // jump from the fallback and it's consistent across environments.
