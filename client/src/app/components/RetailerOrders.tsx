@@ -327,9 +327,6 @@ export function RetailerOrders() {
   const [editMode, setEditMode]                   = useState(false);
   const [editItems, setEditItems]                 = useState<EditableOrderItem[]>([]);
   const [editOrderNote, setEditOrderNote]         = useState("");
-  const [editProductSearch, setEditProductSearch] = useState("");
-  const [editProductResults, setEditProductResults] = useState<CatalogProduct[]>([]);
-  const [editProductLoading, setEditProductLoading] = useState(false);
   const [submittingEdit, setSubmittingEdit]       = useState(false);
   const [editSuccess, setEditSuccess]             = useState(false);
   const [pendingEdit, setPendingEdit]             = useState(false);
@@ -521,58 +518,8 @@ export function RetailerOrders() {
       }))
     );
     setEditOrderNote(order.note || "");
-    setEditProductSearch("");
-    setEditProductResults([]);
     setEditSuccess(false);
     setEditMode(true);
-  }
-
-  useEffect(() => {
-    if (!editMode) return;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      setEditProductLoading(true);
-      try {
-        const params: Record<string, string> = { limit: "8" };
-        if (editProductSearch.trim()) params.search = editProductSearch.trim();
-        const data = await productsApi.list(params);
-        const rows = Array.isArray(data) ? data : data.products ?? [];
-        if (!cancelled) {
-          setEditProductResults(rows.map((p: any) => ({
-            id: p.id, name: (p.name && String(p.name).trim()) ? p.name : (p.sku || "Unknown"), sku: p.sku || "",
-            image: p.image ? imageUrl(p.image) : null, category: p.category || "",
-            basePrice: Number(p.base_price) || 0, carat: Number(p.carat) || 0,
-            metalType: p.metal_type || "", diamondShape: p.diamond_shape || null,
-          })));
-        }
-      } catch {
-        if (!cancelled) setEditProductResults([]);
-      } finally {
-        if (!cancelled) setEditProductLoading(false);
-      }
-    }, 250);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [editMode, editProductSearch]);
-
-  function addProductToEdit(product: CatalogProduct) {
-    setEditItems((prev) => {
-      const existing = prev.find((it) => it.productId === product.id);
-      if (existing) {
-        return prev.map((it) => it.productId === product.id ? { ...it, quantity: it.quantity + 1 } : it);
-      }
-      return [...prev, {
-        productId: product.id, quantity: 1, note: "", name: product.name, image: product.image,
-        category: product.category, carat: product.carat, metal: product.metalType,
-        unitPrice: product.basePrice, diamondShape: product.diamondShape, isNew: true,
-        caratOptions: withCurrentCarat([], product.carat),
-        metalOptions: withCurrentOption([], product.metalType),
-        diamondShapeOptions: withCurrentOption([], product.diamondShape || ""),
-      }];
-    });
-  }
-
-  function removeNewEditItem(productId: string) {
-    setEditItems((prev) => prev.filter((item) => !(item.isNew && item.productId === productId)));
   }
 
   function updateEditItemField(
@@ -1327,18 +1274,9 @@ export function RetailerOrders() {
                                       <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate" style={{ color: "var(--sf-text-primary)", fontFamily: "'General Sans', sans-serif" }}>{ei.name}</p>
                                         <p className="text-[11px] mt-0.5" style={{ color: "var(--sf-text-muted)" }}>
-                                          {formatPrice(ei.unitPrice)} each{ei.isNew ? <span style={{ color: "var(--sf-teal)" }}> · New</span> : ""}
+                                          {formatPrice(ei.unitPrice)} each
                                         </p>
                                       </div>
-                                      {ei.isNew && (
-                                        <button
-                                          onClick={() => removeNewEditItem(ei.productId)}
-                                          className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                                          style={{ backgroundColor: "var(--sf-bg-surface-1)", cursor: "pointer" }}
-                                        >
-                                          <X className="w-3 h-3" style={{ color: "var(--sf-text-muted)" }} />
-                                        </button>
-                                      )}
                                       {/* Qty stepper with teal hover glow */}
                                       <div className="flex items-center gap-1.5 shrink-0 px-1.5 py-1 rounded-xl" style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)" }}>
                                         <button
@@ -1550,80 +1488,6 @@ export function RetailerOrders() {
                                   );
                                 })}
                               </AnimatePresence>
-
-                              {/* Add product search */}
-                              <div
-                                className="rounded-2xl border mt-1 overflow-hidden"
-                                style={{ borderColor: "var(--sf-divider)", backgroundColor: "var(--sf-bg-surface-2)" }}
-                              >
-                                <div className="px-3.5 pt-3.5 pb-3">
-                                  <label className="text-[10px] font-bold tracking-[0.1em] uppercase block mb-2" style={{ color: "var(--sf-text-muted)" }}>
-                                    Add Product
-                                  </label>
-                                  <div className="relative">
-                                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--sf-text-muted)" }} />
-                                    <Input
-                                      value={editProductSearch}
-                                      onChange={(e) => setEditProductSearch(e.target.value)}
-                                      placeholder="Search by name or SKU…"
-                                      className="h-9 pl-9 text-sm"
-                                      style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)", color: "var(--sf-text-primary)" }}
-                                    />
-                                  </div>
-                                </div>
-                                <AnimatePresence>
-                                  {(editProductResults.length > 0 || editProductLoading) && (
-                                    <motion.div
-                                      key="search-results"
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: "auto" }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.22, ease: "easeInOut" }}
-                                      className="overflow-hidden border-t"
-                                      style={{ borderColor: "var(--sf-divider)" }}
-                                    >
-                                      <div
-                                        className="px-3 pb-3 space-y-1 overflow-auto [scrollbar-color:var(--sf-divider)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--sf-divider)]"
-                                        style={{ maxHeight: 192, paddingTop: 8 }}
-                                      >
-                                        {editProductLoading ? (
-                                          <div className="py-3 flex items-center justify-center gap-2">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--sf-text-muted)" }} />
-                                            <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Searching…</p>
-                                          </div>
-                                        ) : (
-                                          editProductResults.map((product) => {
-                                            const alreadyAdded = editItems.some((item) => item.productId === product.id);
-                                            return (
-                                              <div
-                                                key={product.id}
-                                                className="flex items-center gap-2.5 rounded-xl p-2"
-                                                style={{ backgroundColor: "var(--sf-bg-surface-1)" }}
-                                              >
-                                                <img src={product.image || PLACEHOLDER_IMAGE} alt={product.name} className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                                                <div className="min-w-0 flex-1">
-                                                  <p className="text-xs font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>{product.name}</p>
-                                                  <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{formatPrice(product.basePrice)}</p>
-                                                </div>
-                                                <button
-                                                  onClick={() => addProductToEdit(product)}
-                                                  className="text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0"
-                                                  style={{ backgroundColor: "var(--sf-teal-subtle)", color: "var(--sf-teal)", border: "1px solid var(--sf-teal-border)", cursor: "pointer" }}
-                                                >
-                                                  {alreadyAdded ? "+1" : "Add"}
-                                                </button>
-                                              </div>
-                                            );
-                                          })
-                                        )}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                                {!editProductLoading && editProductResults.length === 0 && editProductSearch.trim() && (
-                                  <p className="text-xs px-3 pb-3 text-center" style={{ color: "var(--sf-text-muted)" }}>No products found.</p>
-                                )}
-                              </div>
 
                               {/* Updated Total — prominent teal accent */}
                               <div

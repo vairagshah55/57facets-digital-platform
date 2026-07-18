@@ -289,6 +289,13 @@ router.put("/:id", async (req, res, next) => {
       const qty = Math.max(1, parseInt(item.quantity) || 1);
       const itemNote = cleanText(item.note);
 
+      // Retailers may only edit EXISTING line items (customization/qty/note).
+      // Adding new products to an order is not allowed — every real line item
+      // carries its order_item id, so a missing id means an attempted add.
+      if (!item.id) {
+        throw new AppError("New products cannot be added to an order — you can only edit the existing items.", 400);
+      }
+
       if (item.id) {
         const existing = existingById.get(item.id);
         if (!existing) {
