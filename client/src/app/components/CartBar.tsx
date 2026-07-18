@@ -31,7 +31,7 @@ export function CartBar() {
   const handlePlaceOrder = useCallback(async () => {
     setPlacing(true);
     try {
-      const orderItems = items.map((item) => ({
+      const toOrderItem = (item: typeof items[number]) => ({
         productId: item.productId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -44,13 +44,28 @@ export function CartBar() {
         colorStoneName: item.colorStoneName,
         colorStoneQuality: item.colorStoneQuality,
         note: item.note,
-      }));
-      await ordersApi.create(orderItems);
+      });
+      // Dynamic split: customized items (a note or any selected option) go into
+      // their own order, standard items into another. Only non-empty groups
+      // become orders — so an all-standard or all-customized cart is still 1 order.
+      const isCustom = (item: typeof items[number]) => !!(
+        (item.note && item.note.trim()) ||
+        item.metalType || item.goldColour ||
+        item.diamondShape || item.diamondShade || item.diamondQuality ||
+        item.colorStoneName || item.colorStoneQuality
+      );
+      const customised = items.filter(isCustom).map(toOrderItem);
+      const standard = items.filter((i) => !isCustom(i)).map(toOrderItem);
+      const groups = [customised, standard].filter((g) => g.length > 0);
+      // Sequential (not parallel) so order numbers are generated without racing.
+      for (const group of groups) {
+        await ordersApi.create(group);
+      }
       // Tell any mounted catalog/detail view which products were just ordered so
       // they can flip to the "ordered" state immediately (no stale "Add to Cart"
       // until a manual refresh). The listener self-corrects on its next fetch.
       window.dispatchEvent(new CustomEvent("sf:order-placed", {
-        detail: { productIds: orderItems.map((i) => String(i.productId)) },
+        detail: { productIds: items.map((i) => String(i.productId)) },
       }));
       setSuccess(true);
       clearCart();

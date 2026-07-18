@@ -1600,12 +1600,29 @@ export function RetailerOrders() {
                             className="space-y-5"
                           >
                             {/* ── Item Cards ── */}
-                            {detailOrder.items && detailOrder.items.length > 0 && (
+                            {detailOrder.items && detailOrder.items.length > 0 && (() => {
+                              const customised = detailOrder.items.filter(isCustomizedItem);
+                              const standard = detailOrder.items.filter((it) => !isCustomizedItem(it));
+                              return (
                               <div className="space-y-3">
-                                <SectionLabel>Order Items</SectionLabel>
-                                {detailOrder.items.map((item) => (
-                                  <ItemCard key={item.id} item={item} onOpenProduct={openProductFromOrder} />
-                                ))}
+                                {/* Customised items — note or any option selected */}
+                                {customised.length > 0 && (
+                                  <>
+                                    <SectionLabel>Customized ({customised.length})</SectionLabel>
+                                    {customised.map((item) => (
+                                      <ItemCard key={item.id} item={item} onOpenProduct={openProductFromOrder} />
+                                    ))}
+                                  </>
+                                )}
+                                {/* Standard items — ordered as-is */}
+                                {standard.length > 0 && (
+                                  <>
+                                    <SectionLabel>{customised.length > 0 ? `Other Items (${standard.length})` : "Order Items"}</SectionLabel>
+                                    {standard.map((item) => (
+                                      <ItemCard key={item.id} item={item} onOpenProduct={openProductFromOrder} />
+                                    ))}
+                                  </>
+                                )}
                                 <div
                                   className="flex items-center justify-between px-4 py-3.5 rounded-2xl mt-1"
                                   style={{
@@ -1624,7 +1641,8 @@ export function RetailerOrders() {
                                   </span>
                                 </div>
                               </div>
-                            )}
+                              );
+                            })()}
 
                             {/* No-items total */}
                             {(!detailOrder.items || detailOrder.items.length === 0) && (
@@ -1933,6 +1951,18 @@ function OrderStepper({ status }: { status: OrderStatus }) {
         );
       })}
     </div>
+  );
+}
+
+// An item counts as "customized" if the retailer added a note or picked any
+// option (metal / gold colour / diamond shape-shade-quality / colour stone).
+// Base carat and category come from the product itself, so they don't count.
+function isCustomizedItem(it: OrderItem): boolean {
+  return !!(
+    (it.note && it.note.trim()) ||
+    it.metal || it.goldColour ||
+    it.diamondShape || it.diamondShade || it.diamondQuality ||
+    it.colorStoneName || it.colorStoneQuality
   );
 }
 
