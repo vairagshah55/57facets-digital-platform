@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Loader2,
   Check,
-  StickyNote,
   Diamond,
 } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -27,7 +26,6 @@ export function CartBar() {
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [noteOpen, setNoteOpen] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handlePlaceOrder = useCallback(async () => {
@@ -343,21 +341,6 @@ export function CartBar() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {/* Note toggle */}
-                        <button
-                          onClick={() => setNoteOpen(noteOpen === item.cartId ? null : item.cartId)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-                          style={{
-                            background: noteOpen === item.cartId || item.note ? "var(--sf-teal-subtle)" : "var(--sf-glass-pill)",
-                            color: noteOpen === item.cartId || item.note ? "var(--sf-teal)" : "var(--sf-text-muted)",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <StickyNote className="w-3 h-3" />
-                          Note
-                        </button>
-
                         {/* Remove */}
                         <button
                           onClick={() => removeItem(item.cartId)}
@@ -371,33 +354,22 @@ export function CartBar() {
                       </div>
                     </div>
 
-                    {/* Note input */}
-                    <AnimatePresence>
-                      {noteOpen === item.cartId && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-4 pb-3" style={{ borderTop: `1px solid var(--sf-glass-border)` }}>
-                            <textarea
-                              placeholder="Add a note (engraving, size, special requests…)"
-                              value={item.note || ""}
-                              onChange={(e) => updateNote(item.cartId, e.target.value)}
-                              rows={2}
-                              className="w-full mt-2.5 px-3 py-2 rounded-xl text-[12px] resize-none outline-none"
-                              style={{
-                                background: "var(--sf-glass-pill)",
-                                border: `1px solid var(--sf-glass-border-strong)`,
-                                color: "var(--sf-text-primary)",
-                                fontFamily: "inherit",
-                              }}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Note input — always open so retailer/admin can see & fill it easily */}
+                    <div className="px-4 pb-3" style={{ borderTop: `1px solid var(--sf-glass-border)` }}>
+                      <textarea
+                        placeholder="Add a note (engraving, size, special requests…)"
+                        value={item.note || ""}
+                        onChange={(e) => updateNote(item.cartId, e.target.value)}
+                        rows={2}
+                        className="w-full mt-2.5 px-3 py-2 rounded-xl text-[12px] resize-none outline-none"
+                        style={{
+                          background: "var(--sf-glass-pill)",
+                          border: `1px solid var(--sf-glass-border-strong)`,
+                          color: "var(--sf-text-primary)",
+                          fontFamily: "inherit",
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

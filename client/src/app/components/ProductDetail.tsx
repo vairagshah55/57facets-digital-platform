@@ -302,7 +302,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
-  const [showNote, setShowNote] = useState(false);
+  const [showNote, setShowNote] = useState(true); // open by default so it's easy to spot
 
   // Cart
   const { addItem, removeItem, items: cartItems } = useCart();
