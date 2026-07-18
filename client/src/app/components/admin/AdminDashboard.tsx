@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import {
   BarChart,
   Bar,
+  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip as RechartsTooltip,
@@ -20,11 +23,12 @@ import {
   Heart,
   TrendingUp,
   Activity,
-  Eye,
   Crown,
   Loader2,
   ArrowUpRight,
   Box,
+  BarChart3,
+  LineChart,
 } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { adminDashboard } from "../../../lib/adminApi";
@@ -45,7 +49,6 @@ type Stats = {
 type QuickAccess = {
   pendingOrders: any[];
   activeOrders: any[];
-  otpQueue: any[];
   lowStock: any[];
   shortlistActivity: any[];
 };
@@ -60,8 +63,8 @@ type ActivityItem = {
   actor_name: string;
 };
 
-type OrderChartItem = { date: string; count: number };
-type TopProduct = { id: string; name: string; sku: string; view_count: number };
+type CategoryBreakdown = { category: string; quantity: number };
+type MonthlyTrend = { month: string; orders: number; value: number; pcs: number };
 type TopRetailer = {
   id: string;
   name: string;
@@ -129,27 +132,6 @@ const fadeUp = (delay = 0) => ({
 });
 
 /* ═══════════════════════════════════════════════════════
-   CUSTOM CHART TOOLTIP
-   ═══════════════════════════════════════════════════════ */
-
-function ChartTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      className="px-3 py-2 rounded-lg text-xs font-medium shadow-xl border"
-      style={{
-        backgroundColor: "var(--sf-bg-surface-3)",
-        borderColor: "var(--sf-divider)",
-        color: "var(--sf-text-primary)",
-      }}
-    >
-      <p style={{ color: "var(--sf-text-muted)", marginBottom: 2 }}>{label}</p>
-      <p style={{ color: "var(--sf-teal)" }}>{payload[0].value} orders</p>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
    SECTION HEADER
    ═══════════════════════════════════════════════════════ */
 
@@ -180,8 +162,8 @@ export function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [quickAccess, setQuickAccess] = useState<QuickAccess | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [ordersChart, setOrdersChart] = useState<OrderChartItem[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
   const [topRetailers, setTopRetailers] = useState<TopRetailer[]>([]);
 
   useEffect(() => {
@@ -190,16 +172,16 @@ export function AdminDashboard() {
       adminDashboard.stats(),
       adminDashboard.quickAccess(),
       adminDashboard.activity(),
-      adminDashboard.ordersChart(),
-      adminDashboard.topProducts(),
+      adminDashboard.categoryBreakdown(),
+      adminDashboard.monthlyTrends(),
       adminDashboard.topRetailers(),
-    ]).then(([s, qa, act, oc, tp, tr]) => {
+    ]).then(([s, qa, act, cb, mt, tr]) => {
       if (cancelled) return;
       if (s.status  === "fulfilled") setStats(s.value);
       if (qa.status === "fulfilled") setQuickAccess(qa.value);
       if (act.status === "fulfilled") setActivity(act.value);
-      if (oc.status  === "fulfilled") setOrdersChart(oc.value);
-      if (tp.status  === "fulfilled") setTopProducts(tp.value);
+      if (cb.status  === "fulfilled") setCategoryBreakdown((cb.value || []).map((c: any) => ({ category: c.category, quantity: parseInt(c.quantity) || 0 })));
+      if (mt.status  === "fulfilled") setMonthlyTrends((mt.value || []).map((t: any) => ({ month: t.month, orders: parseInt(t.orders) || 0, value: parseFloat(t.value) || 0, pcs: parseInt(t.pcs) || 0 })));
       if (tr.status  === "fulfilled") setTopRetailers(tr.value);
       setLoading(false);
     });
@@ -228,8 +210,8 @@ export function AdminDashboard() {
           ))}
         </div>
         {/* Quick panels skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
               <div className="flex items-center gap-2">
                 <div className="skeleton-shimmer w-8 h-8 rounded-lg" />
@@ -258,12 +240,6 @@ export function AdminDashboard() {
       </div>
     );
   }
-
-  /* Chart data — format date labels */
-  const chartData = ordersChart.map((d) => ({
-    label: new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-    orders: Number(d.count),
-  }));
 
   /* Max spend for retailer progress bars */
   const maxSpend = Math.max(...topRetailers.map((r) => r.total_spent), 1);
@@ -305,7 +281,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Quick access row ────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
         {/* Pending orders */}
         <motion.div {...fadeUp(0.1)} className="lg:col-span-1">
@@ -340,27 +316,6 @@ export function AdminDashboard() {
                   style={{ backgroundColor: `${statusColor[o.status] ?? "#8A929F"}18`, color: statusColor[o.status] ?? "#8A929F" }}
                 >
                   {o.status}
-                </span>
-              } />
-            ))}
-          </QuickPanel>
-        </motion.div>
-
-        {/* OTP queue */}
-        <motion.div {...fadeUp(0.16)} className="lg:col-span-1">
-          <QuickPanel
-            icon={<KeyRound />}
-            title="OTP Queue"
-            count={quickAccess?.otpQueue.length ?? 0}
-            color="var(--sf-teal)"
-          >
-            {(quickAccess?.otpQueue ?? []).slice(0, 4).map((o: any, i: number) => (
-              <OrderRow key={i} orderNumber={o.retailer_name || o.phone} sub={formatRelativeTime(o.created_at)} right={
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded-md font-mono font-semibold"
-                  style={{ backgroundColor: "rgba(48,184,191,0.12)", color: "var(--sf-teal)" }}
-                >
-                  {o.otp_code}
                 </span>
               } />
             ))}
@@ -407,88 +362,13 @@ export function AdminDashboard() {
 
       </div>
 
-      {/* ── Chart + Top Products ────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Orders chart */}
-        <motion.div {...fadeUp(0.27)} className="lg:col-span-2">
-          <div
-            className="h-full rounded-2xl p-5 border"
-            style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
-          >
-            <SectionHeader icon={<TrendingUp />} title="Orders — Last 30 Days" subtitle="Daily order volume" />
-            <div className="mt-2" style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} barSize={6} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#30b8bf" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#2660a0" stopOpacity={0.5} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} stroke="var(--sf-divider)" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: "var(--sf-text-muted)", fontSize: 9 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={4}
-                  />
-                  <YAxis
-                    tick={{ fill: "var(--sf-text-muted)", fontSize: 9 }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <RechartsTooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)", radius: 4 }} />
-                  <Bar dataKey="orders" fill="url(#barGrad)" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      {/* ── Category-wise Buying + Buying Insights ──── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <motion.div {...fadeUp(0.27)}>
+          <CategoryBreakdownCard data={categoryBreakdown} />
         </motion.div>
-
-        {/* Top viewed products */}
-        <motion.div {...fadeUp(0.3)} className="lg:col-span-1">
-          <div
-            className="rounded-2xl p-5 border"
-            style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}
-          >
-            <SectionHeader icon={<Eye />} title="Top Viewed" subtitle="Most opened products" />
-            <ScrollArea className="h-[200px] mt-1">
-              {topProducts.length === 0 ? (
-                <EmptyState label="No views yet" />
-              ) : (
-                topProducts.map((p, i) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 py-2.5 border-b last:border-0"
-                    style={{ borderColor: "var(--sf-divider)" }}
-                  >
-                    <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                      style={{
-                        backgroundColor: i < 3 ? RANK_BG[i] : "var(--sf-bg-surface-2)",
-                        color: i < 3 ? RANK_COLOR[i] : "var(--sf-text-muted)",
-                      }}
-                    >
-                      {i < 3 ? ["◆", "◇", "◈"][i] : i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate" style={{ color: "var(--sf-text-primary)" }}>{p.name}</p>
-                      <p className="text-[10px]" style={{ color: "var(--sf-text-muted)" }}>{p.sku}</p>
-                    </div>
-                    <span
-                      className="text-xs font-semibold shrink-0"
-                      style={{ color: i < 3 ? RANK_COLOR[i] : "var(--sf-text-secondary)" }}
-                    >
-                      {p.view_count}
-                    </span>
-                  </div>
-                ))
-              )}
-            </ScrollArea>
-          </div>
+        <motion.div {...fadeUp(0.3)}>
+          <InsightsCard data={monthlyTrends} />
         </motion.div>
       </div>
 
@@ -758,6 +638,242 @@ function EmptyState({ label }: { label: string }) {
     <div className="flex flex-col items-center justify-center py-8 gap-2">
       <Box className="w-5 h-5" style={{ color: "var(--sf-text-muted)", opacity: 0.4 }} />
       <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>{label}</p>
+    </div>
+  );
+}
+
+/* ── Category-wise Buying (platform-wide) ─────────── */
+const CATEGORY_COLORS = [
+  "var(--sf-teal)", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444",
+  "#06b6d4", "#ec4899", "#f97316", "#6366f1", "#14b8a6",
+];
+
+const CATEGORY_PERIODS = [
+  { key: "1d", label: "Yesterday" },
+  { key: "3m", label: "3 Months" },
+  { key: "6m", label: "6 Months" },
+  { key: "1y", label: "1 Year" },
+  { key: "all", label: "All Time" },
+] as const;
+
+type CategoryPeriod = typeof CATEGORY_PERIODS[number]["key"];
+
+function CategoryBreakdownCard({ data: initialData }: { data: CategoryBreakdown[] }) {
+  const [period, setPeriod] = useState<CategoryPeriod>("all");
+  const [data, setData] = useState<CategoryBreakdown[]>(initialData);
+  const [loading, setLoading] = useState(false);
+
+  // Keep in sync when the parent re-fetches the "all" dataset.
+  useEffect(() => { setData(initialData); }, [initialData]);
+
+  // Only fetch from the server for time-scoped filters; "all" uses initialData.
+  useEffect(() => {
+    if (period === "all") { setData(initialData); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await adminDashboard.categoryBreakdown(period) as any;
+        if (!cancelled) {
+          setData((res || []).map((c: any) => ({ category: c.category, quantity: parseInt(c.quantity) || 0 })));
+        }
+      } catch (err) {
+        console.error("Category fetch error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [period, initialData]);
+
+  const totalPcs = data.reduce((sum, c) => sum + c.quantity, 0);
+  const chartData = useMemo(
+    () => data.map((c, i) => ({ ...c, fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length] })),
+    [data]
+  );
+
+  return (
+    <div className="h-full rounded-2xl p-5 border" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "rgba(139,92,246,0.12)" }}>
+            <BarChart3 className="w-4 h-4" style={{ color: "#8b5cf6" }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Category-wise Buying</h3>
+            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{totalPcs} total pcs ordered</p>
+          </div>
+        </div>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+          {CATEGORY_PERIODS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className="px-2 sm:px-2.5 py-1 text-[10px] font-medium transition-colors"
+              style={{
+                backgroundColor: period === p.key ? "#8b5cf6" : "transparent",
+                color: period === p.key ? "#fff" : "var(--sf-text-muted)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center" style={{ height: 200 }}>
+          <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--sf-text-muted)" }} />
+        </div>
+      ) : data.length === 0 ? (
+        <div className="flex flex-col items-center justify-center" style={{ height: 200 }}>
+          <BarChart3 className="w-8 h-8 mb-2" style={{ color: "rgba(139,92,246,0.25)" }} />
+          <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>No order data for this period</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ height: 200 }} className="w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--sf-divider)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "var(--sf-text-primary)" }} axisLine={false} tickLine={false} width={80} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)", borderRadius: 10, fontSize: 12, color: "var(--sf-text-primary)" }}
+                  labelStyle={{ color: "var(--sf-text-primary)", fontWeight: 600 }}
+                  itemStyle={{ color: "var(--sf-text-primary)" }}
+                  formatter={(val: number) => [`${val} pcs`, "Quantity"]}
+                />
+                <Bar dataKey="quantity" radius={[0, 6, 6, 0]} barSize={20}>
+                  {chartData.map((entry, i) => (<Cell key={i} fill={entry.fill} />))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+            {chartData.map((c, i) => (
+              <span
+                key={c.category}
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: `${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}18`, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                {c.category}: {c.quantity} pcs
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Buying Insights (platform-wide, last 6 months) ── */
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[parseInt(m) - 1]} ${y.slice(2)}`;
+}
+
+function InsightsCard({ data }: { data: MonthlyTrend[] }) {
+  const [metric, setMetric] = useState<"pcs" | "value" | "orders">("pcs");
+  const chartData = useMemo(() => data.map((d) => ({ ...d, label: formatMonthLabel(d.month) })), [data]);
+
+  const metricConfig = {
+    pcs:    { label: "Pieces", color: "#30B8BF", formatter: (v: number) => `${v} pcs`, dotLabel: (v: number) => `${v}` },
+    value:  { label: "Value (₹)", color: "#8b5cf6", formatter: (v: number) => formatPrice(v), dotLabel: (v: number) => `₹${(v / 1000).toFixed(0)}k` },
+    orders: { label: "Orders", color: "#f59e0b", formatter: (v: number) => `${v} orders`, dotLabel: (v: number) => `${v}` },
+  };
+  const cfg = metricConfig[metric];
+
+  return (
+    <div className="h-full rounded-2xl p-5 border" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: "var(--sf-teal-glass)" }}>
+            <TrendingUp className="w-4 h-4" style={{ color: "var(--sf-teal)" }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--sf-text-primary)" }}>Buying Insights</h3>
+            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Platform buying pattern over the last 6 months</p>
+          </div>
+        </div>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--sf-divider)" }}>
+          {(["pcs", "value", "orders"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMetric(m)}
+              className="px-3 py-1.5 text-[11px] font-medium transition-colors"
+              style={{
+                backgroundColor: metric === m ? metricConfig[m].color : "transparent",
+                color: metric === m ? "#fff" : "var(--sf-text-muted)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {metricConfig[m].label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <LineChart className="w-10 h-10 mb-3" style={{ color: "rgba(48,184,191,0.25)" }} />
+          <p className="text-sm font-medium mb-1" style={{ color: "var(--sf-text-muted)" }}>No data yet</p>
+          <p className="text-xs" style={{ color: "var(--sf-text-muted)" }}>Insights will appear once orders are placed</p>
+        </div>
+      ) : (
+        <div style={{ height: 260 }} className="w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ left: 8, right: 8, top: 24, bottom: 4 }}>
+              <defs>
+                {(["pcs", "value", "orders"] as const).map((m) => (
+                  <linearGradient key={m} id={`admin-gradient-${m}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={metricConfig[m].color} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={metricConfig[m].color} stopOpacity={0.03} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--sf-divider)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--sf-text-muted)" }}
+                axisLine={false}
+                tickLine={false}
+                width={50}
+                tickFormatter={(v) => metric === "value" ? `₹${(v / 1000).toFixed(0)}k` : String(v)}
+              />
+              <RechartsTooltip
+                contentStyle={{ backgroundColor: "var(--sf-bg-surface-2)", border: "1px solid var(--sf-divider)", borderRadius: 10, fontSize: 12, color: "var(--sf-text-primary)" }}
+                labelStyle={{ color: "var(--sf-text-primary)", fontWeight: 600 }}
+                itemStyle={{ color: "var(--sf-text-primary)" }}
+                formatter={(val: number) => [cfg.formatter(val), cfg.label]}
+              />
+              <Area
+                type="monotone"
+                dataKey={metric}
+                stroke={cfg.color}
+                strokeWidth={2.5}
+                fill={`url(#admin-gradient-${metric})`}
+                activeDot={{ r: 6, fill: cfg.color, stroke: "#fff", strokeWidth: 2 }}
+                dot={(props: any) => {
+                  const { cx, cy, payload } = props;
+                  const val = payload[metric];
+                  return (
+                    <g key={`dot-${cx}-${cy}`}>
+                      <circle cx={cx} cy={cy} r={4} fill={cfg.color} stroke="#1a1f2e" strokeWidth={2} />
+                      <text x={cx} y={cy - 14} textAnchor="middle" fill={cfg.color} fontSize={11} fontWeight={700}>{cfg.dotLabel(val)}</text>
+                    </g>
+                  );
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,7 +37,7 @@ router.get("/stats", async (req, res, next) => {
 // Pending orders, OTP queue, low stock, shortlist activity
 router.get("/quick-access", async (req, res, next) => {
   try {
-    const [pendingOrders, activeOrders, otpQueue, lowStock, shortlistActivity] = await Promise.all([
+    const [pendingOrders, activeOrders, lowStock, shortlistActivity] = await Promise.all([
       query(
         `SELECT o.id, o.order_number, o.total, o.status, o.created_at, r.name AS retailer_name
          FROM orders o JOIN retailers r ON r.id = o.retailer_id
@@ -49,13 +49,6 @@ router.get("/quick-access", async (req, res, next) => {
          FROM orders o JOIN retailers r ON r.id = o.retailer_id
          WHERE o.status IN ('processing', 'shipped')
          ORDER BY o.updated_at DESC LIMIT 10`
-      ),
-      query(
-        `SELECT o.phone, o.otp_code, o.expires_at, o.created_at, r.name AS retailer_name
-         FROM otps o
-         LEFT JOIN retailers r ON r.phone = o.phone
-         WHERE o.is_used = false AND o.expires_at > NOW()
-         ORDER BY o.created_at DESC LIMIT 10`
       ),
       query(
         `SELECT p.id, p.name, p.sku, p.availability, c.name AS category
@@ -76,7 +69,6 @@ router.get("/quick-access", async (req, res, next) => {
     res.json({
       pendingOrders: pendingOrders.rows,
       activeOrders: activeOrders.rows,
-      otpQueue: otpQueue.rows,
       lowStock: lowStock.rows,
       shortlistActivity: shortlistActivity.rows,
     });
@@ -110,22 +102,29 @@ router.get("/activity", async (req, res, next) => {
   }
 });
 
-// ── GET /api/admin/dashboard/charts/orders ─────────
-// Orders over last 30 days
-router.get("/charts/orders", async (req, res, next) => {
+// ── GET /api/admin/dashboard/charts/category-breakdown ───
+// Platform-wide category-wise buying (total pieces per category, optional time filter)
+router.get("/charts/category-breakdown", async (req, res, next) => {
   try {
+    const categoryPeriod = req.query.categoryPeriod; // "1d","3m","6m","1y","all"
+    let dateFilter = "";
+    if (categoryPeriod === "1d") dateFilter = "AND o.created_at >= NOW() - INTERVAL '1 day'";
+    else if (categoryPeriod === "3m") dateFilter = "AND o.created_at >= NOW() - INTERVAL '3 months'";
+    else if (categoryPeriod === "6m") dateFilter = "AND o.created_at >= NOW() - INTERVAL '6 months'";
+    else if (categoryPeriod === "1y") dateFilter = "AND o.created_at >= NOW() - INTERVAL '1 year'";
+    // "all" or missing = no date filter
+
     const { rows } = await query(
-      `SELECT d::date AS date, COALESCE(cnt, 0) AS count
-       FROM generate_series(
-         CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, '1 day'
-       ) AS d
-       LEFT JOIN (
-         SELECT created_at::date AS day, COUNT(*) AS cnt
-         FROM orders
-         WHERE created_at >= CURRENT_DATE - INTERVAL '29 days'
-         GROUP BY day
-       ) o ON o.day = d::date
-       ORDER BY d`
+      `SELECT COALESCE(c.name, 'Other') AS category,
+              SUM(oi.quantity) AS quantity
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN products p ON p.id = oi.product_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE o.status != 'cancelled'
+       ${dateFilter}
+       GROUP BY c.name
+       ORDER BY quantity DESC`
     );
     res.json(rows);
   } catch (err) {
@@ -133,17 +132,21 @@ router.get("/charts/orders", async (req, res, next) => {
   }
 });
 
-// ── GET /api/admin/dashboard/charts/top-products ───
-// Most viewed products (from recently_viewed)
-router.get("/charts/top-products", async (req, res, next) => {
+// ── GET /api/admin/dashboard/charts/monthly-trends ───
+// Platform-wide monthly buying trends (last 6 months)
+router.get("/charts/monthly-trends", async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, COUNT(rv.id) AS view_count
-       FROM recently_viewed rv
-       JOIN products p ON p.id = rv.product_id
-       GROUP BY p.id, p.name, p.sku
-       ORDER BY view_count DESC
-       LIMIT 10`
+      `SELECT TO_CHAR(o.created_at, 'YYYY-MM') AS month,
+              COUNT(DISTINCT o.id) AS orders,
+              COALESCE(SUM(o.total), 0) AS value,
+              COALESCE(SUM(oi.quantity), 0) AS pcs
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.status != 'cancelled'
+         AND o.created_at >= NOW() - INTERVAL '6 months'
+       GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
+       ORDER BY month ASC`
     );
     res.json(rows);
   } catch (err) {
