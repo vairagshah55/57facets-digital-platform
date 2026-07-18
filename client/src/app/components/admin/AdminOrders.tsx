@@ -70,10 +70,10 @@ type TrackingEntry = { status: string; detail: string | null; created_at: string
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   pending:    { label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.12)", icon: <Clock className="w-3.5 h-3.5" /> },
   confirmed:  { label: "Confirmed",  color: "#3b82f6", bg: "rgba(59,130,246,0.12)", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  processing: { label: "Processing", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", icon: <Package className="w-3.5 h-3.5" /> },
+  processing: { label: "Accept", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", icon: <Package className="w-3.5 h-3.5" /> },
   shipped:    { label: "Shipped",    color: "#06b6d4", bg: "rgba(6,182,212,0.12)",  icon: <Truck className="w-3.5 h-3.5" /> },
   delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.12)",  icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  cancelled:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3.5 h-3.5" /> },
+  cancelled:  { label: "Reject",  color: "#ef4444", bg: "rgba(239,68,68,0.12)",  icon: <XCircle className="w-3.5 h-3.5" /> },
 };
 
 const VALID_TRANSITIONS: Record<string, string[]> = {

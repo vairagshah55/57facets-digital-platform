@@ -178,26 +178,26 @@ const STATUS_CONFIG: Record<
 > = {
   pending:    { label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.09)", border: "rgba(245,158,11,0.28)", glow: "rgba(245,158,11,0.14)",   icon: <Clock className="w-3.5 h-3.5" /> },
   confirmed:  { label: "Confirmed",  color: "var(--sf-blue-secondary)", bg: "rgba(56,128,190,0.09)", border: "rgba(56,128,190,0.28)", glow: "rgba(56,128,190,0.14)",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  processing: { label: "Processing", color: "var(--sf-teal)", bg: "rgba(48,184,191,0.09)", border: "rgba(48,184,191,0.28)", glow: "rgba(48,184,191,0.14)",   icon: <Package className="w-3.5 h-3.5" /> },
+  processing: { label: "Accept", color: "var(--sf-teal)", bg: "rgba(48,184,191,0.09)", border: "rgba(48,184,191,0.28)", glow: "rgba(48,184,191,0.14)",   icon: <Package className="w-3.5 h-3.5" /> },
   shipped:    { label: "Shipped",    color: "#a855f7", bg: "rgba(168,85,247,0.09)", border: "rgba(168,85,247,0.28)", glow: "rgba(168,85,247,0.14)",   icon: <Truck className="w-3.5 h-3.5" /> },
   delivered:  { label: "Delivered",  color: "#22c55e", bg: "rgba(34,197,94,0.09)",  border: "rgba(34,197,94,0.28)",  glow: "rgba(34,197,94,0.14)",    icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  cancelled:  { label: "Cancelled",  color: "#c2173b", bg: "rgba(194,23,59,0.09)",  border: "rgba(194,23,59,0.28)",  glow: "rgba(194,23,59,0.14)",    icon: <XCircle className="w-3.5 h-3.5" /> },
+  cancelled:  { label: "Reject",  color: "#c2173b", bg: "rgba(194,23,59,0.09)",  border: "rgba(194,23,59,0.28)",  glow: "rgba(194,23,59,0.14)",    icon: <XCircle className="w-3.5 h-3.5" /> },
 };
 
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: "all",        label: "All Orders" },
   { key: "pending",    label: "Pending" },
-  { key: "processing", label: "Processing" },
+  { key: "processing", label: "Accept" },
   { key: "shipped",    label: "Shipped" },
   { key: "delivered",  label: "Delivered" },
-  { key: "cancelled",  label: "Cancelled" },
+  { key: "cancelled",  label: "Reject" },
 ];
 
 // Stepper steps for the order tracking visual (excludes "cancelled")
 const STEPPER_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "pending",    label: "Placed" },
   { status: "confirmed",  label: "Confirmed" },
-  { status: "processing", label: "Processing" },
+  { status: "processing", label: "Accept" },
   { status: "shipped",    label: "Shipped" },
   { status: "delivered",  label: "Delivered" },
 ];
