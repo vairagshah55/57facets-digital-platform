@@ -369,8 +369,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
         if (mapped.customization.diamondShapes.length) setSelectedDiamondShape(mapped.customization.diamondShapes[0]);
         if (mapped.customization.diamondShades.length) setSelectedDiamondShade(mapped.customization.diamondShades[0]);
         if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
-        if (mapped.customization.colorStoneNames.length) setSelectedColorStone(mapped.customization.colorStoneNames[0]);
-        if (mapped.customization.colorStoneQualities.length) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
+        // Only pre-select a stone when it's genuinely customizable (2+ options).
+        // A single fixed stone is not a customization, so leave it unselected —
+        // that keeps it out of the cart/order's customization + "Customized" flag.
+        if (mapped.customization.colorStoneNames.length > 1) setSelectedColorStone(mapped.customization.colorStoneNames[0]);
+        if (mapped.customization.colorStoneQualities.length > 1) setSelectedColorStoneQuality(mapped.customization.colorStoneQualities[0]);
 
         // Check if retailer has an active (non-final) order for this product
         // (retailer-only — skipped in admin preview).
@@ -1258,7 +1261,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               })()}
 
               {/* ─── Color Stones ─────────────────────────── */}
-              {product.customization.colorStoneNames.length > 0 && (() => {
+              {/* Only a real choice (2+ options) is customizable. A single fixed
+                  stone isn't customizable, so the section is hidden entirely. */}
+              {product.customization.colorStoneNames.length > 1 && (() => {
                 const pairs = product.customization.colorStoneNames.map((name, i) => ({
                   name,
                   quality: product.customization.colorStoneQualities[i] || "",
