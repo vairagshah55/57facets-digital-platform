@@ -463,6 +463,19 @@ export function RetailerOrders() {
     }
   }, [loading, ordersList, searchParams, openDetail, setSearchParams]);
 
+  // Open a product from inside the order detail sheet. Stamp ?order=<id> onto
+  // the orders history entry FIRST, then navigate. Because navigating unmounts
+  // this page, the auto-open effect above won't strip the param — so pressing
+  // Back returns to /retailer/orders?order=<id> and the detail sheet reopens.
+  const openProductFromOrder = useCallback((productId: string) => {
+    if (detailOrder) {
+      const next = new URLSearchParams(searchParams);
+      next.set("order", detailOrder.id);
+      setSearchParams(next, { replace: true });
+    }
+    navigate(`/retailer/product/${productId}`);
+  }, [detailOrder, searchParams, setSearchParams, navigate]);
+
   function openDetailAndEdit(order: Order) {
     setPendingEdit(true);
     openDetail(order);
@@ -1591,7 +1604,7 @@ export function RetailerOrders() {
                               <div className="space-y-3">
                                 <SectionLabel>Order Items</SectionLabel>
                                 {detailOrder.items.map((item) => (
-                                  <ItemCard key={item.id} item={item} />
+                                  <ItemCard key={item.id} item={item} onOpenProduct={openProductFromOrder} />
                                 ))}
                                 <div
                                   className="flex items-center justify-between px-4 py-3.5 rounded-2xl mt-1"
@@ -1924,7 +1937,9 @@ function OrderStepper({ status }: { status: OrderStatus }) {
 }
 
 /* ── Item Card (detail dialog) ── */
-function ItemCard({ item }: { item: OrderItem }) {
+function ItemCard({ item, onOpenProduct }: { item: OrderItem; onOpenProduct?: (productId: string) => void }) {
+  // Products that were deleted have a null productId — only linkable ones are clickable.
+  const clickable = !!item.productId && !!onOpenProduct;
   // Build ordered, labelled attribute chips
   const chips: { label: string; value: string }[] = [
     item.category   ? { label: "Category",  value: item.category }            : null,
@@ -1941,7 +1956,9 @@ function ItemCard({ item }: { item: OrderItem }) {
   return (
     <div
       className="flex gap-4 p-3 rounded-2xl border transition-colors"
-      style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)" }}
+      style={{ backgroundColor: "var(--sf-bg-surface-2)", borderColor: "var(--sf-divider)", cursor: clickable ? "pointer" : "default" }}
+      onClick={clickable ? () => onOpenProduct!(item.productId!) : undefined}
+      title={clickable ? "View product" : undefined}
     >
       {/* Square thumbnail */}
       <div
