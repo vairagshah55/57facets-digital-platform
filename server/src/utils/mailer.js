@@ -50,8 +50,9 @@ async function sendMail({ to, subject, text, html, from, attachments, throwOnErr
 
   try {
     await tx.sendMail({
-      // Caller may override the From; otherwise fall back to the global default.
-      from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
+      // Caller may override the From; otherwise use the configured SMTP_FROM,
+      // falling back to the 57 Facets contact address.
+      from: from || process.env.SMTP_FROM || "57 Facets <contact@57facets.in>",
       to: Array.isArray(to) ? to.join(", ") : to,
       subject,
       text,

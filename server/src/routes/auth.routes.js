@@ -6,6 +6,21 @@ const auditLog = require("../utils/auditLog");
 const { sendMail, getAdminRecipients } = require("../utils/mailer");
 const { otpEmail, loginAlertEmail } = require("../utils/emailTemplates");
 
+// Best-effort IP → city/country lookup for the login alert. Never throws, has a
+// short timeout, and skips private/loopback IPs (dev). Uses the free ip-api.com.
+async function geoLocateIp(ip) {
+  if (!ip || /^(127\.|::1|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return {};
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,country`, { signal: controller.signal });
+    clearTimeout(t);
+    const data = await res.json();
+    if (data && data.status === "success") return { city: data.city || null, country: data.country || null };
+  } catch { /* best-effort — ignore geo failures */ }
+  return {};
+}
+
 // Notify admins that a retailer just logged in. Fire-and-forget —
 // never block or fail the login if email/SMTP has a problem.
 async function notifyAdminOfLogin(retailer, method, ip) {
@@ -14,7 +29,12 @@ async function notifyAdminOfLogin(retailer, method, ip) {
     if (recipients.length === 0) return;
 
     const when = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-    const { subject, html, text } = loginAlertEmail({ retailer, method, ip, when });
+    const geo = await geoLocateIp(ip);
+    const { subject, html, text } = loginAlertEmail({
+      retailer, method, ip, when,
+      city: geo.city || null,
+      country: geo.country || retailer.country || null, // geo first, else registered country
+    });
     await sendMail({ to: recipients, subject, text, html });
   } catch (err) {
     console.error("[auth] notifyAdminOfLogin failed:", err.message);
@@ -140,7 +160,7 @@ router.post("/verify-otp", async (req, res, next) => {
 
     // Get retailer
     const { rows: retailers } = await query(
-      "SELECT id, name, phone, email, company_name, first_login FROM retailers WHERE phone = $1",
+      "SELECT id, name, phone, email, company_name, country, first_login FROM retailers WHERE phone = $1",
       [retailerPhone]
     );
     const retailer = retailers[0];

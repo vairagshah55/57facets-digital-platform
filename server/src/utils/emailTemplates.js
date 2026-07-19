@@ -19,6 +19,10 @@ const BRAND = {
   sans: "'Helvetica Neue',Arial,sans-serif",
 };
 
+// Hosted 57 Facets logo (served by nginx from client/public → dist). Used in the
+// email header instead of the plain diamond glyph.
+const LOGO_URL = `${(process.env.CLIENT_ORIGIN || "https://57facets.in").replace(/\/$/, "")}/email-logo.png`;
+
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -55,14 +59,11 @@ function baseLayout({ preheader = "", body = "" }) {
       <td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;width:100%;">
 
-          <!-- Header / wordmark -->
+          <!-- Header / logo -->
           <tr>
             <td align="center" style="padding:8px 0 24px 0;">
-              <div style="font-family:${BRAND.sans};font-size:26px;line-height:1;color:${BRAND.teal};">&#9670;</div>
-              <div style="font-family:${BRAND.serif};font-size:22px;font-weight:600;letter-spacing:2px;color:${BRAND.textPrimary};margin-top:10px;">
-                57&nbsp;FACETS
-              </div>
-              <div style="font-family:${BRAND.sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${BRAND.teal};margin-top:6px;">
+              <img src="${LOGO_URL}" alt="57 Facets" width="170" style="display:block;width:170px;max-width:60%;height:auto;border:0;outline:none;text-decoration:none;" />
+              <div style="font-family:${BRAND.sans};font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${BRAND.teal};margin-top:12px;">
                 Retailer Portal
               </div>
             </td>
@@ -151,13 +152,15 @@ function otpEmail({ name, otpCode, expiryMinutes }) {
  * Admin notification when a retailer logs in.
  * @returns {{subject:string, html:string, text:string}}
  */
-function loginAlertEmail({ retailer, method, ip, when }) {
+function loginAlertEmail({ retailer, method, ip, when, city, country }) {
   const rows = [
     ["Name", retailer.name],
     ["Company", retailer.company_name],
     ["Phone", retailer.phone],
     ["Email", retailer.email],
     ["Method", method === "email" ? "Email + OTP" : "Phone + OTP"],
+    ["City", city],
+    ["Country", country],
     ["IP address", ip],
     ["Time", when ? `${when} IST` : null],
   ];
