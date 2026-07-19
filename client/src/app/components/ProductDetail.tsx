@@ -367,6 +367,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
         if (mapped.customization.goldTypes.length) setSelectedGoldType(mapped.customization.goldTypes[0]);
         if (mapped.customization.goldColours.length) setSelectedGoldColour(mapped.customization.goldColours[0]);
         if (mapped.customization.diamondShapes.length) setSelectedDiamondShape(mapped.customization.diamondShapes[0]);
+        else if (mapped.diamonds[0]?.shape) setSelectedDiamondShape(mapped.diamonds[0].shape);
         if (mapped.customization.diamondShades.length) setSelectedDiamondShade(mapped.customization.diamondShades[0]);
         if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
         // Only pre-select a stone when it's genuinely customizable (2+ options).
@@ -1068,10 +1069,27 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 const shape = selectedDiamondShape || product.customization.diamondShapes[0] || "";
                 const shade = selectedDiamondShade || product.customization.diamondShades[0] || "";
                 const clarity = selectedDiamondQuality || product.customization.diamondQualities[0] || "";
+                // Diamond customization (rendered as dropdowns below):
+                //  • Shape — a FANCY cut can be changed to any standard shape; but
+                //    when the diamond COMES as Round (single round shape), Shape is
+                //    LOCKED/disabled at Round.
+                //  • Shade & Clarity — always fully customizable (full option list).
+                // Each list also folds in any product-specific value (case-insensitive).
+                const mergeOpts = (base: string[], extra: (string | null | undefined)[]) => {
+                  const out = [...base];
+                  extra.forEach((s) => { if (s && !out.some((o) => o.toLowerCase() === s.toLowerCase())) out.push(s); });
+                  return out;
+                };
+                const configuredShapes = product.customization.diamondShapes;
+                const baseShapeRaw = configuredShapes[0] || product.diamonds[0]?.shape || "";
+                const shapeLocked = baseShapeRaw.toLowerCase().includes("round") && configuredShapes.length <= 1;
+                const shapeOptions = mergeOpts(DIAMOND_SHAPES, [...configuredShapes, ...product.diamonds.map((dd) => dd.shape)]);
+                const shadeOptions = mergeOpts(DIAMOND_SHADES, [...product.customization.diamondShades, ...product.diamonds.map((dd) => dd.color)]);
+                const clarityOptions = mergeOpts(DIAMOND_QUALITIES, [...product.customization.diamondQualities, ...product.diamonds.map((dd) => dd.clarity)]);
                 const fields = [
-                  { label: "Shape", options: product.customization.diamondShapes, selected: selectedDiamondShape, set: setSelectedDiamondShape },
-                  { label: "Shade", options: product.customization.diamondShades, selected: selectedDiamondShade, set: setSelectedDiamondShade },
-                  { label: "Clarity", options: product.customization.diamondQualities, selected: selectedDiamondQuality, set: setSelectedDiamondQuality },
+                  { label: "Shape", options: shapeLocked ? [selectedDiamondShape || baseShapeRaw || "Round"] : shapeOptions, selected: selectedDiamondShape, set: setSelectedDiamondShape, disabled: shapeLocked },
+                  { label: "Shade", options: shadeOptions, selected: selectedDiamondShade, set: setSelectedDiamondShade, disabled: false },
+                  { label: "Clarity", options: clarityOptions, selected: selectedDiamondQuality, set: setSelectedDiamondQuality, disabled: false },
                 ].filter((f) => f.options.length > 0);
                 return (
                   <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sf-glass-border)" }}>
@@ -1223,36 +1241,19 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       );
                     })()}
 
-                    {/* Single row: Shape | Shade | Clarity — only when there's a single diamond */}
-                    {!multiDiamond && (
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {fields.map((field, fi) => (
-                          <>
-                            {fi > 0 && (
-                              <div key={`div-${fi}`} className="w-px self-stretch rounded-full" style={{ background: "var(--sf-glass-border)", minHeight: 28 }} />
-                            )}
-                            <div key={field.label} className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--sf-text-muted)" }}>{field.label}</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {field.options.map((opt) => {
-                                  const active = field.selected === opt;
-                                  return (
-                                    <button key={opt} onClick={() => field.set(opt)}
-                                      className="px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200"
-                                      style={{
-                                        background: active
-                                          ? "var(--sf-teal-glass)"
-                                          : "var(--sf-glass-bg)",
-                                        border: active ? "1.5px solid var(--sf-teal-border)" : "1px solid var(--sf-glass-border)",
-                                        color: active ? "var(--sf-teal)" : "var(--sf-text-secondary)",
-                                        boxShadow: active ? "0 0 0 3px var(--sf-teal-subtle), 0 4px 12px var(--sf-shadow-teal)" : "none",
-                                        transform: active ? "translateY(-1px)" : "none",
-                                      }}>{opt}</button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </>
+                    {/* Single diamond — Shape (locked for Round), Shade & Clarity as compact dropdowns */}
+                    {!multiDiamond && fields.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {fields.map((field) => (
+                          <GridSelect
+                            key={field.label}
+                            label={field.label}
+                            value={field.selected || field.options[0] || ""}
+                            options={field.options}
+                            onChange={field.set}
+                            disabled={field.disabled}
+                            compact
+                          />
                         ))}
                       </div>
                     )}
@@ -2070,12 +2071,14 @@ function GlassRadio({
    label left, selected value on the right; menu has a search box that filters
    the options. Case-insensitive value matching. */
 function GridSelect({
-  label, value, options, onChange,
+  label, value, options, onChange, disabled = false, compact = false,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  disabled?: boolean;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -2089,20 +2092,24 @@ function GridSelect({
 
   return (
     <div className="relative">
-      <span className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{label}</span>
+      <span className={`block font-semibold uppercase tracking-widest ${compact ? "text-[9px] mb-1" : "text-[10px] mb-1.5"}`} style={{ color: "var(--sf-text-muted)" }}>{label}</span>
       <button
         type="button"
-        onClick={() => (open ? close() : setOpen(true))}
-        className="w-full flex items-center gap-2 h-10 px-3 rounded-lg transition-all"
+        disabled={disabled}
+        onClick={() => { if (disabled) return; open ? close() : setOpen(true); }}
+        className={`w-full flex items-center rounded-lg transition-all ${compact ? "gap-1 h-8 px-2.5" : "gap-2 h-10 px-3"}`}
         style={{
           background: open ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
           border: `1px solid ${open ? "var(--sf-teal)" : "var(--sf-glass-border-strong)"}`,
           boxShadow: open ? "0 0 0 3px var(--sf-teal-subtle)" : "none",
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.55 : 1,
         }}
       >
-        <span className="text-sm font-bold truncate" style={{ color: "var(--sf-text-primary)" }}>{displayValue || "Select"}</span>
-        <ChevronRight className="w-4 h-4 ml-auto shrink-0 transition-transform" style={{ color: "var(--sf-teal)", transform: open ? "rotate(-90deg)" : "rotate(90deg)" }} />
+        <span className={`font-bold truncate ${compact ? "text-xs" : "text-sm"}`} style={{ color: "var(--sf-text-primary)" }}>{displayValue || "Select"}</span>
+        {!disabled && (
+          <ChevronRight className={`ml-auto shrink-0 transition-transform ${compact ? "w-3.5 h-3.5" : "w-4 h-4"}`} style={{ color: "var(--sf-teal)", transform: open ? "rotate(-90deg)" : "rotate(90deg)" }} />
+        )}
       </button>
 
       <AnimatePresence>
