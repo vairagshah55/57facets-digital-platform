@@ -58,9 +58,16 @@ async function emailRetailerOrderPlaced(retailerId, { orderNumber, orderDate, it
 }
 
 // Email the admin recipients (ADMIN_NOTIFY_EMAIL, or active admins).
-async function emailAdmins({ title, message, actionPath, ctaLabel }) {
+// `exclude` (email or list) is filtered out — used so the retailer who triggered
+// the event never also receives the internal admin copy for the same event.
+async function emailAdmins({ title, message, actionPath, ctaLabel, exclude }) {
   try {
-    const to = await getAdminRecipients();
+    let to = await getAdminRecipients();
+    if (exclude) {
+      const ex = (Array.isArray(exclude) ? exclude : [exclude])
+        .filter(Boolean).map((e) => String(e).trim().toLowerCase());
+      to = to.filter((e) => !ex.includes(String(e).trim().toLowerCase()));
+    }
     if (!to.length) return;
     const mail = notificationEmail({ title, message, actionPath, ctaLabel });
     await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text });

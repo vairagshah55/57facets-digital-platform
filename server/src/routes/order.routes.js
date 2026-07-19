@@ -227,7 +227,11 @@ router.post("/", async (req, res, next) => {
     auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "order.placed", entityType: "order", entityId: order.id, details: { order_number: orderNumber, items: items.length, total } });
 
     // Notification emails (fire-and-forget — mirror the bell notifications).
-    // Retailer gets the dedicated "order received" confirmation (summary table).
+    // Retailer gets the dedicated "order received" confirmation (summary table);
+    // admins get the internal "New Order" alert. Exclude the retailer's own email
+    // from the admin list so they never receive BOTH emails for the same order.
+    const { rows: rEmailRows } = await query("SELECT email FROM retailers WHERE id = $1", [req.retailer.id]);
+    const retailerEmail = rEmailRows[0]?.email || null;
     emailRetailerOrderPlaced(req.retailer.id, {
       orderNumber,
       orderDate: new Date(order.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
@@ -239,6 +243,7 @@ router.post("/", async (req, res, next) => {
       title: `New Order: ${orderNumber}`,
       message: `${req.retailer.name || "A retailer"} placed order ${orderNumber} — ${items.length} item(s), total ₹${total.toLocaleString("en-IN")}.`,
       actionPath: "/admin/orders", ctaLabel: "Review Order",
+      exclude: retailerEmail,
     });
 
     res.status(201).json(order);
