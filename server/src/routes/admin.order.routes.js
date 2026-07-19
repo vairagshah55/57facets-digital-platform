@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
+const { emailRetailer } = require("../utils/notify");
 
 router.use(adminAuth);
 
@@ -163,6 +164,13 @@ router.put("/:id/allow-edit", async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    emailRetailer(order.retailer_id, {
+      title: "Order Edit Available",
+      message: msg,
+      actionPath: "/retailer/orders", ctaLabel: "Edit Order",
+    });
+
     res.json({ message: "Edit permission granted" });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -253,6 +261,12 @@ router.put("/:id/status", async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    emailRetailer(order.retailer_id, {
+      title: trackingLabel,
+      message: notifMsg,
+      actionPath: "/retailer/orders", ctaLabel: "View Order",
+    });
 
     // Return updated order
     const { rows: updated } = await query(

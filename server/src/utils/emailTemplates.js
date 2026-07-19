@@ -199,4 +199,49 @@ function loginAlertEmail({ retailer, method, ip, when }) {
   };
 }
 
-module.exports = { otpEmail, loginAlertEmail };
+/**
+ * Generic branded notification email — mirrors an in-app (bell) notification.
+ * Used for order updates, account changes and admin messages.
+ * @returns {{subject:string, html:string, text:string}}
+ */
+function notificationEmail({ title, message, actionPath, ctaLabel, name }) {
+  const base = (process.env.CLIENT_ORIGIN || "https://57facets.in").replace(/\/$/, "");
+  const url = actionPath ? `${base}${actionPath.startsWith("/") ? "" : "/"}${actionPath}` : null;
+  const greeting = name ? `Hello ${escapeHtml(name)},` : "";
+
+  const cta = url
+    ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0 0;">
+      <tr>
+        <td align="center" style="border-radius:10px;background:${BRAND.teal};">
+          <a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 26px;font-family:${BRAND.sans};font-size:14px;font-weight:700;color:#04121a;text-decoration:none;border-radius:10px;">
+            ${escapeHtml(ctaLabel || "View Details")}
+          </a>
+        </td>
+      </tr>
+    </table>`
+    : "";
+
+  const body = `
+    <div style="display:inline-block;background:${BRAND.tealSoft};border:1px solid ${BRAND.teal};border-radius:999px;padding:5px 12px;font-family:${BRAND.sans};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:${BRAND.teal};margin-bottom:16px;">
+      Notification
+    </div>
+    <h1 style="margin:0 0 ${greeting ? "8" : "12"}px 0;font-family:${BRAND.serif};font-size:21px;font-weight:600;color:${BRAND.textPrimary};">
+      ${escapeHtml(title)}
+    </h1>
+    ${greeting ? `<p style="margin:0 0 10px 0;font-family:${BRAND.sans};font-size:14px;color:${BRAND.textSecondary};">${greeting}</p>` : ""}
+    <p style="margin:0;font-family:${BRAND.sans};font-size:14px;line-height:1.7;color:${BRAND.textSecondary};white-space:pre-line;">
+      ${escapeHtml(message)}
+    </p>
+    ${cta}`;
+
+  const text = [title, "", message, url ? `\n${ctaLabel || "View"}: ${url}` : ""].join("\n");
+
+  return {
+    subject: title,
+    html: baseLayout({ preheader: String(message || "").slice(0, 120), body }),
+    text,
+  };
+}
+
+module.exports = { otpEmail, loginAlertEmail, notificationEmail };

@@ -4,6 +4,7 @@ const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
 const pricing = require("../services/pricing.service");
+const { emailRetailer, emailAdmins } = require("../utils/notify");
 
 // Columns the pricing engine needs to compute a per-retailer price.
 const PRICING_COLS =
@@ -224,6 +225,18 @@ router.post("/", async (req, res, next) => {
     await client.query("COMMIT");
 
     auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "order.placed", entityType: "order", entityId: order.id, details: { order_number: orderNumber, items: items.length, total } });
+
+    // Notification emails (fire-and-forget — mirror the bell notifications)
+    emailRetailer(req.retailer.id, {
+      title: "Order Placed",
+      message: `Your order ${orderNumber} has been submitted for review. We'll keep you posted as it progresses.`,
+      actionPath: "/retailer/orders", ctaLabel: "View Order",
+    });
+    emailAdmins({
+      title: `New Order: ${orderNumber}`,
+      message: `${req.retailer.name || "A retailer"} placed order ${orderNumber} — ${items.length} item(s), total ₹${total.toLocaleString("en-IN")}.`,
+      actionPath: "/admin/orders", ctaLabel: "Review Order",
+    });
 
     res.status(201).json(order);
   } catch (err) {
@@ -501,6 +514,17 @@ router.put("/:id", async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    emailRetailer(req.retailer.id, {
+      title: "Order Updated",
+      message: `Your order ${order.order_number} has been updated successfully.`,
+      actionPath: "/retailer/orders", ctaLabel: "View Order",
+    });
+    emailAdmins({
+      title: `Order Updated: ${order.order_number}`,
+      message: `A retailer updated order ${order.order_number}. Review the changes in the order detail.`,
+      actionPath: "/admin/orders", ctaLabel: "Review Order",
+    });
+
     const { rows: result } = await query("SELECT * FROM orders WHERE id = $1", [req.params.id]);
     res.json(result[0]);
   } catch (err) {
@@ -557,6 +581,17 @@ router.post("/:id/cancel", async (req, res, next) => {
     await client.query("COMMIT");
 
     auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "order.cancelled", entityType: "order", entityId: order.id, details: { order_number: order.order_number } });
+
+    emailRetailer(req.retailer.id, {
+      title: "Order Cancelled",
+      message: `Your order ${order.order_number} has been cancelled.`,
+      actionPath: "/retailer/orders", ctaLabel: "View Orders",
+    });
+    emailAdmins({
+      title: `Order Cancelled: ${order.order_number}`,
+      message: `${req.retailer.name || "A retailer"} cancelled order ${order.order_number}.`,
+      actionPath: "/admin/orders", ctaLabel: "Review Order",
+    });
 
     const { rows: result } = await query("SELECT * FROM orders WHERE id = $1", [req.params.id]);
     res.json(result[0]);

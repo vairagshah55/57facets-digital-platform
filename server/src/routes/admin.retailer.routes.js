@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
+const { emailRetailer, emailRetailers } = require("../utils/notify");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -274,6 +275,11 @@ router.post("/:id/notify", async (req, res, next) => {
       [req.admin.id, req.params.id, JSON.stringify({ title })]
     );
 
+    emailRetailer(req.params.id, {
+      title, message,
+      actionPath: "/retailer/notifications", ctaLabel: "Open Portal",
+    });
+
     res.json({ sent: true });
   } catch (err) {
     next(err);
@@ -296,6 +302,11 @@ router.post("/notify-bulk", async (req, res, next) => {
         [rid, type || "announcement", title, message]
       );
     }
+
+    emailRetailers(retailerIds, {
+      title, message,
+      actionPath: "/retailer/notifications", ctaLabel: "Open Portal",
+    });
 
     res.json({ sent: retailerIds.length });
   } catch (err) {
