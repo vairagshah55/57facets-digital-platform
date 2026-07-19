@@ -318,8 +318,6 @@ export function RetailerOrders() {
 
   // Detail dialog
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
-  const [cancelConfirm, setCancelConfirm] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // New order dialog
@@ -475,23 +473,6 @@ export function RetailerOrders() {
     }
     navigate(`/retailer/product/${productId}`);
   }, [detailOrder, searchParams, setSearchParams, navigate]);
-
-  // Retailer cancels their own order — only allowed while it is still pending.
-  async function handleCancelOrder() {
-    if (!detailOrder) return;
-    setCancelling(true);
-    try {
-      await ordersApi.cancel(detailOrder.id);
-      toast.success(`${detailOrder.order_number} cancelled`);
-      setDetailOrder((prev: any) => (prev ? { ...prev, status: "cancelled" } : prev));
-      setOrdersList((prev) => prev.map((o) => (o.id === detailOrder.id ? { ...o, status: "cancelled" } : o)));
-      setCancelConfirm(false);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to cancel order");
-    } finally {
-      setCancelling(false);
-    }
-  }
 
   function openDetailAndEdit(order: Order) {
     setPendingEdit(true);
@@ -1033,7 +1014,6 @@ export function RetailerOrders() {
             setDetailOrder(null);
             setEditMode(false);
             setEditSuccess(false);
-            setCancelConfirm(false);
           }
         }}
       >
@@ -1163,52 +1143,6 @@ export function RetailerOrders() {
                           >
                             <Pencil className="w-3 h-3" /> Edit
                           </button>
-                        </div>
-                      )}
-
-                      {/* Cancel order — retailers may cancel only while pending */}
-                      {detailOrder.status === "pending" && !editMode && !editSuccess && (
-                        <div
-                          className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-3"
-                          style={{ backgroundColor: "var(--sf-red-subtle)", border: "1px solid var(--sf-red-border)" }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--sf-red-text)" }} />
-                            <div>
-                              <p className="text-sm font-semibold" style={{ color: "var(--sf-red-text)" }}>Cancel this order?</p>
-                              <p className="text-xs mt-0.5" style={{ color: "var(--sf-text-secondary)" }}>
-                                You can cancel while it's still pending. Once we confirm it, please contact support.
-                              </p>
-                            </div>
-                          </div>
-                          {cancelConfirm ? (
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                disabled={cancelling}
-                                onClick={handleCancelOrder}
-                                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                                style={{ backgroundColor: "var(--sf-red-text)", color: "#fff", border: "none", cursor: cancelling ? "default" : "pointer", opacity: cancelling ? 0.7 : 1 }}
-                              >
-                                {cancelling ? "Cancelling…" : "Yes, cancel"}
-                              </button>
-                              <button
-                                disabled={cancelling}
-                                onClick={() => setCancelConfirm(false)}
-                                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                                style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-secondary)", border: "1px solid var(--sf-divider)", cursor: "pointer" }}
-                              >
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setCancelConfirm(true)}
-                              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
-                              style={{ backgroundColor: "var(--sf-red-subtle)", color: "var(--sf-red-text)", border: "1px solid var(--sf-red-border)", cursor: "pointer" }}
-                            >
-                              <X className="w-3 h-3" /> Cancel Order
-                            </button>
-                          )}
                         </div>
                       )}
 

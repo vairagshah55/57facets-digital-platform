@@ -200,8 +200,6 @@ export const orders = {
   activeByProducts: (ids: string[]) => request(`/orders/active-by-products?ids=${ids.join(",")}`),
   update: (id: string, data: { items: OrderUpdateItem[]; note?: string }) =>
     request(`/orders/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  // Retailer cancels their own order — allowed only while it is still 'pending'.
-  cancel: (id: string) => request(`/orders/${id}/cancel`, { method: "POST" }),
 };
 
 // ── Notifications ─────────────────────────────────
