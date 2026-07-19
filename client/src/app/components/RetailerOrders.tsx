@@ -92,6 +92,7 @@ type OrderItem = {
   diamondShape?: string | null;
   diamondShade?: string | null;
   diamondQuality?: string | null;
+  diamondCustomizations?: { shape: string | null; shade: string | null; clarity: string | null; type: string | null; carat: number | null }[] | null;
   colorStoneName?: string | null;
   colorStoneQuality?: string | null;
   caratOptions?: number[];
@@ -417,7 +418,7 @@ export function RetailerOrders() {
           metal: it.metal_type || "", quantity: it.quantity || 1,
           unitPrice: Number(it.unit_price) || 0,
           priceLabel: formatP(Number(it.unit_price) || 0),
-          goldColour: it.gold_colour, diamondShape: it.diamond_shape,
+          goldColour: it.gold_colour, diamondShape: it.diamond_shape, diamondCustomizations: it.diamond_customizations,
           diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
           colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,
           caratOptions: withCurrentCarat(parseCaratOptions(it.product_carat_options), Number(it.carat) || 0),
@@ -578,7 +579,7 @@ export function RetailerOrders() {
           category: it.category || "", carat: it.carat || 0, metal: it.metal_type || "",
           quantity: it.quantity || 1, unitPrice: Number(it.unit_price) || 0,
           priceLabel: formatPrice(Number(it.unit_price) || 0),
-          goldColour: it.gold_colour, diamondShape: it.diamond_shape,
+          goldColour: it.gold_colour, diamondShape: it.diamond_shape, diamondCustomizations: it.diamond_customizations,
           diamondShade: it.diamond_shade, diamondQuality: it.diamond_quality,
           colorStoneName: it.color_stone_name, colorStoneQuality: it.color_stone_quality,
           caratOptions: withCurrentCarat(parseCaratOptions(it.product_carat_options), Number(it.carat) || 0),
@@ -1892,6 +1893,7 @@ function isCustomizedItem(it: OrderItem): boolean {
     (it.note && it.note.trim()) ||
     it.metal || it.goldColour ||
     it.diamondShape || it.diamondShade || it.diamondQuality ||
+    (it.diamondCustomizations && it.diamondCustomizations.length) ||
     it.colorStoneName || it.colorStoneQuality
   );
 }
@@ -1901,14 +1903,17 @@ function ItemCard({ item, onOpenProduct }: { item: OrderItem; onOpenProduct?: (p
   // Products that were deleted have a null productId — only linkable ones are clickable.
   const clickable = !!item.productId && !!onOpenProduct;
   // Build ordered, labelled attribute chips
+  // Multi-diamond items list each diamond separately below, so skip the flat
+  // Shape/Shade/Quality chips (which only reflect the first diamond).
+  const perDiamond = !!(item.diamondCustomizations && item.diamondCustomizations.length > 0);
   const chips: { label: string; value: string }[] = [
     item.category   ? { label: "Category",  value: item.category }            : null,
     item.metal      ? { label: "Metal",      value: item.metal }               : null,
     item.carat      ? { label: "Carat",      value: `${item.carat} ct` }       : null,
     item.goldColour ? { label: "Gold",       value: item.goldColour }          : null,
-    item.diamondShape   ? { label: "Shape",  value: item.diamondShape }        : null,
-    item.diamondShade   ? { label: "Shade",  value: item.diamondShade }        : null,
-    item.diamondQuality ? { label: "Quality",value: item.diamondQuality }      : null,
+    !perDiamond && item.diamondShape   ? { label: "Shape",  value: item.diamondShape }        : null,
+    !perDiamond && item.diamondShade   ? { label: "Shade",  value: item.diamondShade }        : null,
+    !perDiamond && item.diamondQuality ? { label: "Quality",value: item.diamondQuality }      : null,
     item.colorStoneName ? { label: "Stone",  value: item.colorStoneName }      : null,
     item.colorStoneQuality ? { label: "Stone Q", value: item.colorStoneQuality } : null,
   ].filter(Boolean) as { label: string; value: string }[];
@@ -1976,6 +1981,20 @@ function ItemCard({ item, onOpenProduct }: { item: OrderItem; onOpenProduct?: (p
                 <span style={{ color: "var(--sf-text-muted)", opacity: 0.6 }}>{chip.label}</span>
                 <span style={{ color: "var(--sf-text-secondary)", fontWeight: 500 }}>{chip.value}</span>
               </span>
+            ))}
+          </div>
+        )}
+
+        {/* Per-diamond specs (multi-diamond) */}
+        {perDiamond && (
+          <div className="flex flex-col gap-1 mb-2">
+            {item.diamondCustomizations!.map((dc, di) => (
+              <div key={di} className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                <span className="font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: "var(--sf-teal-subtle)", color: "var(--sf-teal)" }}>D{di + 1}</span>
+                <span style={{ color: "var(--sf-text-secondary)" }}>
+                  {[dc.shape, dc.shade, dc.clarity, dc.type, dc.carat != null ? `${Number(dc.carat)} ct` : null].filter(Boolean).join(" · ") || "—"}
+                </span>
+              </div>
             ))}
           </div>
         )}

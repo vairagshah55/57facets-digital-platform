@@ -187,13 +187,16 @@ router.post("/", async (req, res, next) => {
     for (const item of items) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, unit_price, carat, metal_type,
-         gold_colour, diamond_shape, diamond_shade, diamond_quality, color_stone_name, color_stone_quality, note)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+         gold_colour, diamond_shape, diamond_shade, diamond_quality, color_stone_name, color_stone_quality, note,
+         diamond_customizations)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb)`,
         [order.id, item.productId, item.quantity || 1, item._unitPrice || 0,
          item.carat || null, item.metalType || null,
          item.goldColour || null, item.diamondShape || null, item.diamondShade || null,
          item.diamondQuality || null, item.colorStoneName || null, item.colorStoneQuality || null,
-         item.note || null]
+         item.note || null,
+         (Array.isArray(item.diamondCustomizations) && item.diamondCustomizations.length)
+           ? JSON.stringify(item.diamondCustomizations) : null]
       );
     }
 

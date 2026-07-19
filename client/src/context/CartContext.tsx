@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 
+export interface DiamondCustomization {
+  shape: string | null;
+  shade: string | null;
+  clarity: string | null;
+  type: string | null;
+  carat: number | null;
+}
+
 export interface CartItem {
   cartId: string;
   productId: string;
@@ -14,6 +22,9 @@ export interface CartItem {
   diamondShape: string | null;
   diamondShade: string | null;
   diamondQuality: string | null;
+  // Per-diamond specs for multi-diamond products (one entry per diamond). Null/absent
+  // for single-diamond items, which use the flat diamond* fields above.
+  diamondCustomizations?: DiamondCustomization[] | null;
   colorStoneName: string | null;
   colorStoneQuality: string | null;
   note: string | null;

@@ -58,6 +58,15 @@ const DIAMOND_SHADES = ["EF", "FG", "GH", "HI", "IJ"];
 const DIAMOND_QUALITIES = ["VVS", "VVS-VS", "VS", "VS-SI", "SI"];
 const DIAMOND_TYPES = ["Natural", "Lab-grown"];
 
+// Shape customization rule: a Round diamond stays Round (shape locked); a FANCY
+// (non-round) diamond can ONLY be converted to Round — so its dropdown offers just
+// [<the fancy shape>, "Round"]. Round diamonds show a single locked "Round".
+const isRoundShape = (s?: string | null) => (s || "").toLowerCase().includes("round");
+const canonicalShape = (s?: string | null) =>
+  DIAMOND_SHAPES.find((o) => o.toLowerCase() === (s || "").toLowerCase()) || (s || "");
+const shapeOptionsForDiamond = (shape?: string | null) =>
+  isRoundShape(shape) ? ["Round"] : [canonicalShape(shape), "Round"].filter(Boolean);
+
 // Approx swatch colour for a gold-colour name — used on the variant chips.
 function goldSwatch(colour: string): string | null {
   const k = (colour || "").toLowerCase();
@@ -300,6 +309,11 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [selectedSizeSummary, setSelectedSizeSummary] = useState("");
   const [selectedDiamondIdx, setSelectedDiamondIdx] = useState(0);
   const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
+  // Per-diamond customization for multi-diamond products (one entry per diamond).
+  const [diamondSelections, setDiamondSelections] = useState<{ shape: string; shade: string; clarity: string; type: string }[]>([]);
+  const updateDiamondSel = useCallback((i: number, patch: Partial<{ shape: string; shade: string; clarity: string; type: string }>) => {
+    setDiamondSelections((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+  }, []);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(true); // open by default so it's easy to spot
@@ -370,6 +384,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
         else if (mapped.diamonds[0]?.shape) setSelectedDiamondShape(mapped.diamonds[0].shape);
         if (mapped.customization.diamondShades.length) setSelectedDiamondShade(mapped.customization.diamondShades[0]);
         if (mapped.customization.diamondQualities.length) setSelectedDiamondQuality(mapped.customization.diamondQualities[0]);
+        // Seed per-diamond selections from each diamond's own specs (multi-diamond UI).
+        setDiamondSelections(mapped.diamonds.map((d) => ({ shape: d.shape || "", shade: d.color || "", clarity: d.clarity || "", type: d.type || "" })));
         // Only pre-select a stone when it's genuinely customizable (2+ options).
         // A single fixed stone is not a customization, so leave it unselected —
         // that keeps it out of the cart/order's customization + "Customized" flag.
@@ -478,6 +494,22 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
   const handleAddToCart = useCallback(() => {
     if (adminPreview || !product || product.availability === "out-of-stock") return;
+    // Multi-diamond products carry a per-diamond spec array; the flat diamond*
+    // fields mirror the first diamond (list views / back-compat). Single-diamond
+    // products use the flat fields only.
+    const isMulti = product.diamonds.length > 1;
+    const diamondCustomizations = isMulti
+      ? product.diamonds.map((d, i) => {
+          const s = diamondSelections[i] || {};
+          return {
+            shape: (s.shape || d.shape) || null,
+            shade: (s.shade || d.color) || null,
+            clarity: (s.clarity || d.clarity) || null,
+            type: (s.type || d.type) || null,
+            carat: d.carat ?? null,
+          };
+        })
+      : null;
     addItem({
       productId: product.id,
       productName: product.name,
@@ -488,16 +520,17 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       carat: selectedCarat,
       metalType: selectedGoldType || null,
       goldColour: selectedGoldColour || null,
-      diamondShape: selectedDiamondShape || null,
-      diamondShade: selectedDiamondShade || null,
-      diamondQuality: selectedDiamondQuality || null,
+      diamondShape: isMulti ? (diamondCustomizations?.[0]?.shape ?? null) : (selectedDiamondShape || null),
+      diamondShade: isMulti ? (diamondCustomizations?.[0]?.shade ?? null) : (selectedDiamondShade || null),
+      diamondQuality: isMulti ? (diamondCustomizations?.[0]?.clarity ?? null) : (selectedDiamondQuality || null),
+      diamondCustomizations,
       colorStoneName: selectedColorStone || null,
       colorStoneQuality: selectedColorStoneQuality || null,
       // Prepend the chosen size so it travels with the order alongside any note.
       note: [selectedSizeSummary ? `Size: ${selectedSizeSummary}` : null, note || null]
         .filter(Boolean).join("\n") || null,
     });
-  }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, selectedSizeSummary, note]);
+  }, [product, addItem, quantity, totalPrice, selectedCarat, selectedGoldType, selectedGoldColour, selectedDiamondShape, selectedDiamondShade, selectedDiamondQuality, selectedColorStone, selectedColorStoneQuality, selectedSizeSummary, note, diamondSelections]);
 
   // Currency follows the retailer's country (₹ India / $ US).
   const isINR = (product?.country || "India") === "India";
@@ -1070,24 +1103,21 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                 const shade = selectedDiamondShade || product.customization.diamondShades[0] || "";
                 const clarity = selectedDiamondQuality || product.customization.diamondQualities[0] || "";
                 // Diamond customization (rendered as dropdowns below):
-                //  • Shape — a FANCY cut can be changed to any standard shape; but
-                //    when the diamond COMES as Round (single round shape), Shape is
-                //    LOCKED/disabled at Round.
-                //  • Shade & Clarity — always fully customizable (full option list).
-                // Each list also folds in any product-specific value (case-insensitive).
+                //  • Shape — Round is LOCKED/disabled; a fancy cut only offers Round
+                //    (fancy → Round conversion only).
+                //  • Shade & Clarity — always fully customizable (full option list),
+                //    folding in any product-specific value (case-insensitive).
                 const mergeOpts = (base: string[], extra: (string | null | undefined)[]) => {
                   const out = [...base];
                   extra.forEach((s) => { if (s && !out.some((o) => o.toLowerCase() === s.toLowerCase())) out.push(s); });
                   return out;
                 };
-                const configuredShapes = product.customization.diamondShapes;
-                const baseShapeRaw = configuredShapes[0] || product.diamonds[0]?.shape || "";
-                const shapeLocked = baseShapeRaw.toLowerCase().includes("round") && configuredShapes.length <= 1;
-                const shapeOptions = mergeOpts(DIAMOND_SHAPES, [...configuredShapes, ...product.diamonds.map((dd) => dd.shape)]);
+                const baseShapeRaw = product.customization.diamondShapes[0] || product.diamonds[0]?.shape || "";
+                const shapeLocked = isRoundShape(baseShapeRaw);
                 const shadeOptions = mergeOpts(DIAMOND_SHADES, [...product.customization.diamondShades, ...product.diamonds.map((dd) => dd.color)]);
                 const clarityOptions = mergeOpts(DIAMOND_QUALITIES, [...product.customization.diamondQualities, ...product.diamonds.map((dd) => dd.clarity)]);
                 const fields = [
-                  { label: "Shape", options: shapeLocked ? [selectedDiamondShape || baseShapeRaw || "Round"] : shapeOptions, selected: selectedDiamondShape, set: setSelectedDiamondShape, disabled: shapeLocked },
+                  { label: "Shape", options: shapeOptionsForDiamond(baseShapeRaw), selected: selectedDiamondShape, set: setSelectedDiamondShape, disabled: shapeLocked },
                   { label: "Shade", options: shadeOptions, selected: selectedDiamondShade, set: setSelectedDiamondShade, disabled: false },
                   { label: "Clarity", options: clarityOptions, selected: selectedDiamondQuality, set: setSelectedDiamondQuality, disabled: false },
                 ].filter((f) => f.options.length > 0);
@@ -1126,120 +1156,51 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                       )}
                     </div>
 
-                    {/* Multiple diamonds — pick one from a dropdown, details show below */}
-                    {multiDiamond && (() => {
-                      const idx = Math.min(selectedDiamondIdx, product.diamonds.length - 1);
-                      const d = product.diamonds[idx];
-                      // Read-only rows (Shape, Shade, Clarity & Type are editable dropdowns, rendered separately)
-                      const detailRows = [
-                        { label: "Carat", value: d.carat != null ? `${Number(d.carat)} ct` : "" },
-                        { label: "Certification", value: d.certification },
-                      ].filter((r) => r.value);
-                      // Preset types, plus the product's own type only if it isn't
-                      // already a preset (case-insensitive) — otherwise "NATURAL"
-                      // would show as a duplicate of "Natural".
-                      const typeOptions = [
-                        ...DIAMOND_TYPES,
-                        ...(d.type && !DIAMOND_TYPES.some((t) => t.toLowerCase() === d.type.toLowerCase()) ? [d.type] : []),
-                      ];
-                      return (
-                        <div className="mb-5">
-                          {/* Diamond picker dropdown — DISABLED (redundant). Kept for reference. */}
-                          {false && (
-                            <div className="relative mb-3">
-                              <button
-                                type="button"
-                                onClick={() => setDiamondMenuOpen((o) => !o)}
-                                className="w-full flex items-center gap-2.5 h-12 rounded-xl pl-2.5 pr-3 transition-colors"
-                                style={{ background: "var(--sf-glass-bg)", border: `1px solid ${diamondMenuOpen ? "var(--sf-teal)" : "var(--sf-teal-border)"}` }}
-                              >
-                                <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
-                                  style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>
-                                  {idx + 1}
-                                </span>
-                                <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{d.shape || "Diamond"}</span>
-                                {[d.color, d.clarity].filter(Boolean).length > 0 && (
-                                  <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[d.color, d.clarity].filter(Boolean).join(" · ")}</span>
-                                )}
-                                <span className="ml-auto flex items-center gap-2 shrink-0">
-                                  {d.carat != null && (
-                                    <span className="flex items-baseline gap-0.5 px-2.5 py-1 rounded-full"
-                                      style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)" }}>
-                                      <span className="text-xs font-black leading-none" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)}</span>
-                                      <span className="text-[10px] font-bold" style={{ color: "var(--sf-teal)" }}>ct</span>
-                                    </span>
-                                  )}
-                                  <ChevronRight className="w-4 h-4 transition-transform"
-                                    style={{ color: "var(--sf-teal)", transform: diamondMenuOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
-                                </span>
-                              </button>
-
-                              <AnimatePresence>
-                                {diamondMenuOpen && (
-                                  <>
-                                    {/* click-outside catcher */}
-                                    <div className="fixed inset-0 z-40" onClick={() => setDiamondMenuOpen(false)} />
-                                    <motion.div
-                                      initial={{ opacity: 0, y: -6 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, y: -6 }}
-                                      transition={{ duration: 0.15 }}
-                                      className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden p-1.5"
-                                      style={{ top: "calc(100% + 6px)", background: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-glass-border-strong)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }}
-                                    >
-                                      {product.diamonds.map((dd, i) => {
-                                        const active = i === idx;
-                                        return (
-                                          <button key={i} type="button"
-                                            onClick={() => { setSelectedDiamondIdx(i); setSelectedDiamondShape(dd.shape || ""); setSelectedDiamondShade(dd.color || ""); setSelectedDiamondQuality(dd.clarity || ""); setSelectedDiamondType(dd.type || ""); setDiamondMenuOpen(false); }}
-                                            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors"
-                                            style={{ background: active ? "var(--sf-teal-glass)" : "transparent", border: active ? "1px solid var(--sf-teal-border)" : "1px solid transparent" }}
-                                            onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sf-glass-bg)"; }}
-                                            onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-                                          >
-                                            <span className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
-                                              style={{ background: active ? "var(--sf-teal)" : "var(--sf-glass-pill)", color: active ? "#fff" : "var(--sf-text-muted)" }}>
-                                              {i + 1}
-                                            </span>
-                                            <span className="text-sm font-bold" style={{ color: "var(--sf-text-primary)" }}>{dd.shape || "Diamond"}</span>
-                                            {[dd.color, dd.clarity].filter(Boolean).length > 0 && (
-                                              <span className="text-xs truncate" style={{ color: "var(--sf-text-muted)" }}>{[dd.color, dd.clarity].filter(Boolean).join(" · ")}</span>
-                                            )}
-                                            <span className="ml-auto flex items-center gap-2 shrink-0">
-                                              {dd.carat != null && (
-                                                <span className="text-xs font-bold" style={{ color: "var(--sf-teal)" }}>{Number(dd.carat)} ct</span>
-                                              )}
-                                              {active && <Check className="w-4 h-4" style={{ color: "var(--sf-teal)" }} strokeWidth={3} />}
-                                            </span>
-                                          </button>
-                                        );
-                                      })}
-                                    </motion.div>
-                                  </>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )}
-
-                          {/* Selected diamond — Shape & Shade are dropdowns, rest read-only */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <GridSelect label="Shape" value={selectedDiamondShape || d.shape || ""} options={DIAMOND_SHAPES} onChange={setSelectedDiamondShape} />
-                            <GridSelect label="Shade" value={selectedDiamondShade || d.color || ""} options={DIAMOND_SHADES} onChange={setSelectedDiamondShade} />
-                            <GridSelect label="Clarity" value={selectedDiamondQuality || d.clarity || ""} options={DIAMOND_QUALITIES} onChange={setSelectedDiamondQuality} />
-                            <GridSelect label="Type" value={selectedDiamondType || d.type || ""} options={typeOptions} onChange={setSelectedDiamondType} />
-                            {detailRows.map((r) => (
-                              <div key={r.label}>
-                                <span className="block text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
-                                <div className="w-full flex items-center h-10 px-3 rounded-lg"
-                                  style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border-strong)" }}>
-                                  <span className="text-sm font-bold truncate" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
-                                </div>
+                    {/* Multiple diamonds — customize EACH diamond independently */}
+                    {multiDiamond && (
+                      <div className="mb-5 space-y-2.5">
+                        {product.diamonds.map((d, i) => {
+                          const sel = diamondSelections[i] || { shape: d.shape || "", shade: d.color || "", clarity: d.clarity || "", type: d.type || "" };
+                          const shapeLocked = isRoundShape(d.shape);
+                          // Preset types + the diamond's own type if it isn't already a preset.
+                          const typeOptions = [
+                            ...DIAMOND_TYPES,
+                            ...(d.type && !DIAMOND_TYPES.some((t) => t.toLowerCase() === d.type.toLowerCase()) ? [d.type] : []),
+                          ];
+                          const detailRows = [
+                            { label: "Carat", value: d.carat != null ? `${Number(d.carat)} ct` : "" },
+                            { label: "Cert", value: d.certification },
+                          ].filter((r) => r.value);
+                          return (
+                            <div key={i} className="rounded-xl p-3" style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border)" }}>
+                              {/* Diamond header */}
+                              <div className="flex items-center gap-2 mb-2.5">
+                                <span className="flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-black shrink-0"
+                                  style={{ background: "var(--sf-teal-glass)", border: "1px solid var(--sf-teal-border)", color: "var(--sf-teal)" }}>{i + 1}</span>
+                                <span className="text-xs font-bold" style={{ color: "var(--sf-text-primary)" }}>Diamond {i + 1}</span>
+                                {d.carat != null && <span className="text-[11px] font-bold ml-auto" style={{ color: "var(--sf-teal)" }}>{Number(d.carat)} ct</span>}
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                              {/* Per-diamond dropdowns (Shape locked when this diamond is Round) */}
+                              <div className="grid grid-cols-3 gap-2">
+                                <GridSelect label="Shape" value={sel.shape || d.shape || ""} options={shapeOptionsForDiamond(d.shape)} onChange={(v) => updateDiamondSel(i, { shape: v })} disabled={shapeLocked} compact />
+                                <GridSelect label="Shade" value={sel.shade || d.color || ""} options={DIAMOND_SHADES} onChange={(v) => updateDiamondSel(i, { shade: v })} compact />
+                                <GridSelect label="Clarity" value={sel.clarity || d.clarity || ""} options={DIAMOND_QUALITIES} onChange={(v) => updateDiamondSel(i, { clarity: v })} compact />
+                                <GridSelect label="Type" value={sel.type || d.type || ""} options={typeOptions} onChange={(v) => updateDiamondSel(i, { type: v })} compact />
+                                {detailRows.map((r) => (
+                                  <div key={r.label}>
+                                    <span className="block text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--sf-text-muted)" }}>{r.label}</span>
+                                    <div className="w-full flex items-center h-8 px-2.5 rounded-lg"
+                                      style={{ background: "var(--sf-glass-bg)", border: "1px solid var(--sf-glass-border-strong)" }}>
+                                      <span className="text-xs font-bold truncate" style={{ color: r.label === "Carat" ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{r.value}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Single diamond — Shape (locked for Round), Shade & Clarity as compact dropdowns */}
                     {!multiDiamond && fields.length > 0 && (

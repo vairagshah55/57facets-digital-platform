@@ -12,6 +12,7 @@
     "free-port": "node scripts/free-port.js",
     "db:migrate": "node src/db/migrate.js && node src/db/migrate-admin.js && node src/db/migrate-search-trigram.js && node src/db/migrate-collection-festive-tag.js && node src/db/migrate-pricing.js && node src/db/migrate-diamond-sieves.js && node src/db/migrate-tirich-lead.js && node src/db/migrate-stone-rate-pc.js && node src/db/migrate-retailer-country.js && node src/db/migrate-metal-country.js && node src/db/migrate-diamond-country.js && node src/db/migrate-stone-country.js && node src/db/migrate-making-country.js && node src/db/migrate-seed-us-stones.js && node src/db/migrate-product-type-subcategory.js && node src/db/migrate-import-jobs.js",
     "db:migrate:import-jobs": "node src/db/migrate-import-jobs.js",
+    "db:migrate:diamond-cust": "node src/db/migrate-order-diamond-customizations.js",
     "db:migrate:type-subcategory": "node src/db/migrate-product-type-subcategory.js",
     "db:migrate:stone-rate-pc": "node src/db/migrate-stone-rate-pc.js",
     "db:migrate:retailer-country": "node src/db/migrate-retailer-country.js",

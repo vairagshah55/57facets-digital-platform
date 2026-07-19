@@ -61,6 +61,7 @@ type OrderItem = {
   id: string; product_id: string; quantity: number; unit_price: number;
   carat: number | null; metal_type: string | null; gold_colour: string | null;
   diamond_shape: string | null; diamond_shade: string | null; diamond_quality: string | null;
+  diamond_customizations?: { shape: string | null; shade: string | null; clarity: string | null; type: string | null; carat: number | null }[] | null;
   color_stone_name: string | null; color_stone_quality: string | null; note: string | null;
   name: string; sku: string; image: string | null; category: string | null;
 };
@@ -464,9 +465,9 @@ export function AdminOrders() {
                                 item.metal_type,
                                 item.gold_colour,
                                 item.carat && `${item.carat} ct`,
-                                item.diamond_shape,
-                                item.diamond_shade,
-                                item.diamond_quality,
+                                // Multi-diamond items list each diamond below; skip the flat diamond tags.
+                                ...(item.diamond_customizations && item.diamond_customizations.length
+                                  ? [] : [item.diamond_shape, item.diamond_shade, item.diamond_quality]),
                                 item.color_stone_name,
                                 item.color_stone_quality,
                               ]
@@ -481,6 +482,19 @@ export function AdminOrders() {
                                   </span>
                                 ))}
                             </div>
+                            {/* Per-diamond specs (multi-diamond) */}
+                            {item.diamond_customizations && item.diamond_customizations.length > 0 && (
+                              <div className="flex flex-col gap-1 mt-1.5">
+                                {item.diamond_customizations.map((dc, di) => (
+                                  <div key={di} className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                                    <span className="font-bold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(48,184,191,0.15)", color: "var(--sf-teal)" }}>D{di + 1}</span>
+                                    <span style={{ color: "var(--sf-text-secondary)" }}>
+                                      {[dc.shape, dc.shade, dc.clarity, dc.type, dc.carat != null ? `${Number(dc.carat)} ct` : null].filter(Boolean).join(" · ") || "—"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             {item.note && (
                               <p
                                 className="text-[11px] mt-1.5"

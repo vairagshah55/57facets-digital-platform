@@ -64,6 +64,7 @@ export function CartBar() {
         diamondShape: item.diamondShape,
         diamondShade: item.diamondShade,
         diamondQuality: item.diamondQuality,
+        diamondCustomizations: item.diamondCustomizations,
         colorStoneName: item.colorStoneName,
         colorStoneQuality: item.colorStoneQuality,
         note: item.note,
@@ -306,12 +307,19 @@ export function CartBar() {
                               {item.metalType} {item.goldColour || ""}
                             </span>
                           )}
-                          {item.diamondShape && (
+                          {item.diamondCustomizations && item.diamondCustomizations.length > 0 ? (
+                            item.diamondCustomizations.map((dc, di) => (
+                              <span key={di} className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                style={{ background: "var(--sf-glass-bg-hover)", color: "var(--sf-text-muted)" }}>
+                                D{di + 1}: {[dc.shape, dc.shade, dc.clarity, dc.type].filter(Boolean).join(" · ") || "—"}
+                              </span>
+                            ))
+                          ) : item.diamondShape ? (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
                               style={{ background: "var(--sf-glass-bg-hover)", color: "var(--sf-text-muted)" }}>
                               {[item.diamondShape, item.diamondShade, item.diamondQuality].filter(Boolean).join(" · ")}
                             </span>
-                          )}
+                          ) : null}
                           {item.colorStoneName && (
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
                               style={{ background: "var(--sf-purple-subtle)", color: "#9B59B6" }}>
