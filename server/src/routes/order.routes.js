@@ -4,7 +4,7 @@ const { authenticate } = require("../middleware/auth");
 const AppError = require("../utils/AppError");
 const auditLog = require("../utils/auditLog");
 const pricing = require("../services/pricing.service");
-const { emailRetailer, emailAdmins } = require("../utils/notify");
+const { emailRetailer, emailAdmins, emailRetailerOrderPlaced } = require("../utils/notify");
 
 // Columns the pricing engine needs to compute a per-retailer price.
 const PRICING_COLS =
@@ -226,11 +226,14 @@ router.post("/", async (req, res, next) => {
 
     auditLog({ actorType: "retailer", actorId: req.retailer.id, action: "order.placed", entityType: "order", entityId: order.id, details: { order_number: orderNumber, items: items.length, total } });
 
-    // Notification emails (fire-and-forget — mirror the bell notifications)
-    emailRetailer(req.retailer.id, {
-      title: "Order Placed",
-      message: `Your order ${orderNumber} has been submitted for review. We'll keep you posted as it progresses.`,
-      actionPath: "/retailer/orders", ctaLabel: "View Order",
+    // Notification emails (fire-and-forget — mirror the bell notifications).
+    // Retailer gets the dedicated "order received" confirmation (summary table).
+    emailRetailerOrderPlaced(req.retailer.id, {
+      orderNumber,
+      orderDate: new Date(order.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+      itemCount: items.length,
+      orderAmount: total,
+      orderUrl: `${(process.env.CLIENT_ORIGIN || "https://57facets.in").replace(/\/$/, "")}/retailer/orders?order=${order.id}`,
     });
     emailAdmins({
       title: `New Order: ${orderNumber}`,

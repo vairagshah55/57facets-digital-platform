@@ -247,4 +247,105 @@ function notificationEmail({ title, message, actionPath, ctaLabel, name }) {
   };
 }
 
-module.exports = { otpEmail, loginAlertEmail, notificationEmail };
+/**
+ * Order-received confirmation email sent to the retailer when they place an order.
+ * @returns {{subject:string, html:string, text:string}}
+ */
+function orderPlacedEmail({ name, orderNumber, orderDate, itemCount, orderAmount, orderUrl, isINR = true }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
+  const currency = isINR ? "₹" : "$";
+  const amount = `${currency}${Number(orderAmount || 0).toLocaleString(isINR ? "en-IN" : "en-US")}`;
+
+  const summary = [
+    ["Order Number", orderNumber],
+    ["Order Date", orderDate],
+    ["Items", itemCount != null ? String(itemCount) : null],
+    ["Order Value", amount],
+    ["Status", "Under Review"],
+  ];
+  const rowsHtml = summary
+    .map(([label, value]) => `
+      <tr>
+        <td style="padding:9px 16px 9px 0;font-family:${BRAND.sans};font-size:13px;color:${BRAND.textMuted};white-space:nowrap;vertical-align:top;">${label}</td>
+        <td style="padding:9px 0;font-family:${BRAND.sans};font-size:13px;color:${BRAND.textPrimary};border-bottom:1px solid ${BRAND.border};">${escapeHtml(value) || "&mdash;"}</td>
+      </tr>`)
+    .join("");
+
+  const subHeading = (txt) => `<p style="margin:26px 0 8px 0;font-family:${BRAND.serif};font-size:15px;font-weight:600;color:${BRAND.textPrimary};">${txt}</p>`;
+
+  const cta = orderUrl
+    ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0 0;">
+      <tr>
+        <td align="center" style="border-radius:10px;background:${BRAND.teal};">
+          <a href="${escapeHtml(orderUrl)}" style="display:inline-block;padding:12px 26px;font-family:${BRAND.sans};font-size:14px;font-weight:700;color:#04121a;text-decoration:none;border-radius:10px;">
+            View Order &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>`
+    : "";
+
+  const body = `
+    <div style="display:inline-block;background:${BRAND.tealSoft};border:1px solid ${BRAND.teal};border-radius:999px;padding:5px 12px;font-family:${BRAND.sans};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:${BRAND.teal};margin-bottom:16px;">
+      Order Received
+    </div>
+    <h1 style="margin:0 0 12px 0;font-family:${BRAND.serif};font-size:21px;font-weight:600;color:${BRAND.textPrimary};">
+      Thank you for your order
+    </h1>
+    <p style="margin:0 0 6px 0;font-family:${BRAND.sans};font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">${greeting}</p>
+    <p style="margin:0;font-family:${BRAND.sans};font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">
+      We&rsquo;ve received <strong style="color:${BRAND.textPrimary};">Order #${escapeHtml(orderNumber)}</strong>, and it has been submitted for review.
+    </p>
+
+    ${subHeading("Order Summary")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${rowsHtml}
+    </table>
+
+    ${subHeading("What happens next?")}
+    <p style="margin:0;font-family:${BRAND.sans};font-size:14px;line-height:1.7;color:${BRAND.textSecondary};">
+      Our team will review your order and notify you once it has been approved and moved to processing.
+      You can track the latest status anytime from your dashboard.
+    </p>
+    ${cta}
+
+    <p style="margin:26px 0 0 0;font-family:${BRAND.sans};font-size:13px;line-height:1.6;color:${BRAND.textMuted};">
+      If you have any questions, feel free to contact us or reply to this email &mdash;
+      <a href="mailto:contact@57facets.in" style="color:${BRAND.teal};text-decoration:none;">contact@57facets.in</a>.
+    </p>
+    <p style="margin:18px 0 0 0;font-family:${BRAND.sans};font-size:14px;color:${BRAND.textSecondary};">Thank you for choosing 57 Facets.</p>
+    <p style="margin:4px 0 0 0;font-family:${BRAND.sans};font-size:14px;font-weight:600;color:${BRAND.textPrimary};">Team 57 Facets</p>`;
+
+  const text = [
+    greeting,
+    "",
+    "Thank you for your order.",
+    "",
+    `We've received Order #${orderNumber}, and it has been submitted for review.`,
+    "",
+    "Order Summary",
+    `Order Number: ${orderNumber}`,
+    `Order Date: ${orderDate}`,
+    `Items: ${itemCount}`,
+    `Order Value: ${amount}`,
+    "Status: Under Review",
+    "",
+    "What happens next?",
+    "Our team will review your order and notify you once it has been approved and moved to processing. You can track the latest status anytime from your dashboard.",
+    orderUrl ? `\nView Order: ${orderUrl}` : "",
+    "",
+    "If you have any questions, feel free to contact us or reply to this email — contact@57facets.in.",
+    "",
+    "Thank you for choosing 57 Facets.",
+    "Team 57 Facets",
+  ].join("\n");
+
+  return {
+    subject: `Order ${orderNumber} received — 57 Facets`,
+    html: baseLayout({ preheader: `We've received order ${orderNumber} — it's under review.`, body }),
+    text,
+  };
+}
+
+module.exports = { otpEmail, loginAlertEmail, notificationEmail, orderPlacedEmail };

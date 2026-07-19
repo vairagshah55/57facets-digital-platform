@@ -7,7 +7,7 @@
 // ════════════════════════════════════════════════════════════
 const { query } = require("../config/db");
 const { sendMail, getAdminRecipients } = require("./mailer");
-const { notificationEmail } = require("./emailTemplates");
+const { notificationEmail, orderPlacedEmail } = require("./emailTemplates");
 
 // Email one retailer (by id) the given notification.
 async function emailRetailer(retailerId, { title, message, actionPath, ctaLabel }) {
@@ -41,6 +41,22 @@ async function emailRetailers(retailerIds, { title, message, actionPath, ctaLabe
   }
 }
 
+// Email a retailer the dedicated "order received" confirmation (with the order
+// summary table). Currency follows the retailer's country.
+async function emailRetailerOrderPlaced(retailerId, { orderNumber, orderDate, itemCount, orderAmount, orderUrl }) {
+  try {
+    if (!retailerId) return;
+    const { rows } = await query("SELECT email, name, country FROM retailers WHERE id = $1", [retailerId]);
+    const r = rows[0];
+    if (!r || !r.email) return;
+    const isINR = (r.country || "India") === "India";
+    const mail = orderPlacedEmail({ name: r.name, orderNumber, orderDate, itemCount, orderAmount, orderUrl, isINR });
+    await sendMail({ to: r.email, subject: mail.subject, html: mail.html, text: mail.text });
+  } catch (err) {
+    console.error("[notify] emailRetailerOrderPlaced failed:", err.message);
+  }
+}
+
 // Email the admin recipients (ADMIN_NOTIFY_EMAIL, or active admins).
 async function emailAdmins({ title, message, actionPath, ctaLabel }) {
   try {
@@ -53,4 +69,4 @@ async function emailAdmins({ title, message, actionPath, ctaLabel }) {
   }
 }
 
-module.exports = { emailRetailer, emailRetailers, emailAdmins };
+module.exports = { emailRetailer, emailRetailers, emailAdmins, emailRetailerOrderPlaced };
