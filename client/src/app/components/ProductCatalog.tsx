@@ -53,14 +53,14 @@ type ApiProduct = {
   price?: number; price_source?: string;
   carat: number; metal_type: string;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
-  is_new: boolean; category: string; image: string | null;
+  is_new: boolean; ordered?: boolean; category: string; image: string | null;
 };
 
 type Product = {
   id: number; name: string; sku: string; price: number; priceLabel: string;
   category: string; carat: number;
   availability: "in-stock" | "made-to-order" | "out-of-stock";
-  image: string; isNew: boolean;
+  image: string; isNew: boolean; ordered: boolean;
 };
 
 type Category = { id: number; name: string; image_url: string | null; product_count?: number };
@@ -132,6 +132,7 @@ function mapProduct(p: ApiProduct, isINR = true): Product {
     id: p.id, name: p.name, sku: p.sku || "", price, priceLabel: formatPrice(price, isINR),
     category: p.category, carat: p.carat ?? 0, availability: p.availability,
     image: p.image ? imageUrl(p.image) : PLACEHOLDER_IMAGE, isNew: p.is_new,
+    ordered: Boolean(p.ordered),
   };
 }
 
@@ -973,10 +974,12 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
           </div>
         )}
 
-        {/* Top-left: NEW badge */}
-        {product.isNew && (
+        {/* Top-left: "Recently Ordered" (if the retailer has ordered this) replaces the NEW badge */}
+        {(product.ordered || product.isNew) && (
           <div className="absolute top-2 left-2">
-            <Badge className="text-[10px] px-1.5 py-0.5" style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>NEW</Badge>
+            <Badge className="text-[10px] px-1.5 py-0.5" style={{ backgroundColor: "var(--sf-teal)", color: "#fff" }}>
+              {product.ordered ? "Recently Ordered" : "NEW"}
+            </Badge>
           </div>
         )}
 

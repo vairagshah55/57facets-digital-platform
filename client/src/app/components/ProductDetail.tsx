@@ -91,6 +91,7 @@ interface ProductData {
   images: string[];
   video: string;
   isNew: boolean;
+  ordered: boolean;
   goldPricePerGram: number;
   goldPriceUpdatedAt: string | null;
   serverPrice: number | null;
@@ -176,6 +177,7 @@ function mapApiProduct(raw: any): ProductData {
     images: apiImages.length > 0 ? apiImages : FALLBACK_IMAGES,
     video: videoEntry ? imageUrl(videoEntry.image_url) : "",
     isNew: Boolean(raw.is_new),
+    ordered: Boolean(raw.ordered),
     goldPricePerGram: Number(raw.goldPricePerGram) || 6250,
     goldPriceUpdatedAt: raw.goldPriceUpdatedAt || null,
     diamonds: Array.isArray(raw.diamonds)
@@ -759,13 +761,13 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               </>
             )}
 
-            {/* Badges */}
-            {product.isNew && (
+            {/* Badges — "Recently Ordered" (if this retailer has ordered it) replaces NEW */}
+            {(product.ordered || product.isNew) && (
               <Badge
                 className="absolute top-3 left-3 text-xs"
                 style={{ backgroundColor: "var(--sf-teal)", color: "var(--sf-bg-base)" }}
               >
-                NEW
+                {product.ordered ? "Recently Ordered" : "NEW"}
               </Badge>
             )}
 

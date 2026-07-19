@@ -5,6 +5,19 @@ const auditLog = require("../utils/auditLog");
 const AppError = require("../utils/AppError");
 const pricing = require("../services/pricing.service");
 
+// The retailer-facing "New" badge auto-expires 12 months after a product is
+// created: it shows only while the product is still flagged new AND within that
+// window. The raw is_new flag on the row is left untouched (admins still see it).
+const IS_NEW_EXPR =
+  "(p.is_new = true AND p.created_at >= NOW() - INTERVAL '12 months')";
+
+// Per-retailer "Recently Ordered" flag — true when this retailer has an order
+// (any status except cancelled) containing the product. In the retailer UI this
+// badge replaces "New". `ridParam` is the SQL placeholder bound to the retailer id.
+const ORDERED_EXPR = (ridParam) =>
+  `EXISTS (SELECT 1 FROM order_items oi JOIN orders o ON o.id = oi.order_id
+           WHERE oi.product_id = p.id AND o.retailer_id = ${ridParam} AND o.status <> 'cancelled')`;
+
 // ── GET /api/products ──────────────────────────────
 // List products with filters
 router.get("/", authenticate, async (req, res, next) => {
@@ -62,7 +75,7 @@ router.get("/", authenticate, async (req, res, next) => {
       params.push(max_carat);
     }
     if (is_new === "true") {
-      conditions.push("p.is_new = true");
+      conditions.push(IS_NEW_EXPR);
     }
     // Unseen = active products this retailer has never viewed. Folded into the
     // main list so it inherits the same filters + pagination (no separate capped path).
@@ -76,9 +89,19 @@ router.get("/", authenticate, async (req, res, next) => {
     const pageNum = parseInt(page), lim = parseInt(limit);
     const offset = (pageNum - 1) * lim;
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    // "Recently Ordered" badge flag. Its bind param is appended AFTER the WHERE
+    // params (into selectParams) so the COUNT query below — which reuses only the
+    // original `params` — stays in sync with its own placeholders.
+    const rid = req.retailer?.id || null;
+    const orderedSql = rid ? ORDERED_EXPR(`$${idx}`) : "false";
+    const selectParams = rid ? [...params, rid] : [...params];
+    if (rid) idx++;
+
     const COLS = `p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
               p.gross_weight, p.net_weight,
-              p.availability, p.is_new, p.diamond_shape, p.diamond_size, p.diamond_pcs,
+              p.availability, ${IS_NEW_EXPR} AS is_new, ${orderedSql} AS ordered,
+              p.diamond_shape, p.diamond_size, p.diamond_pcs,
               p.diamond_color, p.diamond_clarity,
               p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
@@ -92,13 +115,13 @@ router.get("/", authenticate, async (req, res, next) => {
     let pageProducts, total;
     if (hasPriceFilter) {
       // Price every matching product, filter by computed price, then paginate in JS.
-      const { rows: allRows } = await query(baseQuery, params);
+      const { rows: allRows } = await query(baseQuery, selectParams);
       let priced = await pricing.priceProductsForRetailer(allRows, req.retailer?.id);
       priced = priced.filter((p) => (minP == null || p.price >= minP) && (maxP == null || p.price <= maxP));
       total = priced.length;
       pageProducts = priced.slice(offset, offset + lim);
     } else {
-      const { rows } = await query(`${baseQuery} LIMIT $${idx++} OFFSET $${idx++}`, [...params, lim, offset]);
+      const { rows } = await query(`${baseQuery} LIMIT $${idx++} OFFSET $${idx++}`, [...selectParams, lim, offset]);
       pageProducts = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
       const { rows: countRows } = await query(
         `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}`, params);
@@ -191,7 +214,7 @@ router.get("/counts", authenticate, async (req, res, next) => {
     const zero = Promise.resolve({ rows: [{ c: 0 }] });
     const [tot, nw, rv, wl, un] = await Promise.all([
       query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true"),
-      query("SELECT COUNT(*)::int AS c FROM products WHERE is_active = true AND is_new = true"),
+      query(`SELECT COUNT(*)::int AS c FROM products p WHERE p.is_active = true AND ${IS_NEW_EXPR}`),
       rid ? query("SELECT COUNT(*)::int AS c FROM recently_viewed WHERE retailer_id = $1", [rid]) : zero,
       rid ? query("SELECT COUNT(*)::int AS c FROM wishlists WHERE retailer_id = $1", [rid]) : zero,
       // Unseen = active products the retailer has never viewed. Pure COUNT(*), no row fetch.
@@ -220,12 +243,12 @@ router.get("/counts", authenticate, async (req, res, next) => {
 router.get("/new-arrivals", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.availability, p.is_new,
+      `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.availability, ${IS_NEW_EXPR} AS is_new,
               c.name AS category,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
-       WHERE p.is_new = true AND p.is_active = true
+       WHERE ${IS_NEW_EXPR} AND p.is_active = true
        ORDER BY p.created_at DESC, p.id DESC LIMIT 12`
     );
     res.json(rows);
@@ -239,7 +262,7 @@ router.get("/recently-viewed", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
-              p.gross_weight, p.net_weight, p.availability, p.is_new,
+              p.gross_weight, p.net_weight, p.availability, ${IS_NEW_EXPR} AS is_new, ${ORDERED_EXPR("$1")} AS ordered,
               p.diamond_shape, p.diamond_size, p.diamond_pcs, p.diamond_color, p.diamond_clarity,
               p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
@@ -266,7 +289,7 @@ router.get("/unseen", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type, p.metal_weight,
-              p.gross_weight, p.net_weight, p.availability, p.is_new,
+              p.gross_weight, p.net_weight, p.availability, ${IS_NEW_EXPR} AS is_new, ${ORDERED_EXPR("$1")} AS ordered,
               p.diamond_shape, p.diamond_size, p.diamond_pcs, p.diamond_color, p.diamond_clarity,
               p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
@@ -292,11 +315,13 @@ router.get("/unseen", authenticate, async (req, res, next) => {
 router.get("/:id", authenticate, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT p.*, c.name AS category
+      `SELECT p.*, c.name AS category,
+              ${IS_NEW_EXPR} AS is_new_effective,
+              ${ORDERED_EXPR("$2")} AS ordered
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE p.id = $1`,
-      [req.params.id]
+      [req.params.id, req.retailer?.id || null]
     );
     if (rows.length === 0) {
       throw new AppError("Product not found", 404);
@@ -403,6 +428,9 @@ router.get("/:id", authenticate, async (req, res, next) => {
 
     res.json({
       ...rows[0],
+      // Retailer-facing "New" is capped to 12 months; `ordered` drives the
+      // "Recently Ordered" badge that replaces it. Raw is_new stays admin-only.
+      is_new: rows[0].is_new_effective,
       price: priced.price,
       price_source: priced.source,
       price_breakdown: priced.breakdown,
