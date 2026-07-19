@@ -2,7 +2,13 @@ const router = require("express").Router();
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
-const { emailRetailer } = require("../utils/notify");
+const {
+  emailRetailer,
+  emailRetailerOrderApproved, emailRetailerOrderShipped,
+  emailRetailerOrderEditUnlocked, emailRetailerOrderCancelled,
+} = require("../utils/notify");
+
+const CLIENT_BASE = (process.env.CLIENT_ORIGIN || "https://57facets.in").replace(/\/$/, "");
 
 router.use(adminAuth);
 
@@ -165,10 +171,9 @@ router.put("/:id/allow-edit", async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    emailRetailer(order.retailer_id, {
-      title: "Order Edit Available",
-      message: msg,
-      actionPath: "/retailer/orders", ctaLabel: "Edit Order",
+    emailRetailerOrderEditUnlocked(order.retailer_id, {
+      orderNumber: order.order_number,
+      editOrderUrl: `${CLIENT_BASE}/retailer/orders?order=${order.id}`,
     });
 
     res.json({ message: "Edit permission granted" });
@@ -262,11 +267,29 @@ router.put("/:id/status", async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    emailRetailer(order.retailer_id, {
-      title: trackingLabel,
-      message: notifMsg,
-      actionPath: "/retailer/orders", ctaLabel: "View Order",
-    });
+    // Dedicated branded email per transition; falls back to the generic one.
+    const orderUrl = `${CLIENT_BASE}/retailer/orders?order=${order.id}`;
+    const nowDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    // A tracking URL is only sent if the admin pasted a link in the detail field.
+    const trackingUrl = detail && /^https?:\/\//i.test(detail.trim()) ? detail.trim() : null;
+    if (status === "processing") {
+      emailRetailerOrderApproved(order.retailer_id, { orderNumber: order.order_number, orderUrl });
+    } else if (status === "shipped") {
+      emailRetailerOrderShipped(order.retailer_id, {
+        orderNumber: order.order_number, shipmentDate: nowDate,
+        estimatedDelivery: null, trackingUrl, orderUrl,
+      });
+    } else if (status === "cancelled") {
+      emailRetailerOrderCancelled(order.retailer_id, {
+        orderNumber: order.order_number, cancelledDate: nowDate,
+        cancellationReason: detail || null, ordersUrl: `${CLIENT_BASE}/retailer/orders`,
+      });
+    } else {
+      emailRetailer(order.retailer_id, {
+        title: trackingLabel, message: notifMsg,
+        actionPath: "/retailer/orders", ctaLabel: "View Order",
+      });
+    }
 
     // Return updated order
     const { rows: updated } = await query(

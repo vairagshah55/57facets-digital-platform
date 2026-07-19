@@ -7,7 +7,24 @@
 // ════════════════════════════════════════════════════════════
 const { query } = require("../config/db");
 const { sendMail, getAdminRecipients } = require("./mailer");
-const { notificationEmail, orderPlacedEmail } = require("./emailTemplates");
+const {
+  notificationEmail, orderPlacedEmail,
+  orderApprovedEmail, orderShippedEmail, orderEditUnlockedEmail, orderCancelledEmail,
+} = require("./emailTemplates");
+
+// Internal: look up a retailer's email + name and send an email built by `build(name)`.
+async function sendToRetailer(retailerId, build) {
+  try {
+    if (!retailerId) return;
+    const { rows } = await query("SELECT email, name FROM retailers WHERE id = $1", [retailerId]);
+    const r = rows[0];
+    if (!r || !r.email) return;
+    const mail = build(r.name);
+    await sendMail({ to: r.email, subject: mail.subject, html: mail.html, text: mail.text });
+  } catch (err) {
+    console.error("[notify] sendToRetailer failed:", err.message);
+  }
+}
 
 // Email one retailer (by id) the given notification.
 async function emailRetailer(retailerId, { title, message, actionPath, ctaLabel }) {
@@ -57,6 +74,12 @@ async function emailRetailerOrderPlaced(retailerId, { orderNumber, orderDate, it
   }
 }
 
+// Retailer order lifecycle emails (admin-triggered).
+const emailRetailerOrderApproved = (id, data) => sendToRetailer(id, (name) => orderApprovedEmail({ name, ...data }));
+const emailRetailerOrderShipped = (id, data) => sendToRetailer(id, (name) => orderShippedEmail({ name, ...data }));
+const emailRetailerOrderEditUnlocked = (id, data) => sendToRetailer(id, (name) => orderEditUnlockedEmail({ name, ...data }));
+const emailRetailerOrderCancelled = (id, data) => sendToRetailer(id, (name) => orderCancelledEmail({ name, ...data }));
+
 // Email the admin recipients (ADMIN_NOTIFY_EMAIL, or active admins).
 // `exclude` (email or list) is filtered out — used so the retailer who triggered
 // the event never also receives the internal admin copy for the same event.
@@ -76,4 +99,7 @@ async function emailAdmins({ title, message, actionPath, ctaLabel, exclude }) {
   }
 }
 
-module.exports = { emailRetailer, emailRetailers, emailAdmins, emailRetailerOrderPlaced };
+module.exports = {
+  emailRetailer, emailRetailers, emailAdmins, emailRetailerOrderPlaced,
+  emailRetailerOrderApproved, emailRetailerOrderShipped, emailRetailerOrderEditUnlocked, emailRetailerOrderCancelled,
+};

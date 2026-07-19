@@ -348,4 +348,156 @@ function orderPlacedEmail({ name, orderNumber, orderDate, itemCount, orderAmount
   };
 }
 
-module.exports = { otpEmail, loginAlertEmail, notificationEmail, orderPlacedEmail };
+// ── Shared builders for the transactional order emails ──────────────────────
+function tplBadge(txt, color = BRAND.teal, soft = BRAND.tealSoft) {
+  return `<div style="display:inline-block;background:${soft};border:1px solid ${color};border-radius:999px;padding:5px 12px;font-family:${BRAND.sans};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:${color};margin-bottom:16px;">${txt}</div>`;
+}
+function tplH1(txt) {
+  return `<h1 style="margin:0 0 12px 0;font-family:${BRAND.serif};font-size:21px;font-weight:600;color:${BRAND.textPrimary};">${txt}</h1>`;
+}
+function tplP(html, muted = false) {
+  return `<p style="margin:0 0 12px 0;font-family:${BRAND.sans};font-size:14px;line-height:1.7;color:${muted ? BRAND.textMuted : BRAND.textSecondary};">${html}</p>`;
+}
+function tplSubHead(txt) {
+  return `<p style="margin:26px 0 8px 0;font-family:${BRAND.serif};font-size:15px;font-weight:600;color:${BRAND.textPrimary};">${txt}</p>`;
+}
+function tplRows(pairs) {
+  return pairs
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([label, value]) => `
+      <tr>
+        <td style="padding:9px 16px 9px 0;font-family:${BRAND.sans};font-size:13px;color:${BRAND.textMuted};white-space:nowrap;vertical-align:top;">${label}</td>
+        <td style="padding:9px 0;font-family:${BRAND.sans};font-size:13px;color:${BRAND.textPrimary};border-bottom:1px solid ${BRAND.border};">${escapeHtml(value) || "&mdash;"}</td>
+      </tr>`)
+    .join("");
+}
+function tplBtn(url, label) {
+  if (!url) return "";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0 0;">
+      <tr><td align="center" style="border-radius:10px;background:${BRAND.teal};">
+        <a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 26px;font-family:${BRAND.sans};font-size:14px;font-weight:700;color:#04121a;text-decoration:none;border-radius:10px;">${escapeHtml(label)} &rarr;</a>
+      </td></tr>
+    </table>`;
+}
+function tplContactLine() {
+  return `<p style="margin:26px 0 0 0;font-family:${BRAND.sans};font-size:13px;line-height:1.6;color:${BRAND.textMuted};">If you have any questions, feel free to contact us or reply to this email &mdash; <a href="mailto:contact@57facets.in" style="color:${BRAND.teal};text-decoration:none;">contact@57facets.in</a>.</p>`;
+}
+function tplSignoff(withThanks) {
+  const thanks = withThanks ? `<p style="margin:18px 0 0 0;font-family:${BRAND.sans};font-size:14px;color:${BRAND.textSecondary};">Thank you for choosing 57 Facets.</p>` : "";
+  return `${thanks}<p style="margin:${withThanks ? "4" : "18"}px 0 0 0;font-family:${BRAND.sans};font-size:14px;font-weight:600;color:${BRAND.textPrimary};">Team 57 Facets</p>`;
+}
+
+/** Order approved (admin accepted → processing). */
+function orderApprovedEmail({ name, orderNumber, orderUrl }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
+  const body = `
+    ${tplBadge("Order Approved")}
+    ${tplH1("Order Approved")}
+    ${tplP(greeting)}
+    ${tplP(`Good news! Your <strong style="color:${BRAND.textPrimary};">Order #${escapeHtml(orderNumber)}</strong> has been approved and is now moving to the next stage.`)}
+    ${tplP("Our team will begin processing your order. We'll notify you once it has been dispatched along with the shipment details.")}
+    ${tplP("You can track your order status anytime from your dashboard.")}
+    ${tplBtn(orderUrl, "View Order")}
+    ${tplContactLine()}
+    ${tplSignoff(false)}`;
+  const text = [
+    greeting, "", `Good news! Your Order #${orderNumber} has been approved and is now moving to the next stage.`, "",
+    "Our team will begin processing your order. We'll notify you once it has been dispatched along with the shipment details.", "",
+    "You can track your order status anytime from your dashboard.",
+    orderUrl ? `\nView Order: ${orderUrl}` : "", "",
+    "If you have any questions, contact us or reply to contact@57facets.in.", "", "Team 57 Facets",
+  ].join("\n");
+  return { subject: `Order ${orderNumber} approved — 57 Facets`, html: baseLayout({ preheader: `Your order ${orderNumber} has been approved.`, body }), text };
+}
+
+/** Order shipped. estimatedDelivery / trackingUrl are optional. */
+function orderShippedEmail({ name, orderNumber, shipmentDate, estimatedDelivery, trackingUrl, orderUrl }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
+  const body = `
+    ${tplBadge("Order Shipped")}
+    ${tplH1("Your order is on its way!")}
+    ${tplP(greeting)}
+    ${tplP(`We're pleased to let you know that <strong style="color:${BRAND.textPrimary};">Order #${escapeHtml(orderNumber)}</strong> has been shipped.`)}
+    ${tplSubHead("Shipment Details")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${tplRows([["Order Number", orderNumber], ["Shipment Date", shipmentDate], ["Estimated Delivery", estimatedDelivery]])}
+    </table>
+    ${trackingUrl ? `${tplP("You can track your shipment using the link below.")}${tplBtn(trackingUrl, "Track Shipment")}` : ""}
+    ${tplP("You can view your order and shipment status anytime from your dashboard.")}
+    ${tplBtn(orderUrl, "View Order")}
+    ${tplContactLine()}
+    ${tplSignoff(true)}`;
+  const text = [
+    greeting, "", "Your order is on its way!", "", `Order #${orderNumber} has been shipped.`, "",
+    "Shipment Details", `Order Number: ${orderNumber}`, `Shipment Date: ${shipmentDate || "—"}`,
+    estimatedDelivery ? `Estimated Delivery: ${estimatedDelivery}` : "",
+    trackingUrl ? `\nTrack Shipment: ${trackingUrl}` : "",
+    orderUrl ? `View Order: ${orderUrl}` : "", "",
+    "Questions? Contact us or reply to contact@57facets.in.", "", "Thank you for choosing 57 Facets.", "Team 57 Facets",
+  ].filter((l) => l !== "").join("\n");
+  return { subject: `Order ${orderNumber} shipped — 57 Facets`, html: baseLayout({ preheader: `Order ${orderNumber} is on its way.`, body }), text };
+}
+
+/** Retailer's edit request approved — order temporarily unlocked. */
+function orderEditUnlockedEmail({ name, orderNumber, editOrderUrl }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
+  const steps = ["Review and update your order.", "Submit the revised order once you're done.", "We'll continue processing your order after the updated version is received."]
+    .map((s) => `<li style="margin:0 0 6px 0;font-family:${BRAND.sans};font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">${s}</li>`).join("");
+  const body = `
+    ${tplBadge("Edit Approved")}
+    ${tplH1("You can now edit your order")}
+    ${tplP(greeting)}
+    ${tplP(`Your request to edit <strong style="color:${BRAND.textPrimary};">Order #${escapeHtml(orderNumber)}</strong> has been approved.`)}
+    ${tplP("The order has been temporarily unlocked, and you can now make the required changes.")}
+    ${tplSubHead("What's Next?")}
+    <ul style="margin:0;padding:0 0 0 18px;">${steps}</ul>
+    ${tplBtn(editOrderUrl, "Edit Order")}
+    ${tplP(`<strong style="color:${BRAND.textSecondary};">Note:</strong> Your order will remain on hold until the revised order is submitted.`, true)}
+    <p style="margin:16px 0 0 0;font-family:${BRAND.sans};font-size:13px;line-height:1.6;color:${BRAND.textMuted};">If you need any assistance, please contact your relationship manager or reply to this email.</p>
+    ${tplSignoff(false)}`;
+  const text = [
+    greeting, "", `Your request to edit Order #${orderNumber} has been approved.`, "",
+    "The order has been temporarily unlocked, and you can now make the required changes.", "",
+    "What's Next?", "- Review and update your order.", "- Submit the revised order once you're done.", "- We'll continue processing your order after the updated version is received.",
+    editOrderUrl ? `\nEdit Order: ${editOrderUrl}` : "", "",
+    "Note: Your order will remain on hold until the revised order is submitted.", "",
+    "If you need any assistance, please contact your relationship manager or reply to this email.", "", "Team 57 Facets",
+  ].join("\n");
+  return { subject: `Edit approved for Order ${orderNumber} — 57 Facets`, html: baseLayout({ preheader: `Order ${orderNumber} is unlocked for editing.`, body }), text };
+}
+
+/** Order cancelled by the team. reason optional. */
+function orderCancelledEmail({ name, orderNumber, cancelledDate, cancellationReason, ordersUrl }) {
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
+  const red = "#ef4444";
+  const reason = cancellationReason && String(cancellationReason).trim() ? cancellationReason : "No specific reason was provided.";
+  const body = `
+    ${tplBadge("Order Cancelled", red, "rgba(239,68,68,0.12)")}
+    ${tplH1("Order Cancelled")}
+    ${tplP(greeting)}
+    ${tplP(`We're writing to let you know that <strong style="color:${BRAND.textPrimary};">Order #${escapeHtml(orderNumber)}</strong> has been cancelled by our team.`)}
+    ${tplSubHead("Order Details")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${tplRows([["Order Number", orderNumber], ["Cancelled On", cancelledDate], ["Status", "Cancelled"]])}
+    </table>
+    ${tplSubHead("Reason for Cancellation")}
+    ${tplP(escapeHtml(reason))}
+    ${tplP("If you'd like to place a new order or have any questions regarding this cancellation, please contact your relationship manager or reply to this email. We'll be happy to assist you.")}
+    ${tplBtn(ordersUrl, "View Orders")}
+    <p style="margin:18px 0 0 0;font-family:${BRAND.sans};font-size:14px;color:${BRAND.textSecondary};">Thank you for your understanding.</p>
+    ${tplSignoff(false)}`;
+  const text = [
+    greeting, "", `We're writing to let you know that Order #${orderNumber} has been cancelled by our team.`, "",
+    "Order Details", `Order Number: ${orderNumber}`, `Cancelled On: ${cancelledDate || "—"}`, "Status: Cancelled", "",
+    `Reason for Cancellation: ${reason}`, "",
+    "If you'd like to place a new order or have any questions regarding this cancellation, please contact your relationship manager or reply to this email.",
+    ordersUrl ? `\nView Orders: ${ordersUrl}` : "", "", "Thank you for your understanding.", "Team 57 Facets",
+  ].join("\n");
+  return { subject: `Order ${orderNumber} cancelled — 57 Facets`, html: baseLayout({ preheader: `Order ${orderNumber} has been cancelled.`, body }), text };
+}
+
+module.exports = {
+  otpEmail, loginAlertEmail, notificationEmail, orderPlacedEmail,
+  orderApprovedEmail, orderShippedEmail, orderEditUnlockedEmail, orderCancelledEmail,
+};
