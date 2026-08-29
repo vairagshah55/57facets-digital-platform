@@ -827,7 +827,8 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
   const stnLines: any[] = d?.stone?.lines || [];
   // Grade/sieve can be missing (ungraded diamond) — never render "null".
   const diaGrade = (sh: any, cl: any) => (sh && cl) ? `${sh}-${cl}` : (sh || cl || "ungraded");
-  const diaSieve = (sv: any) => (sv && sv !== "~") ? `${sv} · ` : "";
+  // "any" = priced off the chart's blank / "Any size" sieve row.
+  const diaSieve = (sv: any) => sv === "any" ? "any size · " : (sv && sv !== "~") ? `${sv} · ` : "";
   // One row per diamond / stone when there are several, else a single summary row.
   const diamondRows = !d ? [] : diaLines.length > 1
     ? diaLines.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${diaSieve(l.sieve)}${diaGrade(l.shade, l.clarity)} · ${inr(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))

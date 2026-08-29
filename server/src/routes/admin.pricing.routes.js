@@ -93,7 +93,9 @@ router.delete("/diamond-rates", async (req, res, next) => {
   try {
     const { retailerId, shapeGroup, sieve } = req.query;
     const country = (req.query.country || "India").trim();
-    if (!shapeGroup || !sieve) throw new AppError("shapeGroup and sieve are required");
+    // sieve may legitimately be "" — that's the blank / "any size" row. Only a
+    // MISSING param is an error.
+    if (!shapeGroup || sieve == null) throw new AppError("shapeGroup and sieve are required");
     await tx((c) => retailerId
       ? c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1 AND shape_group = $2 AND sieve_size = $3", [retailerId, shapeGroup, sieve])
       : c.query("DELETE FROM diamond_rates WHERE country = $1 AND shape_group = $2 AND sieve_size = $3", [country, shapeGroup, sieve]));
@@ -190,7 +192,8 @@ router.post("/diamond-sieves", async (req, res, next) => {
 router.delete("/diamond-sieves", async (req, res, next) => {
   try {
     const { shapeGroup, sieve } = req.query;
-    if (!shapeGroup || !sieve) throw new AppError("shapeGroup and sieve are required");
+    // "" is the blank / "any size" row — a valid label. Only a MISSING param fails.
+    if (!shapeGroup || sieve == null) throw new AppError("shapeGroup and sieve are required");
     await tx(async (c) => {
       // Drop the sieve row and any rates entered for it (keeps the matrix consistent).
       await c.query("DELETE FROM diamond_sieves WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]);

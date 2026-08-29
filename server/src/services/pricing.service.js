@@ -189,6 +189,10 @@ function buildChart(g, r, country) {
   return {
     metalRate: (goldType) => metalMap.get(up(goldType)) ?? 0,
     diamondRate: (group, sieve, shade, clarity) => diamondMap.get(dkey(group, sieve, shade, clarity)) ?? null,
+    // The BLANK-sieve ("any size") row of the matrix: a rate the admin entered
+    // against no sieve at all. Used ONLY for diamonds that carry no sieve
+    // themselves (solitaires, loose stones) — see computeBreakdown.
+    diamondRateAnySize: (group, shade, clarity) => diamondMap.get(dkey(group, "", shade, clarity)) ?? null,
     // Cascading fallback when the exact sieve/grade isn't found: group+shade+
     // clarity → group+shade → group (each at its largest sieve).
     diamondRateFallback: (group, shade, clarity) => {
@@ -289,6 +293,16 @@ function computeBreakdown(product, chart) {
     if (sv) {
       const r = chart.diamondRate(grp, sv, sh, cl);
       if (r != null) { rate = r; matched = true; }
+    }
+    // BLANK SIEVE SIZE only. The matrix's blank-sieve row is the admin's
+    // "any size" rate for this shape+grade, so a diamond entered without a
+    // sieve (solitaires, loose stones) prices from it instead of guessing.
+    // A diamond that HAS a sieve never comes through here — sized diamonds
+    // keep the exact rate → largest-sieve path they always had, so adding a
+    // blank row to the chart can never move a sized diamond's price.
+    if (!matched && !sv) {
+      const r = chart.diamondRateAnySize(grp, sh, cl);
+      if (r != null) { rate = r; matched = true; usedSieve = "any"; }
     }
     // Fallback: no sieve resolved (or that sieve has no row) → use the rate for
     // this shape+shade+clarity at the largest available sieve, so a diamond with

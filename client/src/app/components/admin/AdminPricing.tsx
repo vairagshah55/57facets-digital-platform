@@ -393,6 +393,11 @@ const DEFAULT_SIEVES: Record<string, string[]> = {
 };
 
 const cellKey = (sg: string, sv: string, sh: string, cl: string) => `${sg}|${sv}|${sh}|${cl}`;
+/* A BLANK sieve label is the "any size" row: the rate used for diamonds entered
+   without a sieve (solitaires, loose stones) and for sieves the chart doesn't
+   price. It's a real row — it just has no label — so give it a visible name. */
+const ANY_SIZE_LABEL = "Any size";
+const sieveName = (sv: string) => (sv === "" ? `"${ANY_SIZE_LABEL}" row` : `sieve "${sv}"`);
 // Sort sieves by magnitude, '-' before '+' (matches the chart order: -2,+2,-3,-11,+11).
 const sieveSort = (a: string, b: string) => {
   const na = Math.abs(parseInt(a, 10)) || 0, nb = Math.abs(parseInt(b, 10)) || 0;
@@ -549,14 +554,14 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
 
   const addSieve = async () => {
     const sv = newSieve.trim();
-    // Any text (and blank) is allowed; only block an exact duplicate row.
-    if ((sievesByShape[shape] || []).includes(sv)) { toast.error(`Sieve "${sv}" already exists for ${shape}`); return; }
+    // Any text (and blank — the "any size" row) is allowed; only block an exact duplicate.
+    if ((sievesByShape[shape] || []).includes(sv)) { toast.error(`That ${sieveName(sv)} already exists for ${shape}`); return; }
     // Optimistic UI, then persist so the row survives a reload (even with no rates).
     setSievesByShape((p) => ({ ...p, [shape]: Array.from(new Set([...(p[shape] || []), sv])).sort(sieveSort) }));
     setNewSieve("");
     try {
       await adminPricing.addDiamondSieve(shape, sv);
-      toast.success(`Added sieve "${sv}" to ${shape}`);
+      toast.success(`Added ${sieveName(sv)} to ${shape}`);
     } catch (e: any) {
       toast.error(e.message || "Could not save sieve");
       // Roll back the optimistic add on failure.
@@ -565,12 +570,12 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
   };
 
   const removeSieve = async (sv: string) => {
-    if (!confirm(`Delete sieve "${sv}" from ${shape}? This also removes its rates.`)) return;
+    if (!confirm(`Delete ${sieveName(sv)} from ${shape}? This also removes its rates.`)) return;
     const prev = sievesByShape[shape] || [];
     setSievesByShape((p) => ({ ...p, [shape]: (p[shape] || []).filter((x) => x !== sv) }));
     try {
       await adminPricing.removeDiamondSieve(shape, sv);
-      toast.success(`Removed sieve "${sv}"`);
+      toast.success(`Removed ${sieveName(sv)}`);
     } catch (e: any) {
       toast.error(e.message || "Could not remove sieve");
       setSievesByShape((p) => ({ ...p, [shape]: prev }));
@@ -737,7 +742,13 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
                       <td className="sticky left-0 z-10 px-2 py-1 font-medium"
                         style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }}>
                         <div className="flex items-center gap-1.5 group/sieve">
-                          <span>{sv}</span>
+                          {/* The blank row prices diamonds that carry no sieve — name it so
+                              it doesn't read as an empty/broken row. */}
+                          <span
+                            title={sv === "" ? "Used when a diamond has no sieve size (solitaires, loose stones)" : undefined}
+                            style={sv === "" ? { fontStyle: "italic", color: "var(--sf-text-muted)", whiteSpace: "nowrap" } : undefined}>
+                            {sv === "" ? ANY_SIZE_LABEL : sv}
+                          </span>
                           <button onClick={() => removeSieve(sv)} title="Delete sieve row"
                             className="opacity-0 group-hover/sieve:opacity-100 transition-opacity"
                             style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", lineHeight: 0 }}>
@@ -764,7 +775,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
             <div className="flex items-center gap-2">
               <input value={newSieve} onChange={(e) => setNewSieve(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSieve(); } }}
-                placeholder="add sieve row"
+                placeholder={`add sieve row (blank = ${ANY_SIZE_LABEL})`}
                 className="w-44 h-8 px-2 rounded-md text-xs border outline-none"
                 style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }} />
               <button onClick={addSieve}
@@ -773,7 +784,8 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
                 <Plus className="w-3.5 h-3.5" /> Add sieve row
               </button>
               <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
-                Empty cells are skipped. Editing {shape}.
+                Empty cells are skipped. Leave the box empty to add the “{ANY_SIZE_LABEL}” row —
+                its rates price diamonds entered without a sieve. Editing {shape}.
               </span>
             </div>
           </div>
@@ -1125,7 +1137,8 @@ function PreviewTab() {
     : `${l.name} · ${fmt(l.rate)} × ${l.pcs || 1}pcs`;
   // Grade/sieve can be missing (ungraded diamond) — never render "null".
   const diaGrade = (sh: any, cl: any) => (sh && cl) ? `${sh}-${cl}` : (sh || cl || "ungraded");
-  const diaSieve = (sv: any) => (sv && sv !== "~") ? `${sv} · ` : "";
+  // "any" = priced off the chart's blank / "Any size" sieve row.
+  const diaSieve = (sv: any) => sv === "any" ? "any size · " : (sv && sv !== "~") ? `${sv} · ` : "";
   // One row per diamond / stone when there are several, else a single summary row.
   const diamondLineRows = !d ? [] : diaL.length > 1
     ? diaL.map((l, i) => ({ label: `Diamond #${i + 1}`, cost: l.cost, info: l.matched ? `${diaSieve(l.sieve)}${diaGrade(l.shade, l.clarity)} · ${fmt(l.rate_per_carat)} × ${l.carat || 1}ct` : "no rate matched" }))
