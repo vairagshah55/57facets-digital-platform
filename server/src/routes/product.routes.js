@@ -317,7 +317,11 @@ router.get("/:id", authenticate, async (req, res, next) => {
     const { rows } = await query(
       `SELECT p.*, c.name AS category,
               ${IS_NEW_EXPR} AS is_new_effective,
-              ${ORDERED_EXPR("$2")} AS ordered
+              ${ORDERED_EXPR("$2")} AS ordered,
+              -- Does THIS retailer have it wishlisted? Without this the detail
+              -- page has no way to know, so the heart always rendered empty.
+              EXISTS (SELECT 1 FROM wishlists w
+                      WHERE w.product_id = p.id AND w.retailer_id = $2) AS is_wishlisted
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE p.id = $1`,

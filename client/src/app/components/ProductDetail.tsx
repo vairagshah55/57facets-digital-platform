@@ -319,6 +319,15 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(true); // open by default so it's easy to spot
+  /* Unsaved note text, kept PER PRODUCT id. A note that hasn't been added to the
+     cart yet lives only in state, so clearing it on navigation (which we must do,
+     or it shows up on the next product) would otherwise lose it when the retailer
+     flicks to another SKU and comes back. Keyed by id — never shared. */
+  const noteDrafts = useRef<Record<string, string>>({});
+  const setNoteFor = useCallback((v: string) => {
+    setNote(v);
+    if (id) noteDrafts.current[id] = v;
+  }, [id]);
 
   // Cart
   const { addItem, removeItem, items: cartItems } = useCart();
@@ -368,6 +377,41 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       return;
     }
 
+    /* Clear every per-product choice before loading the next one.
+       The prev/next arrows navigate to the same route with a different :id, so
+       React KEEPS this component mounted and none of the state below unmounts
+       with it. Both effects that repopulate it are conditional — the loader only
+       sets a selector when the new product offers that option, and the cart
+       restore bails out entirely when the product isn't in the cart — so
+       anything not explicitly overwritten stayed visible on the next product.
+       That is how a note typed on one product showed up on another. */
+    setNote(noteDrafts.current[id] ?? "");
+    setShowNote(true);
+    setQuantity(1);
+    setSelectedGoldType("");
+    setSelectedGoldColour("");
+    setSelectedDiamondShape("");
+    setSelectedDiamondShade("");
+    setSelectedDiamondQuality("");
+    setSelectedColorStone("");
+    setSelectedColorStoneQuality("");
+    setSelectedDiamondType("");
+    setSelectedSize("");
+    setSelectedSizeSummary("");
+    setSelectedDiamondIdx(0);
+    setDiamondMenuOpen(false);
+    setDiamondSelections([]);
+    // Never carry another product's "already ordered" banner across.
+    setExistingOrder(null);
+    // Gallery: activeImage could otherwise point past the end of the next
+    // product's (shorter) image list, leaving the main image blank.
+    setActiveImage(0);
+    setShowVideo(false);
+    setViewerOpen(false);
+    // Only ever set by the heart button — nothing seeds it from the product, so
+    // without this the next product renders as "Wishlisted" too.
+    setWishlisted(false);
+
     let cancelled = false;
 
     async function fetchProduct() {
@@ -379,6 +423,9 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
 
         const mapped = mapApiProduct(raw);
         setProduct(mapped);
+        // Seed the heart from the server. Nothing else sets it — the toggle only
+        // flips it — so an already-wishlisted product used to render as unsaved.
+        setWishlisted(!!(raw as any).is_wishlisted);
         setSelectedCarat(mapped.specs.diamondCarat);
         if (mapped.customization.goldTypes.length) setSelectedGoldType(mapped.customization.goldTypes[0]);
         if (mapped.customization.goldColours.length) setSelectedGoldColour(mapped.customization.goldColours[0]);
@@ -436,7 +483,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     // free-text part (the size selector has its own value) and show the note field.
     if (cartItem.note) {
       const freeText = cartItem.note.split("\n").filter((l) => !l.startsWith("Size: ")).join("\n");
-      if (freeText) { setNote(freeText); setShowNote(true); }
+      // A draft typed since this went into the cart is newer — don't clobber it.
+      if (freeText && noteDrafts.current[id!] == null) { setNote(freeText); setShowNote(true); }
     }
   }, [product, cartItems, id, adminPreview]);
 
@@ -1409,7 +1457,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
                   <Textarea
                     placeholder="Eg. Engraving text, size preferences, special requests like use 2 round setting instead of pear/marquis"
                     value={note}
-                    onChange={(e) => setNote(e.target.value)}
+                    onChange={(e) => setNoteFor(e.target.value)}
                     className="border-[var(--sf-divider)] min-h-[80px]"
                     style={{
                       backgroundColor: "var(--sf-bg-surface-1)",
