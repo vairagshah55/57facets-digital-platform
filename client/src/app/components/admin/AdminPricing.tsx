@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from "react";
 import { motion } from "framer-motion";
 import {
-  Gem, Coins, Sparkles, Hammer, Users, Calculator, Landmark, ChevronDown,
+  Gem, Coins, Sparkles, Hammer, Users, Calculator, Landmark, ChevronDown, FlaskConical,
   Plus, Trash2, Save, Upload, Loader2, Check, X, Search, RefreshCw, Download,
 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -11,10 +11,11 @@ import { adminPricing, adminProducts } from "../../../lib/adminApi";
 /* ═══════════════════════════════════════════════════════
    TABS
    ═══════════════════════════════════════════════════════ */
-type TabKey = "gold" | "diamond" | "stones" | "making" | "duty" | "retailers" | "preview";
+type TabKey = "gold" | "diamond" | "lab" | "stones" | "making" | "duty" | "retailers" | "preview";
 const TABS: { key: TabKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "gold", label: "Gold Rates", icon: Coins, color: "#f59e0b" },
   { key: "diamond", label: "Diamond Rates", icon: Gem, color: "#a855f7" },
+  { key: "lab", label: "Lab Grown Rates", icon: FlaskConical, color: "#38bdf8" },
   { key: "stones", label: "Stone Rates", icon: Sparkles, color: "#22c55e" },
   { key: "making", label: "Making", icon: Hammer, color: "#3b82f6" },
   { key: "duty", label: "Duty", icon: Landmark, color: "#14b8a6" },
@@ -151,6 +152,7 @@ export function AdminPricing() {
         <motion.div key={tab + ":" + scope} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
           {tab === "gold" && <GoldTab />}
           {tab === "diamond" && <DiamondTab retailers={retailers} />}
+          {tab === "lab" && <DiamondTab retailers={retailers} diamondType="LAB" />}
           {tab === "stones" && <StonesTab />}
           {tab === "making" && <MakingTab retailers={retailers} />}
           {tab === "duty" && <DutyTab retailers={retailers} />}
@@ -514,7 +516,11 @@ async function readWorkbook(file: File): Promise<Map<string, string[][]>> {
   return out;
 }
 
-function DiamondTab({ retailers }: { retailers: any[] }) {
+function DiamondTab({ retailers, diamondType = "NATURAL" }: { retailers: any[]; diamondType?: "NATURAL" | "LAB" }) {
+  // One component drives both charts; `diamondType` selects which set of rows
+  // every read/write touches. Lab-grown stones are priced from their own rates.
+  const isLab = diamondType === "LAB";
+  const typeLabel = isLab ? "Lab-grown" : "Natural";
   // Country picks the base rate set (India ₹ / United States $); scope picks a
   // retailer of that country for per-retailer overrides ("" = the country base).
   const [country, setCountry] = useState("India");
@@ -534,10 +540,10 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
-      adminPricing.diamondRates(scope, country),
+      adminPricing.diamondRates(scope, country, diamondType),
       adminPricing.sieveMap(scope),
       // Sieve list is supplementary — never let its failure blank the matrix.
-      adminPricing.diamondSieves().catch(() => []),
+      adminPricing.diamondSieves(diamondType).catch(() => []),
     ])
       .then(([d, s, ds]: any) => {
         const c: Record<string, string> = {};
@@ -557,7 +563,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
         }
         setCells(c); setSievesByShape(sbs);
       }).catch(() => { }).finally(() => setLoading(false));
-  }, [scope, country]);
+  }, [scope, country, diamondType]);
   useEffect(() => { load(); }, [load]);
   useImportRefresh(load);
 
@@ -573,7 +579,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
     setSievesByShape((p) => ({ ...p, [shape]: Array.from(new Set([...(p[shape] || []), sv])).sort(sieveSort) }));
     setNewSieve("");
     try {
-      await adminPricing.addDiamondSieve(shape, sv);
+      await adminPricing.addDiamondSieve(shape, sv, diamondType);
       toast.success(`Added ${sieveName(sv)} to ${shape}`);
     } catch (e: any) {
       toast.error(e.message || "Could not save sieve");
@@ -587,7 +593,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
     const prev = sievesByShape[shape] || [];
     setSievesByShape((p) => ({ ...p, [shape]: (p[shape] || []).filter((x) => x !== sv) }));
     try {
-      await adminPricing.removeDiamondSieve(shape, sv);
+      await adminPricing.removeDiamondSieve(shape, sv, diamondType);
       toast.success(`Removed ${sieveName(sv)}`);
     } catch (e: any) {
       toast.error(e.message || "Could not remove sieve");
@@ -601,7 +607,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
       .map(([k, v]) => { const [shape_group, sieve_size, shade, clarity] = k.split("|"); return { shape_group, sieve_size, shade, clarity, rate_per_carat: Number(v) }; });
     if (!rows.length) { toast.error("Enter at least one rate"); return; }
     setSaving(true);
-    try { await adminPricing.saveDiamondRates(rows, scope, country); toast.success(`Saved ${rows.length} diamond rates`); load(); }
+    try { await adminPricing.saveDiamondRates(rows, scope, country, diamondType); toast.success(`Saved ${rows.length} ${typeLabel.toLowerCase()} diamond rates`); load(); }
     catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
   // ── Download the matrix as a 3-sheet .xlsx (one sheet per shape group),
@@ -621,7 +627,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
       return { name: sheetNameForGroup(sg), rows };
     });
     const blob = await buildXlsx(sheets);
-    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "diamond-rate-matrix.xlsx" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: isLab ? "lab-grown-rate-matrix.xlsx" : "diamond-rate-matrix.xlsx" });
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -664,10 +670,10 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
       const totalSieves = Array.from(sievesFound.values()).reduce((n, s) => n + s.size, 0);
       if (!rows.length && !totalSieves) { toast.error("Nothing to import — check the sheet names match the shape groups"); return; }
       setSaving(true);
-      if (rows.length) await adminPricing.saveDiamondRates(rows, scope, country);
+      if (rows.length) await adminPricing.saveDiamondRates(rows, scope, country, diamondType);
       // Register every sieve found (new, blank, or rate-less) so it appears as a row.
       const sieveCalls: Promise<any>[] = [];
-      for (const [sg, set] of sievesFound) for (const sv of set) sieveCalls.push(adminPricing.addDiamondSieve(sg, sv));
+      for (const [sg, set] of sievesFound) for (const sv of set) sieveCalls.push(adminPricing.addDiamondSieve(sg, sv, diamondType));
       if (sieveCalls.length) await Promise.allSettled(sieveCalls);
       toast.success(`Imported ${rows.length} rates · ${totalSieves} sieve${totalSieves === 1 ? "" : "s"}`);
       load();
@@ -702,7 +708,8 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
         )}
       </div>
 
-      <Card title={`Diamond rate matrix (${cur} / carat)`} sub="Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells."
+      <Card title={`${typeLabel} diamond rate matrix (${cur} / carat)`}
+        sub={`Rows = sieve size · columns = shade-clarity grade. Type rates straight into the cells.${isLab ? " Lab-grown SKUs use the natural chart until a rate is entered here." : ""}`}
         action={
           <div className="flex items-center gap-2">
             <button onClick={downloadSample}
@@ -798,7 +805,7 @@ function DiamondTab({ retailers }: { retailers: any[] }) {
               </button>
               <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
                 Empty cells are skipped. Leave the box empty to add the “{ANY_SIZE_LABEL}” row —
-                its rates price diamonds entered without a sieve. Editing {shape}.
+                its rates price diamonds entered without a sieve. Editing {typeLabel} · {shape}.
               </span>
             </div>
           </div>

@@ -225,15 +225,16 @@ export const adminOrders = {
 export const adminPricing = {
   // ── Rate chart — every read/write is scoped: pass a retailerId to edit that
   // retailer's own chart, or omit it (scope = "") to edit the Global default. ──
-  // Diamond rate matrix — base is per country; a retailerId edits that retailer's overrides.
-  diamondRates: (retailerId?: string, country = "India") =>
-    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`),
-  saveDiamondRates: (rows: any[], retailerId?: string, country = "India") =>
-    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
+  // Diamond rate matrix — base is per country; a retailerId edits that retailer's
+  // overrides; `type` picks the chart ("NATURAL" default, or "LAB" for lab-grown).
+  diamondRates: (retailerId?: string, country = "India", type = "NATURAL") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}&type=${encodeURIComponent(type)}${retailerId ? `&retailerId=${retailerId}` : ""}`),
+  saveDiamondRates: (rows: any[], retailerId?: string, country = "India", type = "NATURAL") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}&type=${encodeURIComponent(type)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteDiamondRate: (id: string) => request(`/pricing/diamond-rates/${id}`, { method: "DELETE" }),
   // Delete a whole sieve row (shape_group + sieve) — country base, or a retailer's chart.
-  deleteDiamondSieveRow: (shapeGroup: string, sieve: string, retailerId?: string, country = "India") =>
-    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}&shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "DELETE" }),
+  deleteDiamondSieveRow: (shapeGroup: string, sieve: string, retailerId?: string, country = "India", type = "NATURAL") =>
+    request(`/pricing/diamond-rates?country=${encodeURIComponent(country)}&type=${encodeURIComponent(type)}&shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "DELETE" }),
 
   // Carat → sieve map
   sieveMap: (retailerId?: string) =>
@@ -243,11 +244,11 @@ export const adminPricing = {
   deleteSieve: (id: string) => request(`/pricing/sieve-map/${id}`, { method: "DELETE" }),
 
   // Diamond sieves — the plain list of sieve rows shown in the matrix.
-  diamondSieves: () => request(`/pricing/diamond-sieves`),
-  addDiamondSieve: (shapeGroup: string, sieve: string) =>
-    request(`/pricing/diamond-sieves`, { method: "POST", body: JSON.stringify({ shape_group: shapeGroup, sieve_size: sieve }) }),
-  removeDiamondSieve: (shapeGroup: string, sieve: string) =>
-    request(`/pricing/diamond-sieves?shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}`, { method: "DELETE" }),
+  diamondSieves: (type = "NATURAL") => request(`/pricing/diamond-sieves?type=${encodeURIComponent(type)}`),
+  addDiamondSieve: (shapeGroup: string, sieve: string, type = "NATURAL") =>
+    request(`/pricing/diamond-sieves`, { method: "POST", body: JSON.stringify({ shape_group: shapeGroup, sieve_size: sieve, type }) }),
+  removeDiamondSieve: (shapeGroup: string, sieve: string, type = "NATURAL") =>
+    request(`/pricing/diamond-sieves?type=${encodeURIComponent(type)}&shapeGroup=${encodeURIComponent(shapeGroup)}&sieve=${encodeURIComponent(sieve)}`, { method: "DELETE" }),
 
   // Stone rates — per country (India / United States)
   stoneRates: (country = "India") =>

@@ -84,7 +84,7 @@ const _retailerCharts = new Map(); // retailerId -> { chart, at }
 async function loadGlobalRows() {
   const [metals, diamonds, sieves, stones, makings, duties] = await Promise.all([
     query("SELECT country, gold_type, rate_per_gram FROM metal_rates"),
-    query("SELECT country, shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
+    query("SELECT country, diamond_type, shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM diamond_sieve_map"),
     query("SELECT country, category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM stone_rates"),
     query("SELECT country, scope, mode, value FROM making_charges"),
@@ -96,7 +96,7 @@ async function loadGlobalRows() {
 async function loadRetailerRows(retailerId) {
   const [metals, diamonds, sieves, stones, makings, duties] = await Promise.all([
     query("SELECT gold_type, rate_per_gram FROM retailer_metal_rates WHERE retailer_id = $1", [retailerId]),
-    query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]),
+    query("SELECT diamond_type, shape_group, sieve_size, shade, clarity, rate_per_carat FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM retailer_sieve_map WHERE retailer_id = $1", [retailerId]),
     query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT scope, mode, value FROM retailer_making_charges WHERE retailer_id = $1", [retailerId]),
@@ -128,16 +128,17 @@ function buildChart(g, r, country) {
     const cur = m.get(k);
     if (!cur || mag > cur.mag || (mag === cur.mag && rate > cur.rate)) m.set(k, { mag, rate });
   };
-  const setRate = (row) => diamondMap.set(dkey(row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
+  const setRate = (row) => diamondMap.set(dkey(row.diamond_type, row.shape_group, row.sieve_size, row.shade, row.clarity), num(row.rate_per_carat));
   // Fallbacks are built from BASE (country) rates only — never per-retailer
   // overrides, so an outlier override can't pollute a fallback price.
   const addFallback = (row) => {
     const rate = num(row.rate_per_carat);
+    const tU = rateType(row.diamond_type);
     const sgU = up(row.shape_group), shU = up(row.shade), clU = up(row.clarity);
     const mag = Math.abs(parseInt(row.sieve_size, 10)) || 0;
-    upsertBig(diaGSC, `${sgU}|${shU}|${clU}`, mag, rate);
-    upsertBig(diaGS, `${sgU}|${shU}`, mag, rate);
-    upsertBig(diaG, sgU, mag, rate);
+    upsertBig(diaGSC, `${tU}|${sgU}|${shU}|${clU}`, mag, rate);
+    upsertBig(diaGS, `${tU}|${sgU}|${shU}`, mag, rate);
+    upsertBig(diaG, `${tU}|${sgU}`, mag, rate);
   };
   const baseDia = g.diamonds.filter((d) => up(d.country) === wantC);
   const diaRows = baseDia.length ? baseDia : g.diamonds.filter((d) => up(d.country) === "INDIA");
@@ -197,16 +198,16 @@ function buildChart(g, r, country) {
 
   return {
     metalRate: (goldType) => metalMap.get(up(goldType)) ?? 0,
-    diamondRate: (group, sieve, shade, clarity) => diamondMap.get(dkey(group, sieve, shade, clarity)) ?? null,
+    diamondRate: (type, group, sieve, shade, clarity) => diamondMap.get(dkey(type, group, sieve, shade, clarity)) ?? null,
     // The BLANK-sieve ("any size") row of the matrix: a rate the admin entered
     // against no sieve at all. Used ONLY for diamonds that carry no sieve
     // themselves (solitaires, loose stones) — see computeBreakdown.
-    diamondRateAnySize: (group, shade, clarity) => diamondMap.get(dkey(group, "", shade, clarity)) ?? null,
+    diamondRateAnySize: (type, group, shade, clarity) => diamondMap.get(dkey(type, group, "", shade, clarity)) ?? null,
     // Cascading fallback when the exact sieve/grade isn't found: group+shade+
     // clarity → group+shade → group (each at its largest sieve).
-    diamondRateFallback: (group, shade, clarity) => {
-      const gU = up(group), sU = up(shade), cU = up(clarity);
-      const hit = diaGSC.get(`${gU}|${sU}|${cU}`) || diaGS.get(`${gU}|${sU}`) || diaG.get(gU);
+    diamondRateFallback: (type, group, shade, clarity) => {
+      const tU = rateType(type), gU = up(group), sU = up(shade), cU = up(clarity);
+      const hit = diaGSC.get(`${tU}|${gU}|${sU}|${cU}`) || diaGS.get(`${tU}|${gU}|${sU}`) || diaG.get(`${tU}|${gU}`);
       return hit ? hit.rate : null;
     },
     sieveFor: (group, carat) => {
@@ -218,6 +219,8 @@ function buildChart(g, r, country) {
     stoneRate: (name) => stoneMap.get(skey(name, null)) || null,
     // Match by (category, name) — falls back to name-only via stoneRate.
     stoneByCat: (cat, name) => stoneMap.get(skey(cat, name)) || null,
+    // Normalise a product's diamond_type ("Lab-grown") to a chart set ('LAB').
+    rateTypeOf: (t) => rateType(t),
     // Duty % applied to the whole product value (see computeBreakdown).
     dutyPercent: () => dutyPct,
     makingFor: (product) => (
@@ -262,7 +265,16 @@ function invalidateRateCache() {
 }
 
 const up = (v) => (v == null ? "" : String(v).trim().toUpperCase());
-const dkey = (g, s, sh, cl) => `${up(g)}|${up(s)}|${up(sh)}|${up(cl)}`;
+/* Diamond type → rate-chart set. Products store "Natural" / "Lab-grown"; the
+   chart stores 'NATURAL' / 'LAB'. Anything unrecognised (or blank) is treated
+   as NATURAL, which is what every pre-existing row is. */
+const LAB_RE = /^(LAB|LAB[\s-]?GROWN|LABGROWN|CVD|HPHT|SYNTHETIC)$/;
+function rateType(t) {
+  const s = up(t).replace(/\s+/g, " ");
+  return LAB_RE.test(s) ? "LAB" : "NATURAL";
+}
+
+const dkey = (t, g, s, sh, cl) => `${rateType(t)}|${up(g)}|${up(s)}|${up(sh)}|${up(cl)}`;
 const skey = (name, q) => `${up(name)}|${up(q)}`;
 
 /* ════════════════════════════════════════════════════════════════
@@ -283,6 +295,7 @@ function computeBreakdown(product, chart) {
   const diamondRows = (Array.isArray(product.diamonds) && product.diamonds.length)
     ? product.diamonds
     : [{
+        diamond_type: product.diamond_type,
         diamond_shape: product.diamond_shape, diamond_size: product.diamond_size,
         diamond_color: product.diamond_color, diamond_clarity: product.diamond_clarity,
         carat: product.carat, diamond_pcs: product.diamond_pcs,
@@ -300,9 +313,11 @@ function computeBreakdown(product, chart) {
     const sh = normalizeShade(dr.diamond_color);
     const cl = normalizeClarity(dr.diamond_clarity);
     const pcs = num(dr.diamond_pcs, 0);
-    let rate = 0, matched = false, usedSieve = sv;
+    // Which chart this stone prices from: 'LAB' for lab-grown, else 'NATURAL'.
+    const dType = chart.rateTypeOf(dr.diamond_type);
+    let rate = 0, matched = false, usedSieve = sv, usedType = dType;
     if (sv) {
-      const r = chart.diamondRate(grp, sv, sh, cl);
+      const r = chart.diamondRate(dType, grp, sv, sh, cl);
       if (r != null) { rate = r; matched = true; }
     }
     // BLANK SIEVE SIZE only. The matrix's blank-sieve row is the admin's
@@ -312,21 +327,30 @@ function computeBreakdown(product, chart) {
     // keep the exact rate → largest-sieve path they always had, so adding a
     // blank row to the chart can never move a sized diamond's price.
     if (!matched && !sv) {
-      const r = chart.diamondRateAnySize(grp, sh, cl);
+      const r = chart.diamondRateAnySize(dType, grp, sh, cl);
       if (r != null) { rate = r; matched = true; usedSieve = "any"; }
     }
     // Fallback: no sieve resolved (or that sieve has no row) → use the rate for
     // this shape+shade+clarity at the largest available sieve, so a diamond with
     // a carat but no sieve still prices.
     if (!matched) {
-      const r = chart.diamondRateFallback(grp, sh, cl);
+      const r = chart.diamondRateFallback(dType, grp, sh, cl);
       if (r != null) { rate = r; matched = true; usedSieve = sv || "~"; }
+    }
+    // A lab-grown stone with NO lab chart yet falls back to the natural chart,
+    // so adding this feature changes no existing price. Once any lab rate is
+    // entered for that shape+grade the lab chart wins and this never runs.
+    if (!matched && dType === "LAB") {
+      const r = chart.diamondRate("NATURAL", grp, sv, sh, cl)
+        ?? (sv ? null : chart.diamondRateAnySize("NATURAL", grp, sh, cl))
+        ?? chart.diamondRateFallback("NATURAL", grp, sh, cl);
+      if (r != null) { rate = r; matched = true; usedType = "NATURAL (no lab rate)"; usedSieve = sv || "~"; }
     }
     // Diamond cost = rate × carat (carat is the total weight; pcs is informational).
     const lineCost = matched ? rate * (dCarat > 0 ? dCarat : 1) : 0;
     diamondCost += lineCost;
     if (matched) diamondMatched = true;
-    diamondLines.push({ shape_group: grp, sieve: usedSieve, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
+    diamondLines.push({ shape_group: grp, diamond_type: usedType, sieve: usedSieve, shade: sh, clarity: cl, rate_per_carat: rate, carat: dCarat, pcs: pcs > 0 ? pcs : 1, cost: lineCost, matched });
   }
   const firstDia = diamondLines.find((l) => l.matched) || diamondLines[0] || {};
 
@@ -426,7 +450,7 @@ async function loadDiamonds(ids) {
   const map = new Map();
   if (!ids || !ids.length) return map;
   const { rows } = await query(
-    `SELECT product_id, diamond_shape, diamond_size, diamond_color, diamond_clarity, carat, diamond_pcs
+    `SELECT product_id, diamond_type, diamond_shape, diamond_size, diamond_color, diamond_clarity, carat, diamond_pcs
      FROM product_diamonds WHERE product_id = ANY($1) ORDER BY sort_order, created_at`, [ids]);
   for (const r of rows) {
     if (!map.has(r.product_id)) map.set(r.product_id, []);

@@ -30,6 +30,10 @@ async function tx(fn) {
 
 const asArray = (b) => (Array.isArray(b) ? b : Array.isArray(b?.rows) ? b.rows : null);
 
+/* Which diamond chart a request targets. Anything but an explicit lab value
+   is NATURAL, so every existing call keeps hitting the natural chart. */
+const chartType = (v) => (/^(lab|lab[\s-]?grown|labgrown)$/i.test(String(v || "").trim()) ? "LAB" : "NATURAL");
+
 /* ════════════════════════════════════════════════════════════════
    DIAMOND RATES
    ════════════════════════════════════════════════════════════════ */
@@ -37,14 +41,16 @@ router.get("/diamond-rates", async (req, res, next) => {
   try {
     const { retailerId } = req.query;
     const country = (req.query.country || "India").trim();
+    const dtype = chartType(req.query.type);
     const { rows } = retailerId
       ? await query(
           `SELECT shape_group, sieve_size, shade, clarity, rate_per_carat, updated_at
-           FROM retailer_diamond_rates WHERE retailer_id = $1
-           ORDER BY shape_group, sieve_size, shade, clarity`, [retailerId])
+           FROM retailer_diamond_rates WHERE retailer_id = $1 AND diamond_type = $2
+           ORDER BY shape_group, sieve_size, shade, clarity`, [retailerId, dtype])
       : await query(
           `SELECT id, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_at
-           FROM diamond_rates WHERE country = $1 ORDER BY shape_group, sieve_size, shade, clarity`, [country]);
+           FROM diamond_rates WHERE country = $1 AND diamond_type = $2
+           ORDER BY shape_group, sieve_size, shade, clarity`, [country, dtype]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -55,10 +61,13 @@ router.put("/diamond-rates", async (req, res, next) => {
     if (!items) throw new AppError("Body must be an array of diamond rates");
     const { retailerId } = req.query;
     const country = (req.query.country || "India").trim();
+    const dtype = chartType(req.query.type);
     const out = await tx(async (c) => {
       let n = 0;
-      // Per-retailer: full replace of this retailer's rows (cleared rows drop back to the country base).
-      if (retailerId) await c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]);
+      // Per-retailer: full replace of THIS TYPE's rows (cleared rows drop back to
+      // the country base). Scoped by type so saving the lab chart cannot wipe the
+      // natural one.
+      if (retailerId) await c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1 AND diamond_type = $2", [retailerId, dtype]);
       for (const it of items) {
         const { shape_group, shade, clarity, rate_per_carat } = it;
         // Sieve may be blank (a new/unnamed sieve row); only the rest are required.
@@ -68,16 +77,16 @@ router.put("/diamond-rates", async (req, res, next) => {
         }
         if (retailerId) {
           await c.query(
-            `INSERT INTO retailer_diamond_rates (retailer_id, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [retailerId, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
+            `INSERT INTO retailer_diamond_rates (retailer_id, diamond_type, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [retailerId, dtype, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
         } else {
           await c.query(
-            `INSERT INTO diamond_rates (country, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)
-             ON CONFLICT (country, shape_group, sieve_size, shade, clarity)
+            `INSERT INTO diamond_rates (country, diamond_type, shape_group, sieve_size, shade, clarity, rate_per_carat, updated_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+             ON CONFLICT (country, diamond_type, shape_group, sieve_size, shade, clarity)
              DO UPDATE SET rate_per_carat = EXCLUDED.rate_per_carat, updated_by = EXCLUDED.updated_by`,
-            [country, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
+            [country, dtype, shape_group, sieve_size, shade, clarity, Number(rate_per_carat) || 0, req.admin.id]);
         }
         n++;
       }
@@ -96,9 +105,10 @@ router.delete("/diamond-rates", async (req, res, next) => {
     // sieve may legitimately be "" — that's the blank / "any size" row. Only a
     // MISSING param is an error.
     if (!shapeGroup || sieve == null) throw new AppError("shapeGroup and sieve are required");
+    const dtype = chartType(req.query.type);
     await tx((c) => retailerId
-      ? c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1 AND shape_group = $2 AND sieve_size = $3", [retailerId, shapeGroup, sieve])
-      : c.query("DELETE FROM diamond_rates WHERE country = $1 AND shape_group = $2 AND sieve_size = $3", [country, shapeGroup, sieve]));
+      ? c.query("DELETE FROM retailer_diamond_rates WHERE retailer_id = $1 AND diamond_type = $2 AND shape_group = $3 AND sieve_size = $4", [retailerId, dtype, shapeGroup, sieve])
+      : c.query("DELETE FROM diamond_rates WHERE country = $1 AND diamond_type = $2 AND shape_group = $3 AND sieve_size = $4", [country, dtype, shapeGroup, sieve]));
     res.json({ deleted: true });
   } catch (e) { next(e); }
 });
@@ -171,7 +181,8 @@ router.delete("/sieve-map/:id", async (req, res, next) => {
 router.get("/diamond-sieves", async (req, res, next) => {
   try {
     const { rows } = await query(
-      "SELECT shape_group, sieve_size FROM diamond_sieves ORDER BY shape_group, sieve_size");
+      "SELECT shape_group, sieve_size FROM diamond_sieves WHERE diamond_type = $1 ORDER BY shape_group, sieve_size",
+      [chartType(req.query.type)]);
     res.json(rows);
   } catch (e) { next(e); }
 });
@@ -182,9 +193,9 @@ router.post("/diamond-sieves", async (req, res, next) => {
     // Allow any sieve label, including blank — only shape_group is required.
     if (!shape_group) throw new AppError("shape_group is required");
     await tx((c) => c.query(
-      `INSERT INTO diamond_sieves (shape_group, sieve_size) VALUES ($1, $2)
-       ON CONFLICT (shape_group, sieve_size) DO NOTHING`,
-      [shape_group, sieve_size == null ? "" : String(sieve_size).trim()]));
+      `INSERT INTO diamond_sieves (diamond_type, shape_group, sieve_size) VALUES ($1, $2, $3)
+       ON CONFLICT (diamond_type, shape_group, sieve_size) DO NOTHING`,
+      [chartType(req.body?.type || req.query.type), shape_group, sieve_size == null ? "" : String(sieve_size).trim()]));
     res.status(201).json({ added: true });
   } catch (e) { next(e); }
 });
@@ -194,10 +205,11 @@ router.delete("/diamond-sieves", async (req, res, next) => {
     const { shapeGroup, sieve } = req.query;
     // "" is the blank / "any size" row — a valid label. Only a MISSING param fails.
     if (!shapeGroup || sieve == null) throw new AppError("shapeGroup and sieve are required");
+    const dtype = chartType(req.query.type);
     await tx(async (c) => {
       // Drop the sieve row and any rates entered for it (keeps the matrix consistent).
-      await c.query("DELETE FROM diamond_sieves WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]);
-      await c.query("DELETE FROM diamond_rates WHERE shape_group = $1 AND sieve_size = $2", [shapeGroup, sieve]);
+      await c.query("DELETE FROM diamond_sieves WHERE diamond_type = $1 AND shape_group = $2 AND sieve_size = $3", [dtype, shapeGroup, sieve]);
+      await c.query("DELETE FROM diamond_rates WHERE diamond_type = $1 AND shape_group = $2 AND sieve_size = $3", [dtype, shapeGroup, sieve]);
     });
     res.json({ deleted: true });
   } catch (e) { next(e); }
