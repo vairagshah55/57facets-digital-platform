@@ -180,13 +180,59 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }, { replace: true });
   }, [setSearchParams]);
 
-  const [priceRange, setPriceRange] = useState<number[]>([PRICE_MIN, PRICE_MAX]);
-  const [caratRange, setCaratRange] = useState<number[]>([CARAT_MIN, CARAT_MAX]);
-  const [availability, setAvailability] = useState<Record<string, boolean>>({
-    "in-stock": false, "made-to-order": false, "out-of-stock": false,
+  /* Sidebar filters are seeded from the URL for the same reason category/tab are:
+     leaving for a product detail page unmounts this component, so anything held
+     only in state is gone on the way back. Category survived because it was in
+     the URL; Type / Sub-category / Carat / Price / Availability were not, which
+     is why they came back cleared. */
+  const listParam = (key: string) => {
+    const raw = searchParams.get(key);
+    return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  };
+  const rangeParam = (key: string, min: number, max: number) => {
+    const raw = searchParams.get(key);
+    if (!raw) return [min, max];
+    // Anything malformed falls back to the full range rather than rendering a
+    // broken slider: "-" (empty halves parse as 0), "1-2-3", or an out-of-bounds
+    // pair like 99-100 on a 0-5 scale, which clamps to an inverted [99, 5].
+    const parts = raw.split("-");
+    if (parts.length !== 2 || parts.some((p) => p.trim() === "")) return [min, max];
+    const a = Number(parts[0]), b = Number(parts[1]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return [min, max];
+    const lo = Math.max(Math.min(a, b), min);
+    const hi = Math.min(Math.max(a, b), max);
+    return lo <= hi ? [lo, hi] : [min, max];
+  };
+
+  const [priceRange, setPriceRange] = useState<number[]>(() => rangeParam("price", PRICE_MIN, PRICE_MAX));
+  const [caratRange, setCaratRange] = useState<number[]>(() => rangeParam("carat", CARAT_MIN, CARAT_MAX));
+  const [availability, setAvailability] = useState<Record<string, boolean>>(() => {
+    const on = listParam("avail");
+    return {
+      "in-stock": on.includes("in-stock"),
+      "made-to-order": on.includes("made-to-order"),
+      "out-of-stock": on.includes("out-of-stock"),
+    };
   });
-  const [activeTypes, setActiveTypes] = useState<string[]>([]);
-  const [activeSubCategories, setActiveSubCategories] = useState<string[]>([]);
+  const [activeTypes, setActiveTypes] = useState<string[]>(() => listParam("types"));
+  const [activeSubCategories, setActiveSubCategories] = useState<string[]>(() => listParam("sub"));
+  /* Mirror the sidebar filters into the URL (replace, so we don't spam history).
+     One effect rather than wrapping each setter — the checkboxes, sliders and
+     "clear" buttons all funnel through state, so watching the state covers every
+     path. Defaults are removed from the URL to keep it short. */
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
+      put("types", activeTypes.join(","));
+      put("sub", activeSubCategories.join(","));
+      put("avail", Object.entries(availability).filter(([, on]) => on).map(([k]) => k).join(","));
+      put("carat", caratRange[0] > CARAT_MIN || caratRange[1] < CARAT_MAX ? `${caratRange[0]}-${caratRange[1]}` : "");
+      put("price", priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX ? `${priceRange[0]}-${priceRange[1]}` : "");
+      return next;
+    }, { replace: true });
+  }, [activeTypes, activeSubCategories, availability, caratRange, priceRange, setSearchParams]);
+
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([]);
   const [subByCategory, setSubByCategory] = useState<Record<string, string[]>>({});
@@ -367,12 +413,16 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     return full;
   }, [activeCategory, activeTypes, subCategoryOptions, subByCategory]);
   // Drop any selected sub-categories that aren't valid for the current category.
+  // Gated on the options having loaded: they arrive from filterOptions() a tick
+  // after mount, and pruning against the empty initial list would wipe a
+  // sub-category restored from the URL before it could ever be validated.
   useEffect(() => {
+    if (!subCategoryOptions.length) return;
     setActiveSubCategories((prev) => {
       const next = prev.filter((s) => cascadedSubCategoryOptions.includes(s));
       return next.length === prev.length ? prev : next;
     });
-  }, [cascadedSubCategoryOptions]);
+  }, [cascadedSubCategoryOptions, subCategoryOptions]);
 
   const activeFiltersCount = useMemo(() => {
     let c = 0;
