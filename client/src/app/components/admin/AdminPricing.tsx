@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from "react";
 import { motion } from "framer-motion";
 import {
-  Gem, Coins, Sparkles, Hammer, Users, Calculator, Landmark,
+  Gem, Coins, Sparkles, Hammer, Users, Calculator, Landmark, ChevronDown,
   Plus, Trash2, Save, Upload, Loader2, Check, X, Search, RefreshCw, Download,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { toast } from "sonner";
 import { adminPricing, adminProducts } from "../../../lib/adminApi";
 
@@ -23,6 +22,16 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType; color: string
 ];
 
 const fmt = (n: any) => "₹" + (Number(n) || 0).toLocaleString("en-IN");
+
+/* Option label for the product pickers. Imported products often have a blank
+   `name`, which rendered as a dangling "SKU — ", so fall back to whatever does
+   identify the piece: category · type · sub-type · metal. */
+const skuLabel = (p: any) => {
+  const name = String(p.name ?? "").trim();
+  const rest = name || [p.category, p.type_category, p.sub_category, p.metal_type]
+    .map((x: any) => String(x ?? "").trim()).filter(Boolean).join(" · ");
+  return rest ? `${p.sku} — ${rest}` : String(p.sku ?? "");
+};
 
 /* Which chart the rate tabs read/write: "" = Global default, else a retailer id.
    Unset cells in a retailer's chart fall back to Global. */
@@ -155,9 +164,11 @@ export function AdminPricing() {
 /* ═══════════════════════════════════════════════════════
    SHARED PRIMITIVES
    ═══════════════════════════════════════════════════════ */
-function Card({ children, title, sub, action }: any) {
+function Card({ children, title, sub, action, noClip }: any) {
   return (
-    <div className="rounded-2xl border overflow-hidden mb-5" style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
+    // noClip: let an absolutely-positioned child (the SKU dropdown) escape the
+    // card instead of being clipped by overflow-hidden.
+    <div className={`rounded-2xl border mb-5 ${noClip ? "" : "overflow-hidden"}`} style={{ backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)" }}>
       {(title || action) && (
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--sf-divider)" }}>
           <div>
@@ -1186,7 +1197,12 @@ function OverrideDrawer({ retailer, onClose }: { retailer: any; onClose: () => v
     adminPricing.overrides(retailer.id).then((d: any) => setOverrides(d)).catch(() => { });
   }, [retailer.id]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => { }); }, []);
+  // Whole catalogue, slim — a limit of 200 left every product past the 200th
+  // unselectable here, so those SKUs could never be given an override.
+  useEffect(() => {
+    adminProducts.list({ limit: "5000", slim: "true", sort: "sku", order: "asc" })
+      .then((d: any) => setProducts(d.products || [])).catch(() => { });
+  }, []);
 
   const add = async () => {
     if (!pid || price === "") return;
@@ -1214,12 +1230,7 @@ function OverrideDrawer({ retailer, onClose }: { retailer: any; onClose: () => v
 
         <div className="p-4 space-y-3">
           <div className="rounded-xl border p-3 space-y-2" style={{ borderColor: "var(--sf-divider)" }}>
-            <select value={pid} onChange={(e) => setPid(e.target.value)}
-              className="w-full h-9 px-2 rounded-md text-sm border outline-none"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }}>
-              <option value="">Select a product…</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
-            </select>
+            <SkuCombo products={products} total={products.length} value={pid} onChange={setPid} />
             <div className="flex gap-2">
               <input type="number" placeholder="Fixed price ₹" value={price} onChange={(e) => setPrice(e.target.value)}
                 className="flex-1 h-9 px-2 rounded-md text-sm border outline-none"
@@ -1250,6 +1261,170 @@ function OverrideDrawer({ retailer, onClose }: { retailer: any; onClose: () => v
 }
 
 /* ═══════════════════════════════════════════════════════
+   SKU COMBO — searchable product dropdown
+   ----------------------------------------------------------------
+   A native <select> is unusable at 364 SKUs (no typing, no matching
+   on category/metal), so this is a type-ahead: search and list are
+   the same control. Filtering and sorting live here, over the FULL
+   catalogue the caller loaded.
+   ═══════════════════════════════════════════════════════ */
+function SkuCombo({ products, total, loading, value, onChange }: {
+  products: any[]; total: number; loading?: boolean; value: string; onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [active, setActive] = useState(0);
+  const [sortKey, setSortKey] = useState<"sku" | "name" | "category" | "created_at">("sku");
+  const [asc, setAsc] = useState(true);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = useMemo(() => products.find((p) => p.id === value) || null, [products, value]);
+
+  const filtered = useMemo(() => {
+    // Multi-term, any order, across every identifying field — so "18kt gents"
+    // or "ring 0123" both work.
+    const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hit = terms.length
+      ? products.filter((p) => {
+        const hay = `${p.sku ?? ""} ${p.name ?? ""} ${p.category ?? ""} ${p.type_category ?? ""} ${p.sub_category ?? ""} ${p.mfg_code ?? ""} ${p.metal_type ?? ""}`.toLowerCase();
+        return terms.every((t) => hay.includes(t));
+      })
+      : products.slice();
+    const cmp = (a: any, b: any) => {
+      if (sortKey === "created_at") return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      // Numeric-aware so SKU 9 sorts before 10. Ties — every row, when names
+      // are blank — fall back to SKU so the order stays stable.
+      const col = (x: any) => String(x[sortKey] ?? "").trim();
+      const c = col(a).localeCompare(col(b), undefined, { numeric: true, sensitivity: "base" });
+      return c !== 0 ? c : String(a.sku ?? "").localeCompare(String(b.sku ?? ""), undefined, { numeric: true, sensitivity: "base" });
+    };
+    hit.sort((a, b) => (asc ? cmp(a, b) : -cmp(a, b)));
+    return hit;
+  }, [products, q, sortKey, asc]);
+
+  // Close on an outside click, reverting whatever was half-typed.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) { setOpen(false); setQ(""); }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Keep the keyboard-highlighted row in view.
+  useEffect(() => {
+    if (!open || !listRef.current) return;
+    (listRef.current.children[active] as HTMLElement | undefined)?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
+
+  const pick = (p: any) => { onChange(p.id); setQ(""); setOpen(false); inputRef.current?.blur(); };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      setActive((i) => Math.min(Math.max(i + (e.key === "ArrowDown" ? 1 : -1), 0), filtered.length - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (open && filtered[active]) pick(filtered[active]);
+      else setOpen(true);
+    } else if (e.key === "Escape") {
+      setOpen(false); setQ("");
+    }
+  };
+
+  const shown = open ? q : (selected ? skuLabel(selected) : "");
+  const countText = loading ? "loading…"
+    : q.trim() ? `${filtered.length} of ${total} SKUs`
+      : `${total} SKU${total === 1 ? "" : "s"}`;
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="flex items-baseline justify-between gap-2">
+        <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Product SKU</label>
+        <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{countText}</span>
+      </div>
+
+      <div className="relative mt-1">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--sf-text-muted)" }} />
+        <input
+          ref={inputRef}
+          value={shown}
+          onChange={(e) => { setQ(e.target.value); setActive(0); if (!open) setOpen(true); }}
+          onFocus={() => { setOpen(true); setActive(0); }}
+          onKeyDown={onKeyDown}
+          placeholder={loading ? "Loading products…"
+            : open && selected ? skuLabel(selected)
+              : "Search SKU, category, metal…"}
+          className="w-full h-9 pl-8 pr-14 rounded-md text-sm border outline-none"
+          style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: open ? "var(--sf-teal)" : "var(--sf-divider)" }} />
+        {(value || q) && (
+          <button onMouseDown={(e) => { e.preventDefault(); onChange(""); setQ(""); setActive(0); }}
+            title="Clear" className="absolute right-7 top-1/2 -translate-y-1/2"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--sf-text-muted)", lineHeight: 0 }}>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v); inputRef.current?.focus(); }}
+          title="Browse all SKUs" className="absolute right-2 top-1/2 -translate-y-1/2"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--sf-text-muted)", lineHeight: 0 }}>
+          <ChevronDown className="w-4 h-4" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+        </button>
+      </div>
+
+      {/* Sort field + direction */}
+      <div className="flex items-center gap-1.5 mt-2">
+        <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>Sort</span>
+        <select value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}
+          className="h-7 px-1.5 rounded-md text-[11px] border outline-none"
+          style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }}>
+          <option value="sku">SKU</option>
+          <option value="name">Name</option>
+          <option value="category">Category</option>
+          <option value="created_at">Date added</option>
+        </select>
+        <button onClick={() => setAsc((v) => !v)}
+          title={asc ? "Ascending — click for descending" : "Descending — click for ascending"}
+          className="h-7 px-2 rounded-md text-[11px] font-medium"
+          style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-secondary)", border: "1px solid var(--sf-divider)", cursor: "pointer" }}>
+          {asc ? "↑ Asc" : "↓ Desc"}
+        </button>
+      </div>
+
+      {open && (
+        <div ref={listRef}
+          className="absolute z-30 left-0 right-0 mt-1 rounded-lg border overflow-y-auto sf-teal-scroll"
+          style={{ top: "100%", maxHeight: 280, backgroundColor: "var(--sf-bg-surface-1)", borderColor: "var(--sf-divider)", boxShadow: "0 12px 32px rgba(0,0,0,.45)" }}>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-3 text-xs" style={{ color: "var(--sf-text-muted)" }}>
+              {loading ? "Loading…" : `No SKU matches “${q.trim()}”`}
+            </div>
+          ) : filtered.map((p, i) => (
+            <div key={p.id}
+              onMouseDown={(e) => { e.preventDefault(); pick(p); }}
+              onMouseEnter={() => setActive(i)}
+              className="px-3 py-1.5 cursor-pointer"
+              style={{
+                backgroundColor: i === active ? "var(--sf-bg-surface-2)" : "transparent",
+                borderLeft: p.id === value ? "2px solid var(--sf-teal)" : "2px solid transparent",
+              }}>
+              <span className="text-[12px] font-medium" style={{ color: "var(--sf-text-primary)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{p.sku}</span>
+              <span className="text-[11px] ml-2" style={{ color: "var(--sf-text-muted)" }}>
+                {String(p.name ?? "").trim()
+                  || [p.category, p.type_category, p.sub_category, p.metal_type].map((x: any) => String(x ?? "").trim()).filter(Boolean).join(" · ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    PRICE PREVIEW
    ═══════════════════════════════════════════════════════ */
 function PreviewTab() {
@@ -1259,17 +1434,23 @@ function PreviewTab() {
   const [rid, setRid] = useState("");
   const [result, setResult] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
-  const [q, setQ] = useState("");
+  const [total, setTotal] = useState(0);
+  const [loadingList, setLoadingList] = useState(true);
 
   useEffect(() => {
-    adminProducts.list({ limit: "200" }).then((d: any) => setProducts(d.products || [])).catch(() => { });
+    // `slim` drops the per-row diamond/image/count sub-queries (the dropdown
+    // needs sku + name only), so the FULL catalogue loads in one cheap call.
+    // The old limit of 200 silently hid every product past the 200th — they
+    // were missing from the list AND unsearchable, since search filters what
+    // was fetched.
+    setLoadingList(true);
+    adminProducts.list({ limit: "5000", slim: "true", sort: "sku", order: "asc" })
+      .then((d: any) => { setProducts(d.products || []); setTotal(Number(d.total) || (d.products || []).length); })
+      .catch(() => { })
+      .finally(() => setLoadingList(false));
     adminPricing.retailers().then((d: any) => setRetailers(d)).catch(() => { });
   }, []);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return s ? products.filter((p) => `${p.sku} ${p.name}`.toLowerCase().includes(s)) : products;
-  }, [products, q]);
 
   useEffect(() => {
     // Require BOTH a product SKU and a retailer before showing pricing.
@@ -1397,22 +1578,11 @@ function PreviewTab() {
     : "";
 
   return (
-    <Card title="SKU Price" sub="Pick a product SKU and retailer to see the full price breakdown">
+    <Card title="SKU Price" sub="Pick a product SKU and retailer to see the full price breakdown" noClip>
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Product SKU</label>
-            <div className="relative mt-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
-              <Input placeholder="Search SKU / name to filter…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8 h-9 text-sm mb-2"
-                style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)" }} />
-            </div>
-            <select value={pid} onChange={(e) => setPid(e.target.value)}
-              className="w-full h-9 px-2 rounded-md text-sm border outline-none"
-              style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-primary)", borderColor: "var(--sf-divider)" }}>
-              <option value="">Select a product…</option>
-              {filtered.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
-            </select>
+            <SkuCombo products={products} total={total} loading={loadingList} value={pid} onChange={setPid} />
           </div>
           <div>
             <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Retailer</label>

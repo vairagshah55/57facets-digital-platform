@@ -81,7 +81,7 @@ router.get("/:id/preview", async (req, res, next) => {
 // List all products with filters
 router.get("/", async (req, res, next) => {
   try {
-    const { search, category, availability, is_new, type_category, sub_category, page = 1, limit = 20 } = req.query;
+    const { search, category, availability, is_new, type_category, sub_category, page = 1, limit = 20, sort, order, slim } = req.query;
     const conditions = ["p.is_active = true"];
     const params = [];
     let idx = 1;
@@ -117,7 +117,47 @@ router.get("/", async (req, res, next) => {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    /* Sorting — the column is looked up in a whitelist, never interpolated from
+       the raw query string, so `sort`/`order` can't inject SQL. Default is the
+       previous behaviour (newest first). */
+    const SORT_COLS = {
+      created_at: "p.created_at", sku: "p.sku", name: "p.name",
+      price: "p.base_price", category: "c.name", availability: "p.availability",
+    };
+    const sortCol = SORT_COLS[String(sort || "").toLowerCase()] || SORT_COLS.created_at;
+    const dir = String(order || "").toLowerCase() === "asc" ? "ASC" : "DESC";
+    const orderBy = `${sortCol} ${dir} NULLS LAST, p.id DESC`;
+
+    /* `slim=true` returns just the picker fields (id/sku/name/…) and skips the
+       five correlated sub-queries per row, so a whole catalogue can be loaded
+       for a dropdown cheaply. A higher ceiling is allowed in that mode. */
+    const isSlim = String(slim) === "true";
+    // Full rows carry five sub-queries each, so they get the lower ceiling —
+    // but not lower than what existing callers already ask for (1000, in the
+    // collection product picker), or the cap would silently truncate them.
+    const MAX_LIMIT = isSlim ? 5000 : 1000;
+    const lim = Math.min(Math.max(parseInt(limit) || 20, 1), MAX_LIMIT);
+    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * lim;
+
+    if (isSlim) {
+      const { rows } = await query(
+        `SELECT p.id, p.name, p.sku, p.base_price, p.metal_type, p.availability,
+                p.created_at, p.mfg_code, p.type_category, p.sub_category, c.name AS category
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         ${where}
+         ORDER BY ${orderBy}
+         LIMIT $${idx++} OFFSET $${idx++}`,
+        [...params, lim, offset]
+      );
+      const { rows: countRows } = await query(
+        `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}`,
+        params
+      );
+      const total = parseInt(countRows[0].count);
+      return res.json({ products: rows, total, page: parseInt(page) || 1, totalPages: Math.ceil(total / lim) });
+    }
 
     const { rows } = await query(
       `SELECT p.id, p.name, p.sku, p.base_price, p.carat, p.metal_type,
@@ -140,9 +180,9 @@ router.get("/", async (req, res, next) => {
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ${where}
-       ORDER BY p.created_at DESC, p.id DESC
+       ORDER BY ${orderBy}
        LIMIT $${idx++} OFFSET $${idx++}`,
-      [...params, parseInt(limit), offset]
+      [...params, lim, offset]
     );
 
     const { rows: countRows } = await query(
@@ -153,8 +193,8 @@ router.get("/", async (req, res, next) => {
     res.json({
       products: rows,
       total: parseInt(countRows[0].count),
-      page: parseInt(page),
-      totalPages: Math.ceil(parseInt(countRows[0].count) / parseInt(limit)),
+      page: parseInt(page) || 1,
+      totalPages: Math.ceil(parseInt(countRows[0].count) / lim),
     });
   } catch (err) {
     next(err);
