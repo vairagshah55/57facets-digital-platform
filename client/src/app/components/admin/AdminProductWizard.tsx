@@ -844,9 +844,12 @@ function RetailerPricePreview({ productId }: { productId?: string }) {
     ...diamondRows,
     ...stoneRows,
     { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
+    ...(d.duty && d.duty.percent > 0
+      ? [{ label: "Duty", cost: d.duty.cost, info: `${d.duty.percent}% of ${inr(d.duty.base)} (total value)` }]
+      : []),
   ] : [];
   // No retailer → price is the dynamic per-section sum (never the static base_price).
-  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost : 0;
+  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost + (d.duty?.cost || 0) : 0;
   const shownPrice = rid ? result?.price : dynamicTotal;
   const shownSource = rid ? result?.source : "dynamic";
 

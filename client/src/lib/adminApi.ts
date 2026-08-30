@@ -270,6 +270,13 @@ export const adminPricing = {
     request(`/pricing/making-charges?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify(rows) }),
   deleteMaking: (id: string) => request(`/pricing/making-charges/${id}`, { method: "DELETE" }),
 
+  // Duty — a % of the product's total value. Base per country; a retailerId
+  // reads/writes that retailer's override (send "" to clear it).
+  dutyCharge: (retailerId?: string, country = "India") =>
+    request(`/pricing/duty-charges?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`),
+  saveDutyCharge: (percent: number | string, retailerId?: string, country = "India") =>
+    request(`/pricing/duty-charges?country=${encodeURIComponent(country)}${retailerId ? `&retailerId=${retailerId}` : ""}`, { method: "PUT", body: JSON.stringify({ percent }) }),
+
   // Retailer pricing — factors + per-product overrides
   retailers: () => request("/pricing/retailers"),
   saveFactors: (id: string, body: any) =>

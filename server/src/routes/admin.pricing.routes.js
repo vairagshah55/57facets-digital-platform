@@ -349,6 +349,62 @@ router.delete("/making-charges/:id", async (req, res, next) => {
 });
 
 /* ════════════════════════════════════════════════════════════════
+   DUTY — import/customs %, charged on the product's total value.
+   Per-country base; ?retailerId reads/writes that retailer's override.
+   ════════════════════════════════════════════════════════════════ */
+router.get("/duty-charges", async (req, res, next) => {
+  try {
+    const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
+    // Always return the country base too, so the UI can show what an empty
+    // retailer override falls back to.
+    const base = await query("SELECT percent, updated_at FROM duty_charges WHERE country = $1", [country]);
+    const basePercent = base.rows.length ? Number(base.rows[0].percent) : 0;
+    if (!retailerId) return res.json({ country, percent: basePercent, base_percent: basePercent, inherited: false });
+    const ov = await query("SELECT percent, updated_at FROM retailer_duty_charges WHERE retailer_id = $1", [retailerId]);
+    res.json({
+      country,
+      percent: ov.rows.length ? Number(ov.rows[0].percent) : null, // null = inherits the country rate
+      base_percent: basePercent,
+      inherited: ov.rows.length === 0,
+    });
+  } catch (e) { next(e); }
+});
+
+router.put("/duty-charges", async (req, res, next) => {
+  try {
+    const { retailerId } = req.query;
+    const country = (req.query.country || "India").trim();
+    const raw = req.body?.percent;
+    // Blank clears a retailer override (back to the country rate). The country
+    // rate itself can't be blank — it's 0 or a number.
+    const cleared = raw === "" || raw === null || raw === undefined;
+    const percent = Number(raw);
+    if (!cleared && (!Number.isFinite(percent) || percent < 0)) {
+      throw new AppError("percent must be a number >= 0");
+    }
+    await tx(async (c) => {
+      if (retailerId) {
+        if (cleared) {
+          await c.query("DELETE FROM retailer_duty_charges WHERE retailer_id = $1", [retailerId]);
+        } else {
+          await c.query(
+            `INSERT INTO retailer_duty_charges (retailer_id, percent, updated_by) VALUES ($1,$2,$3)
+             ON CONFLICT (retailer_id) DO UPDATE SET percent = EXCLUDED.percent, updated_by = EXCLUDED.updated_by`,
+            [retailerId, percent, req.admin.id]);
+        }
+      } else {
+        await c.query(
+          `INSERT INTO duty_charges (country, percent, updated_by) VALUES ($1,$2,$3)
+           ON CONFLICT (country) DO UPDATE SET percent = EXCLUDED.percent, updated_by = EXCLUDED.updated_by`,
+          [country, cleared ? 0 : percent, req.admin.id]);
+      }
+    });
+    res.json({ saved: true, percent: cleared ? null : percent });
+  } catch (e) { next(e); }
+});
+
+/* ════════════════════════════════════════════════════════════════
    RETAILER PRICING — factors (Layer 1/2) + overrides (Layer 3)
    ════════════════════════════════════════════════════════════════ */
 router.get("/retailers", async (req, res, next) => {

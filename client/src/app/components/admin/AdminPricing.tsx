@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
 import { motion } from "framer-motion";
 import {
-  Gem, Coins, Sparkles, Hammer, Users, Calculator,
+  Gem, Coins, Sparkles, Hammer, Users, Calculator, Landmark,
   Plus, Trash2, Save, Upload, Loader2, Check, X, Search, RefreshCw, Download,
 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -12,12 +12,13 @@ import { adminPricing, adminProducts } from "../../../lib/adminApi";
 /* ═══════════════════════════════════════════════════════
    TABS
    ═══════════════════════════════════════════════════════ */
-type TabKey = "gold" | "diamond" | "stones" | "making" | "retailers" | "preview";
+type TabKey = "gold" | "diamond" | "stones" | "making" | "duty" | "retailers" | "preview";
 const TABS: { key: TabKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "gold", label: "Gold Rates", icon: Coins, color: "#f59e0b" },
   { key: "diamond", label: "Diamond Rates", icon: Gem, color: "#a855f7" },
   { key: "stones", label: "Stone Rates", icon: Sparkles, color: "#22c55e" },
   { key: "making", label: "Making", icon: Hammer, color: "#3b82f6" },
+  { key: "duty", label: "Duty", icon: Landmark, color: "#14b8a6" },
   { key: "preview", label: "SKU Price", icon: Calculator, color: "#ec4899" },
 ];
 
@@ -143,6 +144,7 @@ export function AdminPricing() {
           {tab === "diamond" && <DiamondTab retailers={retailers} />}
           {tab === "stones" && <StonesTab />}
           {tab === "making" && <MakingTab retailers={retailers} />}
+          {tab === "duty" && <DutyTab retailers={retailers} />}
           {tab === "preview" && <PreviewTab />}
         </motion.div>
       </ScopeContext.Provider>
@@ -939,6 +941,163 @@ function MakingTab({ retailers }: { retailers: any[] }) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   DUTY — import/customs %, charged on the product's TOTAL value
+   ═══════════════════════════════════════════════════════ */
+function DutyTab({ retailers }: { retailers: any[] }) {
+  // Country picks the base duty; scope picks a retailer of that country whose
+  // rate differs from it ("" = the country base).
+  const [country, setCountry] = useState("India");
+  const [scope, setScope] = useState("");
+  const countryRetailers = useMemo(
+    () => (retailers || []).filter((r) => (r.country || "India") === country),
+    [retailers, country]
+  );
+  const [percent, setPercent] = useState<string>("");
+  const [basePercent, setBasePercent] = useState(0);
+  const [inherited, setInherited] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Has the admin typed in the box since it was loaded? An untouched inherited
+  // value is only being SHOWN — saving it would pin a copy that stops tracking
+  // the country rate, so save is a no-op until they actually change it.
+  const [touched, setTouched] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    adminPricing.dutyCharge(scope, country).then((d: any) => {
+      const base = Number(d?.base_percent) || 0;
+      // A retailer with no override still has an effective rate — the country's.
+      // Show that number rather than an empty box, so the duty in force is visible.
+      setPercent(d?.percent == null ? String(base) : String(d.percent));
+      setBasePercent(base);
+      setInherited(!!d?.inherited);
+      setTouched(false);
+    }).catch(() => { }).finally(() => setLoading(false));
+  }, [scope, country]);
+  useEffect(() => { load(); }, [load]);
+  useImportRefresh(load);
+
+  const save = async () => {
+    const v = percent.trim();
+    // Showing the inherited rate must not silently turn it into an override.
+    if (scope && inherited && !touched) {
+      toast.info(`Still inheriting ${country}'s ${basePercent}% — change the value to give this retailer its own rate.`);
+      return;
+    }
+    if (!scope && v === "") { toast.error("Enter a duty % (use 0 for none)"); return; }
+    if (v !== "" && (!isFinite(Number(v)) || Number(v) < 0)) { toast.error("Duty % must be a number ≥ 0"); return; }
+    setSaving(true);
+    try {
+      await adminPricing.saveDutyCharge(v, scope, country);
+      toast.success(v === "" ? `Cleared — inherits ${country}'s ${basePercent}%` : `Duty saved: ${Number(v)}%`);
+      load();
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  };
+
+  const cur = country === "India" ? "₹" : "$";
+  // Live worked example, in the money the selected country actually uses.
+  const eg = 207;
+  const pct = Number(percent === "" ? basePercent : percent) || 0;
+  const money = (n: number) => cur + n.toLocaleString(country === "India" ? "en-IN" : "en-US",
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <>
+      {/* Country (base) + retailer-override scope */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>Country:</span>
+        <select value={country} onChange={(e) => { setCountry(e.target.value); setScope(""); }}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)" }}>
+          {["India", "United States"].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <span className="text-xs font-medium ml-2" style={{ color: "var(--sf-text-muted)" }}>Editing:</span>
+        <select value={scope} onChange={(e) => setScope(e.target.value)}
+          className="h-9 text-sm rounded-lg px-2"
+          style={{ backgroundColor: "var(--sf-bg-surface-1)", border: "1px solid var(--sf-divider)", color: "var(--sf-text-primary)", minWidth: 200 }}>
+          <option value="">{country} base duty</option>
+          {countryRetailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        {scope && (
+          <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+            Leave blank to inherit {country}'s {basePercent}%.
+          </span>
+        )}
+      </div>
+
+      <Card title="Import / customs duty"
+        sub="Duty = % × the product's total value (metal + diamond + stone + making)"
+        action={<SaveBtn onClick={save} saving={saving} />}>
+        {loading ? <SkeletonRows cols={2} n={2} /> : (
+          <div className="p-4 space-y-4">
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="text-xs font-medium" style={{ color: "var(--sf-text-muted)" }}>
+                  Duty %{scope && !(inherited && !touched) ? " (blank = inherit)" : ""}
+                </label>
+                <div className="relative mt-1">
+                  <input type="number" min="0" step="0.001" value={percent}
+                    onChange={(e) => { setPercent(e.target.value); setTouched(true); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
+                    placeholder={scope ? String(basePercent) : "0"}
+                    className="w-40 h-9 pl-3 pr-7 rounded-md text-sm border outline-none"
+                    style={{
+                      backgroundColor: "var(--sf-bg-surface-2)",
+                      // Inherited-and-untouched reads as muted/italic: the number is
+                      // the rate in force, but it is not this retailer's own value.
+                      color: scope && inherited && !touched ? "var(--sf-text-muted)" : "var(--sf-text-primary)",
+                      fontStyle: scope && inherited && !touched ? "italic" : "normal",
+                      borderColor: "var(--sf-divider)",
+                    }} />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--sf-text-muted)" }}>%</span>
+                </div>
+              </div>
+              {scope && inherited && !touched && (
+                <span className="text-[11px] pb-2.5" style={{ color: "var(--sf-text-muted)" }}>
+                  Inherited from the {country} base — type a different % to give{" "}
+                  {countryRetailers.find((r) => r.id === scope)?.name || "this retailer"} its own rate.
+                </span>
+              )}
+              {scope && !inherited && (
+                <span className="text-[11px] pb-2.5" style={{ color: "var(--sf-text-muted)" }}>
+                  Own rate (the {country} base is {basePercent}%). Clear the box and save to go back to inheriting.
+                </span>
+              )}
+            </div>
+
+            {/* Worked example — the same sum the pricing engine does. */}
+            <div className="rounded-xl border overflow-hidden"
+              style={{ borderColor: "var(--sf-divider)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+              <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: "var(--sf-bg-surface-2)", color: "var(--sf-text-muted)" }}>
+                Example
+              </div>
+              {[
+                ["Product total value", money(eg)],
+                [`Duty @ ${pct}%${scope && inherited && !touched ? ` (inherited)` : ""}`, money(eg * pct / 100)],
+                ["Price with duty", money(eg + eg * pct / 100)],
+              ].map(([k, v], i) => (
+                <div key={k} className="flex items-center justify-between px-4 py-1.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
+                  <span className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>{k}</span>
+                  <span className="text-[11px] font-semibold"
+                    style={{ color: i === 2 ? "var(--sf-teal)" : "var(--sf-text-primary)" }}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[11px]" style={{ color: "var(--sf-text-muted)" }}>
+              0% means no duty is added. Duty applies to the computed price only — a
+              fixed per-product price set for a retailer already includes everything.
+            </p>
+          </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    RETAILERS — factors + overrides
    ═══════════════════════════════════════════════════════ */
 function RetailersTab() {
@@ -1151,12 +1310,15 @@ function PreviewTab() {
     ...diamondLineRows,
     ...stoneLineRows,
     { label: "Making", cost: d.making.cost, info: makingInfo(d.making) },
+    ...(d.duty && d.duty.percent > 0
+      ? [{ label: "Duty", cost: d.duty.cost, info: `${d.duty.percent}% of ${fmt(d.duty.base)} (total value)` }]
+      : []),
   ] : [];
 
   // Dynamic per-section total (metal + diamond + stone + making). With no retailer
   // this IS the price — never the static stored base_price. A retailer applies its
   // own factors / overrides, so trust the server's computed price in that case.
-  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost : 0;
+  const dynamicTotal = d ? d.gold.cost + d.diamond.cost + d.stone.cost + d.making.cost + (d.duty?.cost || 0) : 0;
   const shownPrice = rid ? result?.price : dynamicTotal;
   const shownSource = rid ? result?.source : "dynamic";
 
@@ -1225,8 +1387,14 @@ function PreviewTab() {
           : (d.making.mode === "gross" || d.making.mode === "net") ? `${fmt(d.making.value)}/g × ${p?.net_weight || 0} g (net)`
             : `flat`, res: d.making.cost
     },
+    ...(d.duty && d.duty.percent > 0
+      ? [{ k: "Duty", eq: `${d.duty.percent}% × ${fmt(d.duty.base)} (total value)`, res: d.duty.cost }]
+      : []),
   ] : [];
-  const subtotalEq = d ? `${fmt(d.gold.cost)} + ${fmt(d.diamond.cost)} + ${fmt(d.stone.cost)} + ${fmt(d.making.cost)}` : "";
+  const subtotalEq = d
+    ? `${fmt(d.gold.cost)} + ${fmt(d.diamond.cost)} + ${fmt(d.stone.cost)} + ${fmt(d.making.cost)}`
+      + (d.duty && d.duty.percent > 0 ? ` + ${fmt(d.duty.cost)} duty` : "")
+    : "";
 
   return (
     <Card title="SKU Price" sub="Pick a product SKU and retailer to see the full price breakdown">
@@ -1296,7 +1464,7 @@ function PreviewTab() {
                 Cost breakdown
               </div>
               {lines.map((ln) => {
-                const dot = ln.label.startsWith("Diamond") ? "#5DADE2" : ln.label.startsWith("Stone") ? "#A569BD" : ln.label.startsWith("Making") ? "#3b82f6" : "#f59e0b";
+                const dot = ln.label.startsWith("Diamond") ? "#5DADE2" : ln.label.startsWith("Stone") ? "#A569BD" : ln.label.startsWith("Making") ? "#3b82f6" : ln.label.startsWith("Duty") ? "#14b8a6" : "#f59e0b";
                 return (
                   <div key={ln.label} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--sf-divider)" }}>
                     <div className="flex items-center gap-2.5 min-w-0">

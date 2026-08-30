@@ -2,7 +2,7 @@
    Pricing service — computes a product's price from the master rate
    chart and applies the per-retailer pricing layers.
 
-     price = metal + diamond + stone + making        (master chart)
+     price = (metal + diamond + stone + making) + duty%   (master chart)
      A retailer is priced from its own chart scope (global rows + retailer
      overlay). No factor/markup multipliers. A retailer_product_price override,
      when present, wins over the computed price (highest precedence).
@@ -74,7 +74,7 @@ function normalizeClarity(clarity) {
    the retailer set wins; anything unset falls back to Global).
    ════════════════════════════════════════════════════════════════ */
 const TTL_MS = 60_000;
-const EMPTY_ROWS = { metals: [], diamonds: [], sieves: [], stones: [], makings: [] };
+const EMPTY_ROWS = { metals: [], diamonds: [], sieves: [], stones: [], makings: [], duties: [] };
 
 let _globalRows = null;   // raw global rows (kept so overlays can be rebuilt cheaply)
 let _globalChart = null;  // chart built from global rows only
@@ -82,25 +82,27 @@ let _at = 0;
 const _retailerCharts = new Map(); // retailerId -> { chart, at }
 
 async function loadGlobalRows() {
-  const [metals, diamonds, sieves, stones, makings] = await Promise.all([
+  const [metals, diamonds, sieves, stones, makings, duties] = await Promise.all([
     query("SELECT country, gold_type, rate_per_gram FROM metal_rates"),
     query("SELECT country, shape_group, sieve_size, shade, clarity, rate_per_carat FROM diamond_rates"),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM diamond_sieve_map"),
     query("SELECT country, category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM stone_rates"),
     query("SELECT country, scope, mode, value FROM making_charges"),
+    query("SELECT country, percent FROM duty_charges"),
   ]);
-  return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
+  return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows, duties: duties.rows };
 }
 
 async function loadRetailerRows(retailerId) {
-  const [metals, diamonds, sieves, stones, makings] = await Promise.all([
+  const [metals, diamonds, sieves, stones, makings, duties] = await Promise.all([
     query("SELECT gold_type, rate_per_gram FROM retailer_metal_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, sieve_size, shade, clarity, rate_per_carat FROM retailer_diamond_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT shape_group, carat_min, carat_max, sieve_size FROM retailer_sieve_map WHERE retailer_id = $1", [retailerId]),
     query("SELECT category, stone_name, quality, rate, rate_pc, unit, carat, pcs FROM retailer_stone_rates WHERE retailer_id = $1", [retailerId]),
     query("SELECT scope, mode, value FROM retailer_making_charges WHERE retailer_id = $1", [retailerId]),
+    query("SELECT percent FROM retailer_duty_charges WHERE retailer_id = $1", [retailerId]),
   ]);
-  return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows };
+  return { metals: metals.rows, diamonds: diamonds.rows, sieves: sieves.rows, stones: stones.rows, makings: makings.rows, duties: duties.rows };
 }
 
 /* Build a chart from global rows (g) with retailer rows (r) overlaid on top.
@@ -186,6 +188,13 @@ function buildChart(g, r, country) {
   for (const row of mkRows) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
   for (const row of r.makings) makingMap.set(up(row.scope), { mode: row.mode, value: num(row.value) });
 
+  // Import/customs duty: a percent of the product's total value. Per-COUNTRY
+  // (fallback India), and a retailer row REPLACES their country's rate.
+  const baseDuty = (g.duties || []).find((d) => up(d.country) === wantC)
+    || (g.duties || []).find((d) => up(d.country) === "INDIA");
+  const retDuty = (r.duties || [])[0];
+  const dutyPct = num(retDuty ? retDuty.percent : baseDuty && baseDuty.percent, 0);
+
   return {
     metalRate: (goldType) => metalMap.get(up(goldType)) ?? 0,
     diamondRate: (group, sieve, shade, clarity) => diamondMap.get(dkey(group, sieve, shade, clarity)) ?? null,
@@ -209,6 +218,8 @@ function buildChart(g, r, country) {
     stoneRate: (name) => stoneMap.get(skey(name, null)) || null,
     // Match by (category, name) — falls back to name-only via stoneRate.
     stoneByCat: (cat, name) => stoneMap.get(skey(cat, name)) || null,
+    // Duty % applied to the whole product value (see computeBreakdown).
+    dutyPercent: () => dutyPct,
     makingFor: (product) => (
       (product.metal_type && makingMap.get(up(product.metal_type))) ||
       (product.category && makingMap.get(up(product.category))) ||
@@ -371,8 +382,15 @@ function computeBreakdown(product, chart) {
 
   const baseCost = metalCost + diamondCost + stoneCost + makingCost;
 
+  // Duty — import/customs, charged on the product's TOTAL value (everything
+  // above), not on any single component. 0% unless an admin set a rate, so it
+  // adds nothing until configured.
+  const dutyPercent = typeof chart.dutyPercent === "function" ? num(chart.dutyPercent()) : 0;
+  const dutyCost = baseCost * (dutyPercent / 100);
+  const total = baseCost + dutyCost;
+
   return {
-    metalCost, diamondCost, stoneCost, makingCost, baseCost,
+    metalCost, diamondCost, stoneCost, makingCost, baseCost, dutyCost, total,
     detail: {
       gold: { gold_type: goldType, rate_per_gram: goldRate, weight, cost: metalCost },
       diamond: {
@@ -389,6 +407,7 @@ function computeBreakdown(product, chart) {
         count: stoneLines.filter((l) => l.matched).length, lines: stoneLines,
       },
       making: { mode: making.mode, value: making.value, cost: makingCost },
+      duty: { percent: dutyPercent, base: baseCost, cost: dutyCost },
     },
   };
 }
@@ -492,7 +511,8 @@ async function priceProductsForRetailer(products, retailerId) {
  *  produced nothing (e.g. Kundan/Beads with no per-carat rate). Rounded to rupee. */
 function finalize(bd, product) {
   if (bd.baseCost > 0) {
-    return { value: Math.round(bd.baseCost), source: "computed" };
+    // Duty rides on top of the component subtotal (0 unless configured).
+    return { value: Math.round(bd.total != null ? bd.total : bd.baseCost), source: "computed" };
   }
   return { value: Math.round(num(product.base_price)), source: "base_fallback" };
 }
