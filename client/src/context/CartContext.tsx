@@ -27,6 +27,12 @@ export interface CartItem {
   diamondCustomizations?: DiamondCustomization[] | null;
   colorStoneName: string | null;
   colorStoneQuality: string | null;
+  // Chosen ring/bangle size. It also travels as a "Size: …" line on the note (that
+  // is what reaches the order), but the note alone can't repopulate the selector,
+  // so the raw value is kept here too. Optional — carts saved before this existed
+  // simply have no value and fall back to parsing the note.
+  size?: string | null;
+  sizeSummary?: string | null;
   note: string | null;
 }
 

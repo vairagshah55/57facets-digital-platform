@@ -479,6 +479,22 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
     if (cartItem.diamondQuality) setSelectedDiamondQuality(cartItem.diamondQuality);
     if (cartItem.colorStoneName) setSelectedColorStone(cartItem.colorStoneName);
     if (cartItem.colorStoneQuality) setSelectedColorStoneQuality(cartItem.colorStoneQuality);
+    // Per-diamond picks on a multi-diamond product. These are WRITTEN to the cart
+    // but were never read back, so coming back to the product showed the piece's
+    // own specs again — and re-adding then overwrote the real choices with them.
+    if (cartItem.diamondCustomizations?.length) {
+      setDiamondSelections(cartItem.diamondCustomizations.map((d) => ({
+        shape: d.shape || "", shade: d.shade || "", clarity: d.clarity || "", type: d.type || "",
+      })));
+    }
+    // Size: prefer the stored value; older cart entries only have the "Size: …"
+    // line on the note, which at least restores the label.
+    if (cartItem.size) setSelectedSize(cartItem.size);
+    if (cartItem.sizeSummary) setSelectedSizeSummary(cartItem.sizeSummary);
+    else if (cartItem.note) {
+      const line = cartItem.note.split("\n").find((l) => l.startsWith("Size: "));
+      if (line) setSelectedSizeSummary(line.slice("Size: ".length));
+    }
     // The note carries a "Size: …" prefix added at add-to-cart; restore only the
     // free-text part (the size selector has its own value) and show the note field.
     if (cartItem.note) {
@@ -576,6 +592,8 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
       diamondCustomizations,
       colorStoneName: selectedColorStone || null,
       colorStoneQuality: selectedColorStoneQuality || null,
+      size: selectedSize || null,
+      sizeSummary: selectedSizeSummary || null,
       // Prepend the chosen size so it travels with the order alongside any note.
       note: [selectedSizeSummary ? `Size: ${selectedSizeSummary}` : null, note || null]
         .filter(Boolean).join("\n") || null,
