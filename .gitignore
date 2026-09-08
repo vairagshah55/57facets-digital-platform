@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+
+# Deploy script — contains plaintext prod credentials, never commit
+deploy.sh
+
+# Build artifacts / release bundles
+dist/
+dist.tar.gz
+dist.bak.*
+*.tar.gz
+
+# Local spreadsheets & import templates
+*.xlsx
+*.xls
+*.csv
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
