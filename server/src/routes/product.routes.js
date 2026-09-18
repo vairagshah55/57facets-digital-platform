@@ -33,7 +33,7 @@ router.get("/", authenticate, async (req, res, next) => {
     const {
       category, search, availability,
       min_price, max_price, min_carat, max_carat,
-      is_new, unseen, collection, type_category, sub_category, page = 1, limit = 20,
+      is_new, unseen, collection, type_category, sub_category, diamond_type, page = 1, limit = 20,
     } = req.query;
 
     const conditions = ["p.is_active = true"];
@@ -49,6 +49,24 @@ router.get("/", authenticate, async (req, res, next) => {
     if (category) {
       conditions.push(`c.name = $${idx++}`);
       params.push(category);
+    }
+    /* Lab-grown / natural. Separate from type_category: the retailer Type
+       filter shows "Lab Grown" next to DIAMOND/GOLD/…, but it is the
+       diamond_type dimension, so it narrows rather than widens. Matches the
+       bridged product-level column OR any attached product_diamonds row, since
+       a product can carry several diamonds. Values are compared with hyphens
+       and spaces stripped so 'Lab-grown', 'LAB GROWN' and 'Lab grown' all hit. */
+    if (diamond_type) {
+      const norm = (v) => String(v).toUpperCase().replace(/[- ]/g, "");
+      const dtypes = String(diamond_type).split(",").map(norm).filter(Boolean);
+      const N = (col) => `UPPER(REPLACE(REPLACE(COALESCE(${col}, ''), '-', ''), ' ', ''))`;
+      conditions.push(
+        `(${N("p.diamond_type")} = ANY($${idx})
+           OR EXISTS (SELECT 1 FROM product_diamonds d
+                      WHERE d.product_id = p.id AND ${N("d.diamond_type")} = ANY($${idx})))`
+      );
+      params.push(dtypes);
+      idx++;
     }
     if (type_category) {
       // Comma-separated list (multi-select) — match any of the chosen types.

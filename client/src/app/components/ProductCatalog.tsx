@@ -72,6 +72,14 @@ const DEFAULT_PAGE_SIZE = 12;
 // Preset type categories (mirrors the admin product editor). Shown in full in the
 // Type filter regardless of which values currently exist in the catalog.
 const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
+/* "Lab Grown" sits in the same Type checkbox group but is NOT a type_category —
+   it is the separate diamond_type dimension ('Natural' / 'Lab-grown'), because a
+   lab-grown ring is still a DIAMOND product. So it is kept out of the
+   type_category param and out of the sub-category cascade, and is sent as its
+   own filter that NARROWS the result set: Diamond + Lab Grown reads as
+   "lab-grown diamonds", not "diamonds or lab-grown". */
+const LAB_GROWN_TYPE = "LAB GROWN";
+const TYPE_FILTER_OPTIONS = [...TYPE_CATEGORY_OPTIONS, LAB_GROWN_TYPE];
 
 // Canonical category → type → sub-category taxonomy (business spec). Drives the
 // Sub-category filter so only VALID sub-categories show for the chosen category
@@ -474,7 +482,9 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           if (caratRange[1] < CARAT_MAX) params.max_carat = String(caratRange[1]);
           const activeAvail = Object.entries(availability).filter(([, v]) => v).map(([k]) => k);
           if (activeAvail.length > 0) params.availability = activeAvail.join(",");
-          if (activeTypes.length > 0) params.type_category = activeTypes.join(",");
+          const typeCats = activeTypes.filter((t) => t !== LAB_GROWN_TYPE);
+          if (typeCats.length > 0) params.type_category = typeCats.join(",");
+          if (activeTypes.includes(LAB_GROWN_TYPE)) params.diamond_type = LAB_GROWN_TYPE;
           if (activeSubCategories.length > 0) params.sub_category = activeSubCategories.join(",");
           if (activeTab === "new") params.is_new = "true";
           if (activeTab === "unseen") params.unseen = "true";
@@ -565,9 +575,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     const full = canon["*"] ?? [];
     // With type(s) selected, union each type's allowed sub-categories (so e.g.
     // Gold Ring drops Solitaire); with no type selected, show the full set.
-    if (activeTypes.length > 0) {
+    const typeCats = activeTypes.filter((t) => t !== LAB_GROWN_TYPE);
+    if (typeCats.length > 0) {
       const allowed = new Set<string>();
-      for (const t of activeTypes) (canon[t] ?? full).forEach((s) => allowed.add(s));
+      for (const t of typeCats) (canon[t] ?? full).forEach((s) => allowed.add(s));
       return full.filter((s) => allowed.has(s)); // keep canonical order
     }
     return full;
@@ -717,7 +728,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
               <ScrollArea className="flex-1 px-4">
                 <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                   availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_FILTER_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
               </ScrollArea>
@@ -762,7 +773,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             <CardContent className="p-4">
               <FilterPanel priceRange={priceRange} setPriceRange={setPriceRange} caratRange={caratRange} setCaratRange={setCaratRange}
                 availability={availability} setAvailability={setAvailability} onClear={clearFilters} activeCount={activeFiltersCount} isINR={isINR}
-                  typeOptions={TYPE_CATEGORY_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
+                  typeOptions={TYPE_FILTER_OPTIONS} subCategoryOptions={cascadedSubCategoryOptions} availabilityOptions={availabilityOptions}
                   activeTypes={activeTypes} setActiveTypes={setActiveTypes}
                   activeSubCategories={activeSubCategories} setActiveSubCategories={setActiveSubCategories} />
             </CardContent>
