@@ -816,7 +816,12 @@ function DiamondTab({ retailers, diamondType = "NATURAL" }: { retailers: any[]; 
 }
 
 /* ── STONES ──────────────────────────────────────────── */
-const STONE_CATS = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Kundan", "Beads"];
+/* The gem categories, then the decorative materials (DAK / ENAMEL / LAKH),
+   which are each their own category because no gem group fits and because the
+   products carry them with color_stone_name == color_stone_quality — pricing
+   matches those on skey(category, stone_name). The category column is free text
+   server-side, so this list only drives the dropdown. */
+const STONE_CATS = ["Precious Stones", "Semi Precious Stones", "Synthetic Stones", "Pearl", "Kundan", "Beads", "DAK", "ENAMEL", "LAKH"];
 function StonesTab() {
   // Stone rates are per country (India ₹ / United States $) — entered separately.
   const [country, setCountry] = useState("India");
