@@ -192,7 +192,7 @@ function mapProduct(p: ApiProduct, isINR = true): Product {
 
 export function ProductCatalog({ collectionId: collectionIdProp }: { collectionId?: string } = {}) {
   const navigate = useNavigate();
-  const { retailer } = useAuth();
+  const { retailer, loading: authLoading } = useAuth();
   const isINR = (retailer?.country || "India") === "India"; // currency for this retailer
   const [searchParams, setSearchParams] = useSearchParams();
   // Collection can come from a dedicated route param (prop) or a ?collection= query.
@@ -440,6 +440,13 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   }, []);
 
   useEffect(() => {
+    /* Wait for the auth check to settle before fetching. `isINR` defaults to
+       India while `retailer` is still null, and the currency is baked into each
+       product's priceLabel at map time — fetching now would render ₹ to a US
+       retailer for a moment and then throw the whole list away and refetch once
+       the retailer lands. The skeleton stays up in the meantime (`loading`
+       starts true), so there is nothing to show yet anyway. */
+    if (authLoading) return;
     let cancelled = false;
     setLoading(true);
     async function fetchProducts() {
@@ -501,7 +508,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     }
     fetchProducts();
     return () => { cancelled = true; };
-  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, pageSize, collectionId, isINR]);
+  }, [activeTab, activeCategory, debouncedSearch, priceRange, caratRange, availability, activeTypes, activeSubCategories, page, pageSize, collectionId, isINR, authLoading]);
 
   // When an order is placed (from the CartBar), optimistically mark those
   // products as "pending" so their cards flip out of "Add to Cart" immediately,
