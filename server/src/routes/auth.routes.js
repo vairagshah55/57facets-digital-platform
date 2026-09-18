@@ -195,6 +195,7 @@ router.post("/verify-otp", async (req, res, next) => {
         // retailer screen picks its currency off it (₹ India / $ US). Leaving
         // it out made the whole portal fall back to the "India" default and
         // show ₹ to US retailers until they hard-refreshed and /me filled it in.
+        country: retailer.country || "India",
         firstLogin: retailer.first_login,
       },
     });
