@@ -23,7 +23,10 @@ router.get("/", async (req, res, next) => {
        JOIN products p ON p.id = w.product_id
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE w.retailer_id = $1
-       ORDER BY w.created_at DESC`,
+       -- Saved items read in SKU A→Z order, same as every other retailer list.
+       -- Safe to reorder in SQL here: the query is uncapped, so the ORDER BY
+       -- only arranges rows, it cannot change which ones come back.
+       ORDER BY p.sku ASC`,
       [req.retailer.id]
     );
     // Attach the per-retailer dynamic price (same as the catalog list).

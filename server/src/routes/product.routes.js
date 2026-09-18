@@ -18,6 +18,14 @@ const ORDERED_EXPR = (ridParam) =>
   `EXISTS (SELECT 1 FROM order_items oi JOIN orders o ON o.id = oi.order_id
            WHERE oi.product_id = p.id AND o.retailer_id = ${ridParam} AND o.status <> 'cancelled')`;
 
+/* Retailer-facing lists are all shown in SKU A→Z order. The paginated catalog
+   does this in SQL (it has to — the ORDER BY decides which page you get), but
+   the capped lists below pick their rows by recency first (newest 12, last 20
+   viewed, …) and only then get arranged for display. Sorting those in SQL would
+   move the ORDER BY in front of the LIMIT and silently change WHICH products
+   come back, so they are re-ordered here instead, after the row set is fixed. */
+const bySku = (rows) => [...rows].sort((a, b) => String(a.sku || "").localeCompare(String(b.sku || "")));
+
 // ── GET /api/products ──────────────────────────────
 // List products with filters
 router.get("/", authenticate, async (req, res, next) => {
@@ -106,7 +114,7 @@ router.get("/", authenticate, async (req, res, next) => {
               p.color_stone_name, p.color_stone_quality, p.color_stone_carat, p.color_stone_pcs,
               c.name AS category,
               (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) AS image`;
-    const baseQuery = `SELECT ${COLS} FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where} ORDER BY p.created_at DESC, p.id DESC`;
+    const baseQuery = `SELECT ${COLS} FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where} ORDER BY p.sku ASC, p.id ASC`;
 
     const minP = min_price ? Number(min_price) : null;
     const maxP = max_price ? Number(max_price) : null;
@@ -251,7 +259,7 @@ router.get("/new-arrivals", authenticate, async (req, res, next) => {
        WHERE ${IS_NEW_EXPR} AND p.is_active = true
        ORDER BY p.created_at DESC, p.id DESC LIMIT 12`
     );
-    res.json(rows);
+    res.json(bySku(rows));
   } catch (err) {
     next(err);
   }
@@ -277,7 +285,7 @@ router.get("/recently-viewed", authenticate, async (req, res, next) => {
     );
     // Attach the per-retailer dynamic price (same as the catalog list).
     const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
-    res.json(priced);
+    res.json(bySku(priced));
   } catch (err) {
     next(err);
   }
@@ -304,7 +312,7 @@ router.get("/unseen", authenticate, async (req, res, next) => {
     );
     // Attach the per-retailer dynamic price (same as the catalog list).
     const priced = await pricing.priceProductsForRetailer(rows, req.retailer?.id);
-    res.json(priced);
+    res.json(bySku(priced));
   } catch (err) {
     next(err);
   }
