@@ -393,7 +393,11 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
         // One more frame so the freshly mounted grid is laid out before we measure.
         raf = requestAnimationFrame(() => {
           const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          // Jump, don't animate — the page is styled scroll-behavior: smooth, and
+          // gliding down from the top is exactly what this is meant to avoid.
+          document.documentElement.style.scrollBehavior = "auto";
           window.scrollTo(0, Math.min(y, maxY));
+          document.documentElement.style.scrollBehavior = "";
         });
       } else if (performance.now() < deadline) {
         raf = requestAnimationFrame(tick);
@@ -478,8 +482,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
             setTotalPages(pages);
             // ?page= can now outlive the result set it was written for (a stale
             // bookmark, or products removed since). Pull it back into range
-            // instead of showing an empty grid with no obvious way out.
-            if (page > pages) setPage(pages);
+            // instead of showing an empty grid with no obvious way out. Note a
+            // result set with no matches reports totalPages: 0 — page 1 is still
+            // the only sensible landing spot.
+            if (page > pages) setPage(Math.max(1, pages));
             if (mapped.length > 0) {
               try {
                 const orderMap = await ordersApi.activeByProducts(mapped.map((p) => String(p.id)));
