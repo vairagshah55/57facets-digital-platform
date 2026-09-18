@@ -39,7 +39,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "./ui/sheet";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { products as productsApi, wishlist as wishlistApi, orders as ordersApi, collections as collectionsApi, uploads as uploadsApi, imageUrl, imageVariant } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -125,6 +125,56 @@ function pageItems(current: number, total: number): (number | "…")[] {
   return out;
 }
 
+/* ── Scroll memory ─────────────────────────────────────
+   history.scrollRestoration is "manual" (see main.tsx), so returning from a
+   product detail page would otherwise drop the user at the top of the catalog.
+   We stash the catalog's scroll offset per history entry and replay it once the
+   restored page's cards have rendered.
+
+   Keyed by React Router's history index (window.history.state.idx, the same
+   counter BackPill reads) so that only a genuine Back lands on it — opening the
+   catalog fresh from the nav bar pushes a new entry, which has nothing stored
+   and therefore starts at the top. The URL is stored alongside and checked on
+   read, because history indices get reused once the user goes back and then
+   navigates forward again; so is a per-page-load id, because sessionStorage
+   outlives a refresh and main.tsx deliberately starts a reload at the top. */
+const SCROLL_STORE_KEY = "sf:catalog-scroll";
+const SCROLL_STORE_LIMIT = 20;
+const LOAD_ID = Math.random().toString(36).slice(2); // new on every page load
+
+type ScrollMark = { sid: string; url: string; y: number };
+
+function historyIdx(): string {
+  return String((typeof window !== "undefined" && window.history.state?.idx) || 0);
+}
+
+function readScrollStore(): Record<string, ScrollMark> {
+  try {
+    const raw = sessionStorage.getItem(SCROLL_STORE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch { return {}; } // private mode / disabled storage — scroll memory is best-effort
+}
+
+function saveScrollMark(idx: string, mark: ScrollMark) {
+  try {
+    const store = readScrollStore();
+    store[idx] = mark;
+    const keys = Object.keys(store);
+    if (keys.length > SCROLL_STORE_LIMIT) {
+      keys.sort((a, b) => Number(a) - Number(b))
+        .slice(0, keys.length - SCROLL_STORE_LIMIT)
+        .forEach((k) => delete store[k]);
+    }
+    sessionStorage.setItem(SCROLL_STORE_KEY, JSON.stringify(store));
+  } catch { /* ignore */ }
+}
+
+function readScrollMark(idx: string, url: string): number | null {
+  const mark = readScrollStore()[idx];
+  return mark && mark.sid === LOAD_ID && mark.url === url && typeof mark.y === "number" ? mark.y : null;
+}
+
 function mapProduct(p: ApiProduct, isINR = true): Product {
   // Prefer the per-retailer price computed by the server; fall back to base_price.
   const price = p.price != null ? Number(p.price) : (Number(p.base_price) || 0);
@@ -149,7 +199,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const collectionId = collectionIdProp ?? searchParams.get("collection");
   const [collectionName, setCollectionName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") || "All");
   const [activeTab, setActiveTab] = useState<"all" | "new" | "viewed" | "unseen">(
     (searchParams.get("tab") as any) || "all"
@@ -216,22 +266,6 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   });
   const [activeTypes, setActiveTypes] = useState<string[]>(() => listParam("types"));
   const [activeSubCategories, setActiveSubCategories] = useState<string[]>(() => listParam("sub"));
-  /* Mirror the sidebar filters into the URL (replace, so we don't spam history).
-     One effect rather than wrapping each setter — the checkboxes, sliders and
-     "clear" buttons all funnel through state, so watching the state covers every
-     path. Defaults are removed from the URL to keep it short. */
-  useEffect(() => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
-      put("types", activeTypes.join(","));
-      put("sub", activeSubCategories.join(","));
-      put("avail", Object.entries(availability).filter(([, on]) => on).map(([k]) => k).join(","));
-      put("carat", caratRange[0] > CARAT_MIN || caratRange[1] < CARAT_MAX ? `${caratRange[0]}-${caratRange[1]}` : "");
-      put("price", priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX ? `${priceRange[0]}-${priceRange[1]}` : "");
-      return next;
-    }, { replace: true });
-  }, [activeTypes, activeSubCategories, availability, caratRange, priceRange, setSearchParams]);
 
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([]);
@@ -243,23 +277,131 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
   const [newCount, setNewCount] = useState(0);
   const [viewedCount, setViewedCount] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  /* Page and page size live in the URL for the same reason the filters do: they
+     decide *which* products a given page number refers to, so restoring page 38
+     without them would show page 38 of a different result set. */
+  const [page, setPage] = useState(() => {
+    const n = Number(searchParams.get("page"));
+    return Number.isInteger(n) && n >= 1 ? n : 1;
+  });
+  const [pageSize, setPageSize] = useState(() => {
+    const n = Number(searchParams.get("per"));
+    return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE;
+  });
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
   const [activeOrders, setActiveOrders] = useState<Record<string, { order_number: string; status: string }>>({});
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  // Seeded from the restored query so the first fetch already has it — otherwise
+  // the page the user came back to would briefly list unfiltered products.
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  // The query `page` currently belongs to. Seeded the same way, so arriving with
+  // ?q=… from history doesn't look like "the user just typed" and reset to 1.
+  const pagedSearchRef = useRef(search);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      if (pagedSearchRef.current !== search) { pagedSearchRef.current = search; setPage(1); }
+    }, 400);
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, pageSize, collectionId]);
+  /* Reset to page 1 whenever the result set changes — but not on mount, where
+     these are just the values seeded from the URL and `page` is the page the
+     user is coming back to. Compared by value rather than by dependency
+     identity so StrictMode's double-invoked effects can't reset it either. */
+  const filterSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sig = JSON.stringify([activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, pageSize, collectionId]);
+    if (filterSigRef.current !== null && filterSigRef.current !== sig) setPage(1);
+    filterSigRef.current = sig;
+  }, [activeCategory, activeTab, priceRange, caratRange, availability, activeTypes, activeSubCategories, pageSize, collectionId]);
+
+  /* Mirror the sidebar filters, the search text and the pager into the URL
+     (replace, so we don't spam history). One effect rather than wrapping each
+     setter — the checkboxes, sliders, search box, pager and "clear" buttons all
+     funnel through state, so watching the state covers every path. It must also
+     stay a *single* setSearchParams call: react-router's functional form closes
+     over the current render's params, so two of them in one commit would each
+     overwrite the other. Defaults are removed from the URL to keep it short. */
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
+      put("types", activeTypes.join(","));
+      put("sub", activeSubCategories.join(","));
+      put("avail", Object.entries(availability).filter(([, on]) => on).map(([k]) => k).join(","));
+      put("carat", caratRange[0] > CARAT_MIN || caratRange[1] < CARAT_MAX ? `${caratRange[0]}-${caratRange[1]}` : "");
+      put("price", priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX ? `${priceRange[0]}-${priceRange[1]}` : "");
+      put("q", debouncedSearch.trim());
+      put("page", page > 1 ? String(page) : "");
+      put("per", pageSize !== DEFAULT_PAGE_SIZE ? String(pageSize) : "");
+      return next;
+    }, { replace: true });
+  }, [activeTypes, activeSubCategories, availability, caratRange, priceRange, debouncedSearch, page, pageSize, setSearchParams]);
+
+  /* ── Scroll position across a Back navigation ───────────────
+     Read the mark during the first render, before any of the effects above can
+     rewrite the URL it's keyed on. */
+  const location = useLocation();
+  const [restoredScrollY] = useState<number | null>(() =>
+    readScrollMark(historyIdx(), `${location.pathname}${location.search}`)
+  );
+  const pendingScrollRef = useRef<number | null>(restoredScrollY);
+  const scrollYRef = useRef(restoredScrollY ?? 0);
+
+  // Keep the mark's identity (history entry + URL) current on every render: by
+  // the time the unmount cleanup runs, history has already moved on to the
+  // product detail page, so neither can be read there.
+  const scrollMarkRef = useRef<{ idx: string; url: string } | null>(null);
+  useEffect(() => {
+    scrollMarkRef.current = { idx: historyIdx(), url: `${location.pathname}${location.search}` };
+  });
+
+  useEffect(() => {
+    const onScroll = () => { scrollYRef.current = window.scrollY; };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      const mark = scrollMarkRef.current;
+      if (mark) saveScrollMark(mark.idx, { sid: LOAD_ID, url: mark.url, y: scrollYRef.current });
+    };
+  }, []);
+
+  /* Replay the offset once the restored page's cards are actually in the DOM.
+     `loading` going false isn't enough: AnimatePresence runs in "wait" mode, so
+     the grid only mounts after the skeleton has finished fading out — scrolling
+     before that would hit a short document and land near the top. We poll for
+     the grid element instead, then jump; each card reserves its height up front
+     (aspect-square media), so no need to wait on images too. */
+  useEffect(() => {
+    if (pendingScrollRef.current == null || loading) return;
+    const y = pendingScrollRef.current;
+    pendingScrollRef.current = null;
+    if (products.length === 0) return; // nothing to scroll to
+    scrollYRef.current = y;
+    let raf = 0;
+    const deadline = performance.now() + 2000;
+    const tick = () => {
+      // Looked up in the DOM rather than via a ref: this project is on React 18,
+      // where handing a ref to an AnimatePresence child warns and may not stick.
+      if (document.querySelector("[data-catalog-grid]")) {
+        // One more frame so the freshly mounted grid is laid out before we measure.
+        raf = requestAnimationFrame(() => {
+          const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          window.scrollTo(0, Math.min(y, maxY));
+        });
+      } else if (performance.now() < deadline) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [loading, products]);
 
   // Fetch the collection's name when viewing a collection (for the header)
   useEffect(() => {
@@ -330,9 +472,14 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           const data = await productsApi.list(params);
           if (!cancelled) {
             const mapped = ((data.products || []) as ApiProduct[]).map((p) => mapProduct(p, isINR));
+            const pages = data.totalPages ?? 1;
             setProducts(mapped);
             setTotalProducts(data.total ?? mapped.length);
-            setTotalPages(data.totalPages ?? 1);
+            setTotalPages(pages);
+            // ?page= can now outlive the result set it was written for (a stale
+            // bookmark, or products removed since). Pull it back into range
+            // instead of showing an empty grid with no obvious way out.
+            if (page > pages) setPage(pages);
             if (mapped.length > 0) {
               try {
                 const orderMap = await ordersApi.activeByProducts(mapped.map((p) => String(p.id)));
@@ -674,6 +821,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
                  remount/refade the whole grid. Only tab/category/view changes
                  get the fade transition. */
               <motion.div
+                data-catalog-grid=""
                 key={`${activeTab}-${activeCategory}-${viewMode}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                 className="grid grid-cols-2 sm:grid-cols-3 gap-4 transition-opacity duration-300"
