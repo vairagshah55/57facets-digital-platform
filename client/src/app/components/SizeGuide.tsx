@@ -69,41 +69,59 @@ const CONVERSION_ROWS: Row[] = [
   ["8.0 inches", "20.3 cm", "Extra Large (XL)", "2.8"],
 ];
 
+/* Which sizing system the retailer reads. Rings are numbered differently in
+   India and the US (Indian 7 == US 4), so the selector shows the retailer their
+   own numbers. `india` is threaded through the display fields below; only the
+   ring chart varies — bracelet/bangle are sized by inner diameter, which is the
+   same number everywhere. */
 type ChartDef = {
   title: string;
   subtitle: string;
-  sizeLabel: string; // e.g. "Ring Size (India)"
+  sizeLabel: (india: boolean) => string; // e.g. "Ring Size (India)" / "Ring Size (US)"
   noun: string; // e.g. "Ring"
   headers: string[];
   rows: Row[];
   tip: string;
   footnote?: string; // optional fine print shown under the table
-  // Canonical size value used for selection (independent of column order).
+  /* Canonical size value used for selection AND stored on the cart/order.
+     Deliberately region-INDEPENDENT: the same physical size must record the
+     same value whoever ordered it, so this stays the Indian size for rings even
+     when a US retailer is shown "4". The summary carries both systems, so the
+     order note is unambiguous for whoever fulfils it. */
   valueOf: (row: Row) => string;
   // From a row → the short chip text and the helper summary line.
-  chip: (row: Row) => string;
-  chipSub?: (row: Row) => string; // optional small 2nd line inside each chip
-  summary: (row: Row) => string;
+  chip: (row: Row, india: boolean) => string;
+  summary: (row: Row, india: boolean) => string;
 };
+
+// "5.0" -> "5", but "3.5" stays "3.5".
+const trimSize = (s: string) => s.replace(/\.0$/, "");
 
 const CHARTS: Record<SizeKind, ChartDef> = {
   ring: {
     title: "Ring Size Chart",
     subtitle: "India ↔ US conversion",
-    sizeLabel: "Ring Size (India)",
+    sizeLabel: (india) => `Ring Size (${india ? "India" : "US"})`,
     noun: "Ring",
     headers: ["Indian Ring Size", "US Ring Size", "Inside Circumference Range (mm)"],
     rows: RING_ROWS,
     tip: "Wrap a thin strip of paper around your finger, mark where it overlaps, then measure that length in mm — that's the inside circumference. Match it to the range, then read across for your Indian & US size.",
     footnote: "The measurement of length is in millimeter as per the Legal Metrology Act, 2009. For convenience, its conversion to length value is also reflected.",
-    valueOf: (r) => r[0],
-    chip: (r) => `${r[2]} mm`, // show the Inside Circumference Range only
-    summary: (r) => `India ${r[0].replace(/\.0$/, "")} · US ${r[1].replace(/\.0$/, "")} · ${r[2]} mm`,
+    valueOf: (r) => r[0], // always the Indian size — see the note on ChartDef
+    /* Just the retailer's own size number. The mm circumference is deliberately
+       NOT repeated out here — the size-chart modal already shows the full
+       "Inside Circumference Range (mm)" column, and the range is fully implied
+       by the size, so India+US still identifies the row for whoever fulfils it. */
+    chip: (r, india) => trimSize(india ? r[0] : r[1]),
+    summary: (r, india) =>
+      india
+        ? `India ${trimSize(r[0])} · US ${trimSize(r[1])}`
+        : `US ${trimSize(r[1])} · India ${trimSize(r[0])}`,
   },
   bracelet: {
     title: "Bracelet Size Chart",
     subtitle: "US to India conversion",
-    sizeLabel: "Bracelet Size",
+    sizeLabel: () => "Bracelet Size",
     noun: "Bracelet",
     headers: ["US Length (Inches)", "US Length (cm)", "Indian Size", "Inner Diameter (Inches)"],
     rows: CONVERSION_ROWS,
@@ -116,7 +134,7 @@ const CHARTS: Record<SizeKind, ChartDef> = {
   bangle: {
     title: "Bangle Size Chart",
     subtitle: "US to India conversion",
-    sizeLabel: "Bangle Size",
+    sizeLabel: () => "Bangle Size",
     noun: "Bangle",
     headers: ["US Length (Inches)", "US Length (cm)", "Indian Size", "Inner Diameter (Inches)"],
     rows: CONVERSION_ROWS,
@@ -216,15 +234,21 @@ function SizeChartDialog({ chart, trigger }: { chart: ChartDef; trigger: React.R
 /* ─── The size selector row (chips + chart link) ─── */
 export function SizeSelector({
   category,
+  country,
   value,
   onChange,
 }: {
   category: string;
+  /* The retailer's country, from the product response — the same source the
+     detail page uses for currency, so sizes and prices can't disagree.
+     Anything other than India reads the US column. */
+  country?: string | null;
   value: string;
   // Reports both the short size value and a human-readable summary (for the order).
   onChange: (value: string, summary: string) => void;
 }) {
   const kind = useMemo(() => sizeKindForCategory(category), [category]);
+  const india = (country || "India") === "India";
   if (!kind) return null;
   const chart = CHARTS[kind];
 
@@ -237,7 +261,7 @@ export function SizeSelector({
         <div className="flex items-center gap-2">
           <Ruler className="w-3.5 h-3.5" style={{ color: "var(--sf-text-muted)" }} />
           <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--sf-text-muted)" }}>
-            {chart.sizeLabel}
+            {chart.sizeLabel(india)}
           </span>
         </div>
         <SizeChartDialog
@@ -265,7 +289,7 @@ export function SizeSelector({
             <button
               key={v}
               type="button"
-              onClick={() => onChange(v, `${chart.noun} size ${v} — ${chart.summary(row)}`)}
+              onClick={() => onChange(v, `${chart.noun} size ${chart.chip(row, india)} — ${chart.summary(row, india)}`)}
               className="relative shrink-0 min-w-[44px] px-3 py-2 rounded-lg transition-all duration-200 flex flex-col items-center gap-0.5"
               style={{
                 background: active ? "var(--sf-teal-glass)" : "var(--sf-glass-bg)",
@@ -275,15 +299,7 @@ export function SizeSelector({
                 transform: active ? "translateY(-1px)" : "none",
               }}
             >
-              <span className="text-[11px] font-bold leading-none">{chart.chip(row)}</span>
-              {chart.chipSub && (
-                <span
-                  className="text-[9px] font-medium leading-none whitespace-nowrap"
-                  style={{ color: active ? "var(--sf-teal)" : "var(--sf-text-muted)", opacity: active ? 0.85 : 0.7 }}
-                >
-                  {chart.chipSub(row)}
-                </span>
-              )}
+              <span className="text-[11px] font-bold leading-none">{chart.chip(row, india)}</span>
               {active && (
                 <span
                   className="absolute flex items-center justify-center rounded-full"
@@ -300,7 +316,7 @@ export function SizeSelector({
       {/* Helper line for the selected size */}
       <p className="text-[13px] mt-3" style={{ color: "var(--sf-text-muted)" }}>
         {selectedRow ? (
-          <>Selected: <span className="font-semibold" style={{ color: "var(--sf-text-secondary)" }}>{chart.summary(selectedRow)}</span></>
+          <>Selected: <span className="font-semibold" style={{ color: "var(--sf-text-secondary)" }}>{chart.summary(selectedRow, india)}</span></>
         ) : (
           <>Pick a size, or leave blank and we'll confirm with you.</>
         )}

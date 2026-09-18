@@ -1421,6 +1421,7 @@ export function ProductDetail({ adminPreview = false, previewRetailerId }: { adm
               {/* ─── Size (ring / bracelet / bangle) ──────── */}
               <SizeSelector
                 category={product.category}
+                country={product.country}
                 value={selectedSize}
                 onChange={(v, summary) => { setSelectedSize(v); setSelectedSizeSummary(summary); }}
               />
