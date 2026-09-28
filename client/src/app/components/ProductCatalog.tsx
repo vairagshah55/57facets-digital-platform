@@ -1168,23 +1168,26 @@ function ProductCard({ product, index, allIds, compact, wishlisted, onToggleWish
           </div>
         )}
 
-        {/* Left arrow — appears on hover */}
-        <button
-          onClick={prev}
-          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        {/* Right arrow — appears on hover */}
-        <button
-          onClick={next}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {/* Prev / next arrows — appear on hover, only when there's more than one image
+            (images are fetched on first hover, so they show up once that resolves) */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "#fff", border: "none" }}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        )}
 
         {/* Image counter — appears on hover */}
         {images.length > 1 && (
