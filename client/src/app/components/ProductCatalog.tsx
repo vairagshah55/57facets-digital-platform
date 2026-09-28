@@ -77,9 +77,13 @@ const TYPE_CATEGORY_OPTIONS = ["DIAMOND", "GOLD", "POLKI", "KUNDAN"];
    lab-grown ring is still a DIAMOND product. So it is kept out of the
    type_category param and out of the sub-category cascade, and is sent as its
    own filter that NARROWS the result set: Diamond + Lab Grown reads as
-   "lab-grown diamonds", not "diamonds or lab-grown". */
+   "lab-grown diamonds", not "diamonds or lab-grown".
+   "Stones" works the same way (sent as has_stones): products carrying any
+   colour stone, so Diamond + Stones = diamond pieces with stones. */
 const LAB_GROWN_TYPE = "LAB GROWN";
-const TYPE_FILTER_OPTIONS = [...TYPE_CATEGORY_OPTIONS, LAB_GROWN_TYPE];
+const STONES_TYPE = "STONES";
+const NARROWING_TYPES = [LAB_GROWN_TYPE, STONES_TYPE];
+const TYPE_FILTER_OPTIONS = [...TYPE_CATEGORY_OPTIONS, ...NARROWING_TYPES];
 
 // Canonical category → type → sub-category taxonomy (business spec). Drives the
 // Sub-category filter so only VALID sub-categories show for the chosen category
@@ -482,9 +486,10 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
           if (caratRange[1] < CARAT_MAX) params.max_carat = String(caratRange[1]);
           const activeAvail = Object.entries(availability).filter(([, v]) => v).map(([k]) => k);
           if (activeAvail.length > 0) params.availability = activeAvail.join(",");
-          const typeCats = activeTypes.filter((t) => t !== LAB_GROWN_TYPE);
+          const typeCats = activeTypes.filter((t) => !NARROWING_TYPES.includes(t));
           if (typeCats.length > 0) params.type_category = typeCats.join(",");
           if (activeTypes.includes(LAB_GROWN_TYPE)) params.diamond_type = LAB_GROWN_TYPE;
+          if (activeTypes.includes(STONES_TYPE)) params.has_stones = "true";
           if (activeSubCategories.length > 0) params.sub_category = activeSubCategories.join(",");
           if (activeTab === "new") params.is_new = "true";
           if (activeTab === "unseen") params.unseen = "true";
@@ -575,7 +580,7 @@ export function ProductCatalog({ collectionId: collectionIdProp }: { collectionI
     const full = canon["*"] ?? [];
     // With type(s) selected, union each type's allowed sub-categories (so e.g.
     // Gold Ring drops Solitaire); with no type selected, show the full set.
-    const typeCats = activeTypes.filter((t) => t !== LAB_GROWN_TYPE);
+    const typeCats = activeTypes.filter((t) => !NARROWING_TYPES.includes(t));
     if (typeCats.length > 0) {
       const allowed = new Set<string>();
       for (const t of typeCats) (canon[t] ?? full).forEach((s) => allowed.add(s));

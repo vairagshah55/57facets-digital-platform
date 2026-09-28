@@ -33,7 +33,7 @@ router.get("/", authenticate, async (req, res, next) => {
     const {
       category, search, availability,
       min_price, max_price, min_carat, max_carat,
-      is_new, unseen, collection, type_category, sub_category, diamond_type, page = 1, limit = 20,
+      is_new, unseen, collection, type_category, sub_category, diamond_type, has_stones, page = 1, limit = 20,
     } = req.query;
 
     const conditions = ["p.is_active = true"];
@@ -67,6 +67,17 @@ router.get("/", authenticate, async (req, res, next) => {
       );
       params.push(dtypes);
       idx++;
+    }
+    /* Has colour stones. Same idea as Lab Grown: "Stones" sits in the retailer
+       Type filter but is not a type_category, so it narrows (Diamond + Stones =
+       diamond pieces that carry stones). Matches the bridged product-level
+       color_stone_name OR any attached product_stones row. No bind params. */
+    if (has_stones === "true") {
+      conditions.push(
+        `(COALESCE(TRIM(p.color_stone_name), '') <> ''
+           OR EXISTS (SELECT 1 FROM product_stones s
+                      WHERE s.product_id = p.id AND COALESCE(TRIM(s.stone_name), '') <> ''))`
+      );
     }
     if (type_category) {
       // Comma-separated list (multi-select) — match any of the chosen types.
