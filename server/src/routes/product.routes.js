@@ -3,6 +3,7 @@ const { query } = require("../config/db");
 const { authenticate } = require("../middleware/auth");
 const auditLog = require("../utils/auditLog");
 const AppError = require("../utils/AppError");
+const { multiValueMatchSql, parseMultiValueParam } = require("../utils/multiValue");
 const pricing = require("../services/pricing.service");
 
 // The retailer-facing "New" badge auto-expires 12 months after a product is
@@ -79,16 +80,15 @@ router.get("/", authenticate, async (req, res, next) => {
                       WHERE s.product_id = p.id AND COALESCE(TRIM(s.stone_name), '') <> ''))`
       );
     }
+    // Multi-select filters; a product may also carry several types/sub-categories
+    // ("DIAMOND, GOLD") — match if any of its values is among the chosen ones.
     if (type_category) {
-      // Comma-separated list (multi-select) — match any of the chosen types.
-      const types = String(type_category).split(",").map((s) => s.trim()).filter(Boolean);
-      conditions.push(`p.type_category = ANY($${idx++})`);
-      params.push(types);
+      conditions.push(multiValueMatchSql("p.type_category", `$${idx++}`));
+      params.push(parseMultiValueParam(type_category));
     }
     if (sub_category) {
-      const subs = String(sub_category).split(",").map((s) => s.trim()).filter(Boolean);
-      conditions.push(`p.sub_category = ANY($${idx++})`);
-      params.push(subs);
+      conditions.push(multiValueMatchSql("p.sub_category", `$${idx++}`));
+      params.push(parseMultiValueParam(sub_category));
     }
     if (search) {
       conditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx})`);
@@ -212,21 +212,25 @@ router.get("/categories", authenticate, async (req, res, next) => {
 router.get("/filter-options", authenticate, async (req, res, next) => {
   try {
     const [types, subs, avails, byCat] = await Promise.all([
-      query(`SELECT DISTINCT type_category AS v FROM products
-             WHERE is_active = true AND type_category IS NOT NULL AND type_category <> ''
-             ORDER BY type_category`),
-      query(`SELECT DISTINCT sub_category AS v FROM products
-             WHERE is_active = true AND sub_category IS NOT NULL AND sub_category <> ''
-             ORDER BY sub_category`),
+      // Split multi-valued "DIAMOND, GOLD" / "LADIES, SOLITAIRE" so each value is its own option.
+      query(`SELECT DISTINCT upper(trim(mv)) AS v
+             FROM products p CROSS JOIN LATERAL unnest(string_to_array(p.type_category, ',')) AS mv
+             WHERE p.is_active = true AND trim(mv) <> ''
+             ORDER BY v`),
+      query(`SELECT DISTINCT upper(trim(mv)) AS v
+             FROM products p CROSS JOIN LATERAL unnest(string_to_array(p.sub_category, ',')) AS mv
+             WHERE p.is_active = true AND trim(mv) <> ''
+             ORDER BY v`),
       query(`SELECT DISTINCT availability AS v FROM products
              WHERE is_active = true AND availability IS NOT NULL AND availability <> ''
              ORDER BY availability`),
       // Which sub-categories exist within each category — drives the cascading
       // Sub-category filter (pick a category → see only its sub-categories).
-      query(`SELECT DISTINCT c.name AS category, p.sub_category AS sub
+      query(`SELECT DISTINCT c.name AS category, upper(trim(mv)) AS sub
              FROM products p JOIN categories c ON c.id = p.category_id
-             WHERE p.is_active = true AND p.sub_category IS NOT NULL AND p.sub_category <> ''
-             ORDER BY c.name, p.sub_category`),
+             CROSS JOIN LATERAL unnest(string_to_array(p.sub_category, ',')) AS mv
+             WHERE p.is_active = true AND trim(mv) <> ''
+             ORDER BY c.name, sub`),
     ]);
     const subCategoriesByCategory = {};
     for (const r of byCat.rows) {

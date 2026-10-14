@@ -30,7 +30,7 @@ const tirichLeadListRoutes = require("./routes/tirich.leadList.routes");
 
 const app = express();
 app.set("trust proxy", 1); // Required for Cloud Run / load balancers
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // ── Static uploads (local dev only) ────────────────
 // Upload filenames are unique + content-immutable (original + _thumb/_card/_full
@@ -68,7 +68,20 @@ const tirichCors = cors({
 app.use("/api/sub-domain/lead", tirichCors, express.json(), tirichLeadRoutes);
 app.use("/api/sub-domain/lead-list", tirichCors, express.json(), tirichLeadListRoutes);
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
+const clientOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // curl / server-to-server (no Origin)
+    if (clientOrigins.includes(origin)) return cb(null, true);
+    // Allow any localhost / 127.0.0.1 origin (any port) during local dev —
+    // Vite hops to 5174+ when 5173 is taken by another project.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+}));
 app.use(express.json());
 app.use(morgan("dev"));
 

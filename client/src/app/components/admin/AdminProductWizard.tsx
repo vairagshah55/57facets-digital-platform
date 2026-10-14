@@ -134,6 +134,11 @@ const EMPTY: FormData = {
    HELPERS
    ═══════════════════════════════════════════════════════ */
 
+// Comma-separated multi-value field → items: "DIAMOND, GOLD" -> ["DIAMOND", "GOLD"]
+function splitList(s: string): string[] {
+  return s.split(",").map((x) => x.trim()).filter(Boolean);
+}
+
 function detailToForm(d: ProductDetail): FormData {
   return {
     name: d.name || "", sku: d.sku || "", mfg_code: (d as any).mfg_code || "", description: d.description || "",
@@ -220,7 +225,8 @@ function formToPayload(f: FormData) {
     name: f.name.trim(), sku: f.sku.trim(), mfg_code: f.mfg_code.trim() || null,
     description: f.description.trim() || null,
     category_id: f.category_id || null, collection_ids: f.collection_ids,
-    type_category: f.type_category.trim() || null, sub_category: f.sub_category.trim() || null,
+    // "" (not null) when every type is unticked, so an edit actually clears it.
+    type_category: f.type_category.trim(), sub_category: f.sub_category.trim() || null,
     occasion_tags: f.occasion_tags ? f.occasion_tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     metal_type: f.metal_type || null, gold_colour: f.gold_colour || null,
     // Metal weight is no longer entered separately — it tracks Net Weight (used for pricing).
@@ -395,6 +401,17 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
     setForm((p) => ({ ...p, [key]: e.target.value }));
     clearError(key);
   };
+  // Type Category can hold several values ("DIAMOND, GOLD"): kept as a comma
+  // string in the form, edited as checkboxes. A non-standard type already on
+  // the product stays listed, so saving never silently drops it.
+  const hasType = (list: string[], t: string) => list.some((x) => x.toUpperCase() === t.toUpperCase());
+  const selectedTypes = splitList(form.type_category);
+  const typeOptions = [...TYPE_CATEGORY_OPTIONS, ...selectedTypes.filter((t) => !hasType(TYPE_CATEGORY_OPTIONS, t))];
+  const toggleType = (t: string) => setForm((p) => {
+    const cur = splitList(p.type_category);
+    const next = hasType(cur, t) ? cur.filter((x) => x.toUpperCase() !== t.toUpperCase()) : [...cur, t];
+    return { ...p, type_category: next.join(", ") };
+  });
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
@@ -412,10 +429,17 @@ function StepBasic({ form, setForm, categories, collections, errors, clearError 
           value={form.category_id} onValueChange={(v) => setForm((p) => ({ ...p, category_id: v }))}>
           {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
         </FSelect>
-        <FSelect label="Type Category" placeholder="Select type"
-          value={form.type_category} onValueChange={(v) => setForm((p) => ({ ...p, type_category: v }))}>
-          {TYPE_CATEGORY_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-        </FSelect>
+        <Field label="Type Category" hint="Tick one or more">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-h-9 px-3 py-1.5 rounded-md border"
+            style={iBase}>
+            {typeOptions.map((t) => (
+              <label key={t} className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={hasType(selectedTypes, t)} onCheckedChange={() => toggleType(t)} />
+                <span className="text-xs" style={{ color: "var(--sf-text-primary)" }}>{t}</span>
+              </label>
+            ))}
+          </div>
+        </Field>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <FInput label="Sub Category" placeholder="e.g. Solitaire, Cocktail"

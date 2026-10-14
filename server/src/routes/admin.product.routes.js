@@ -4,6 +4,7 @@ const fs = require("fs");
 const { query, getClient } = require("../config/db");
 const { adminAuth } = require("../middleware/adminAuth");
 const AppError = require("../utils/AppError");
+const { normalizeMultiValue, multiValueMatchSql, parseMultiValueParam } = require("../utils/multiValue");
 const multer = require("multer");
 const AdmZip = require("adm-zip");
 const { uploadFile } = require("../utils/gcsUpload");
@@ -95,16 +96,15 @@ router.get("/", async (req, res, next) => {
       conditions.push(`c.name = $${idx++}`);
       params.push(category);
     }
+    // Multi-select filters; a product may also carry several types/sub-categories
+    // ("DIAMOND, GOLD") — match if any of its values is among the chosen ones.
     if (type_category) {
-      // Comma-separated list (multi-select) — match any of the chosen types.
-      const types = String(type_category).split(",").map((s) => s.trim()).filter(Boolean);
-      conditions.push(`p.type_category = ANY($${idx++})`);
-      params.push(types);
+      conditions.push(multiValueMatchSql("p.type_category", `$${idx++}`));
+      params.push(parseMultiValueParam(type_category));
     }
     if (sub_category) {
-      const subs = String(sub_category).split(",").map((s) => s.trim()).filter(Boolean);
-      conditions.push(`p.sub_category = ANY($${idx++})`);
-      params.push(subs);
+      conditions.push(multiValueMatchSql("p.sub_category", `$${idx++}`));
+      params.push(parseMultiValueParam(sub_category));
     }
     if (availability) {
       conditions.push(`p.availability = $${idx++}`);
@@ -334,7 +334,7 @@ router.post("/", async (req, res, next) => {
         Array.isArray(carat_options) && carat_options.length ? JSON.stringify(carat_options) : null,
         mfg_code || null, gross_weight || null, net_weight || null,
         dSize || null, dPcs, csCarat || null, csPcs || null,
-        type_category || null, sub_category || null,
+        normalizeMultiValue(type_category) || null, normalizeMultiValue(sub_category) || null,
       ]
     );
 
@@ -517,7 +517,7 @@ router.put("/:id", async (req, res, next) => {
         dSize ?? null, dPcs ?? null, csCarat, csPcs,
         newSku,
         req.params.id,
-        type_category ?? null, sub_category ?? null,
+        normalizeMultiValue(type_category) ?? null, normalizeMultiValue(sub_category) ?? null,
       ]
     );
     if (rows.length === 0) throw new AppError("Product not found", 404);
@@ -624,11 +624,14 @@ router.get("/meta/collections", async (req, res, next) => {
 // Distinct type_category and sub_category values for the admin filter bar.
 router.get("/meta/filter-options", async (req, res, next) => {
   try {
+    // Split multi-valued "DIAMOND, GOLD" / "LADIES, SOLITAIRE" so each value is its own option.
     const [types, subs] = await Promise.all([
-      query(`SELECT DISTINCT type_category AS v FROM products
-             WHERE type_category IS NOT NULL AND type_category <> '' ORDER BY type_category`),
-      query(`SELECT DISTINCT sub_category AS v FROM products
-             WHERE sub_category IS NOT NULL AND sub_category <> '' ORDER BY sub_category`),
+      query(`SELECT DISTINCT upper(trim(mv)) AS v
+             FROM products p CROSS JOIN LATERAL unnest(string_to_array(p.type_category, ',')) AS mv
+             WHERE trim(mv) <> '' ORDER BY v`),
+      query(`SELECT DISTINCT upper(trim(mv)) AS v
+             FROM products p CROSS JOIN LATERAL unnest(string_to_array(p.sub_category, ',')) AS mv
+             WHERE trim(mv) <> '' ORDER BY v`),
     ]);
     res.json({
       types: types.rows.map((r) => r.v),

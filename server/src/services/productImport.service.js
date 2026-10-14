@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 const { query, getClient } = require("../config/db");
 const { uploadFile } = require("../utils/gcsUpload");
 const AppError = require("../utils/AppError");
+const { normalizeMultiValue } = require("../utils/multiValue");
 
 // ── XLSX parsing helpers (moved verbatim from admin.product.routes.js) ──────
 // Decode the XML entities that appear in shared/inline strings.
@@ -372,8 +373,9 @@ async function processImport({ filePath, originalName, adminId, onProgress }) {
             dia.diamond_pcs,
             getNum(cols, csCaratIdx),
             getNum(cols, csPcsIdx),
-            getVal(cols, typeCatIdx),
-            getVal(cols, subCatIdx),
+            // Both accept several comma-separated values: "DIAMOND, GOLD" / "LADIES, SOLITAIRE".
+            normalizeMultiValue(getVal(cols, typeCatIdx)) || null,
+            normalizeMultiValue(getVal(cols, subCatIdx)) || null,
           ]
         );
 

@@ -3,7 +3,7 @@
    Best-effort and cross-platform (Windows / macOS / Linux); never throws. */
 const { execSync } = require("child_process");
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 function pidsOnPort(port) {
   const pids = new Set();
