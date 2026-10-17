@@ -72,12 +72,17 @@ router.get("/", authenticate, async (req, res, next) => {
     /* Has colour stones. Same idea as Lab Grown: "Stones" sits in the retailer
        Type filter but is not a type_category, so it narrows (Diamond + Stones =
        diamond pieces that carry stones). Matches the bridged product-level
-       color_stone_name OR any attached product_stones row. No bind params. */
+       color_stone_name OR any attached product_stones row. No bind params.
+       Black beads (the mangalsutra "kali moti") are recorded as a stone but are
+       not one for this filter, so they never qualify a product on their own —
+       a piece with black beads AND real stones still matches. */
     if (has_stones === "true") {
+      const isStone = (col) =>
+        `COALESCE(TRIM(${col}), '') <> '' AND UPPER(TRIM(${col})) NOT LIKE 'BLACK BEAD%'`;
       conditions.push(
-        `(COALESCE(TRIM(p.color_stone_name), '') <> ''
+        `((${isStone("p.color_stone_name")})
            OR EXISTS (SELECT 1 FROM product_stones s
-                      WHERE s.product_id = p.id AND COALESCE(TRIM(s.stone_name), '') <> ''))`
+                      WHERE s.product_id = p.id AND ${isStone("s.stone_name")}))`
       );
     }
     // Multi-select filters; a product may also carry several types/sub-categories
